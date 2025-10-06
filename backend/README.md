@@ -20,3 +20,4 @@ A RESTful API backend built with Flask that connects to a MongoDB database.
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
+2. Create a .env file

@@ -1,10 +1,7 @@
-from flask import Flask
+from flask import Blueprint
 
-app = Flask(__name__)
+teacher_bp = Blueprint('teacher', __name__)
 
-@app.route('/teacher/dashboard')
+@teacher_bp.route('/dashboard')
 def dashboard():
     return {"message": "Welcome to the Teacher Dashboard"}
-
-if __name__ == '__main__':
-    app.run(debug=True)
