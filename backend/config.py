@@ -21,7 +21,5 @@ app.config["DEBUG"] = os.environ.get("FLASK_DEBUG", "true")
 try:
     mongo = PyMongo(app)
     db = mongo.db
-    print("Database connected:", db)
 except Exception as e:
     print("Database connection error:", e)
-    db = None
