@@ -1,34 +1,42 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
-from flask_cors import CORS
+from flask_jwt_extended import create_access_token, create_refresh_token
+import bcrypt
+from config import db
 
 auth_bp = Blueprint('auth', __name__)
 
-cors = CORS(auth_bp)
+def check_password(password, hashed):
+    return bcrypt.checkpw(password.encode('utf-8'), hashed)
 
-@auth_bp.route('/api/users', methods=['GET'])
-def users():
-    return jsonify(
-        {
-            "users": [
-                {"id": 1, "name": "User 1", "email": "user1@example.com"},
-                {"id": 2, "name": "User 2", "email": "user2@example.com"},
-            ]
-        }
-    )
-
-@auth_bp.rout('/api/login', methods=['POST'])
+@auth_bp.route('/api/login', methods=['POST'])
 def login():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
+    try:
+        data = request.json
+        # Validation
+        if not data.get('username') or not data.get('password'):
+            return jsonify({"error": "Username and password are required"}), 400
 
-    if username == 'test' and password == 'test':
-        access_token = create_access_token(identity={'username': username})
-        refresh_token = create_refresh_token(identity={'username': username})
-        return jsonify(access_token=access_token, refresh_token=refresh_token), 200
-    else:
-        return jsonify({"msg": "Bad username or password"}), 401
+        user = db.user.find_one({"username": data['username']})
+        if not user or not check_password(data['password'], user['password']):
+            return jsonify({"error": "Invalid username or password"}), 401
 
-if __name__ == '__main__':
-    auth_bp.run(debug=True)
+        if not check_password(data['password'], user['password']):
+            return jsonify({"error": "Invalid username or password"}), 401
+
+        access_token = create_access_token(identity=str(user['_id']))
+        refresh_token = create_refresh_token(identity=str(user['_id']))
+
+        return jsonify({
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": {
+                "id": str(user['_id']),
+                "username": user['username'],
+                "role": user['role'],
+                "firstName": user['firstName'],
+                "lastName": user['lastName']
+            }
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
