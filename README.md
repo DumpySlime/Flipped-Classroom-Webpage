@@ -31,7 +31,8 @@ The primary outcome will be a functional prototype of the AI-Powered Flipped Cla
 
 1. Clone this repository:
   ```
-  git clone https://github.com/DumpySlime/FYP.git
-  cd FYP
+  git clone https://github.com/DumpySlime/Flipped-Classroom-Webpage.git
+  cd Flipped-Classroom-Webpage
   ```
+
 
