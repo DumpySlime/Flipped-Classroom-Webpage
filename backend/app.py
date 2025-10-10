@@ -1,10 +1,12 @@
-from flask import request, jsonify
-from config import app, db
+from flask import Flask, jsonify
+from config import db
 
 from routes.admin import admin_bp
 from routes.auth import auth_bp
 from routes.student import student_bp
 from routes.teacher import teacher_bp
+
+app = Flask(__name__)
 
 app.register_blueprint(admin_bp, url_prefix='/admin')
 app.register_blueprint(auth_bp, url_prefix='/auth')
