@@ -1,39 +1,48 @@
-import { useState } from "react";
+import React, { useState } from 'react';
+import axios from 'axios';
 import "../styles.css"
 
-function Login() {
+function Login({ onLogin }) {
     
-    const [username, setUsername] = useState('')
-    const [password, setPassword] = useState('')
-    const [error, setError] = useState('')
+    const [state, setState] = useState({
+        username: '',
+        password: '',
+        role: 'student',
+        error: ''
+    });
 
     const handleLogin = async (e) => {
         e.preventDefault();
 
         try {
-            const response = await axios.post("/auth/api/login", { username, password });
-            console.log(response.data);
-            // Handle successful login (e.g., store tokens, redirect, etc.)
+            // Send login request to backend API
+            const response = await axios.post('/api/login', {
+                username: state.username,
+                password: state.password
+            });
             
-            const { token, role } = response.data;
-
-            localStorage.setItem('token', token)
-            setError('')
-
+            // Extract tokens and user info from response
+            const { access_token, user } = response.data;
+            const token = access_token;
+            
+            // Store tokens and user info in localStorage
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify(user));
+            
+            setState(prevState => ({ ...prevState, error: '' }));
+            
+            // Call the onLogin callback to notify parent component
+            if (onLogin) {
+                onLogin(user.role);
+            }
+            
+            alert(`Login successful! Welcome ${user.role === 'teacher' ? 'Teacher' : 'Student'} ${user.firstName} ${user.lastName}`);
+            
         } catch (err) {
-            // Handle login error
-            setError('Invalid ')
+            setState(prevState => ({ ...prevState, error: 'Invalid username or password' }));
+            console.error("Login error:", err);
         }
     }
-
-    useEffect(() => {
-        const place = {
-            state
-        }
-        axios.post("auth/api/login", {username, password})
-
-
-    })
 
     const handleChange = evt => {
         const value = evt.target.value;
@@ -43,41 +52,63 @@ function Login() {
         });
     };
 
-    const handleOnSubmit = evt => {
-        evt.preventDefault()
-
-        const {username, password} = state;
-        alert(`You are login with username: ${username} and password: ${password}`);
-
-        for (const key in state) {
-            setState({
-                ...state,
-                [key]: ""
-            })
-        }
+    const handleOnSubmit = async (evt) => {
+        await handleLogin(evt);
     };
 
     return (
-        <div className="form-container sign-in-container">
-            <form onSubmit={handleOnSubmit}>
-                <input
-                    type="text"
-                    placeholder="Username"
-                    name="username"
-                    value={state.username}
-                    onChange={handleChange}
-                />
-                <input
-                    type="password"
-                    placeholder="Password"
-                    name="password"
-                    value={state.password}
-                    onChange={handleChange}
-                />
-                <button>Sign In</button>
-            </form>            
+        <div className="login-container">
+            <h2>User Login</h2>
+            <form onSubmit={handleOnSubmit} className="login-form">
+                <div className="form-group">
+                    <label htmlFor="role">Role</label>
+                    <select
+                        id="role"
+                        name="role"
+                        value={state.role}
+                        onChange={handleChange}
+                        className="role-select"
+                    >
+                        <option value="student">Student</option>
+                        <option value="teacher">Teacher</option>
+                    </select>
+                </div>
+                <div className="form-group">
+                    <label htmlFor="username">Username</label>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        value={state.username}
+                        onChange={handleChange}
+                        placeholder="Please enter username"
+                        required
+                    />
+                </div>
+                <div className="form-group">
+                    <label htmlFor="password">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        value={state.password}
+                        onChange={handleChange}
+                        placeholder="Please enter password"
+                        required
+                    />
+                </div>
+                {state.error && <div className="error-message">{state.error}</div>}
+                <button type="submit" className="login-button">Login</button>
+            </form>
+            
+            {/* Demo credentials */}
+            <div className="demo-credentials">
+                <p>Demo credentials:</p>
+                <p>Teacher: username = 'teacher', password = 'teacher'</p>
+                <p>Student: username = 'student', password = 'student'</p>
+            </div>
         </div>
     )
 }
 
-export default Login();
+export default Login;
