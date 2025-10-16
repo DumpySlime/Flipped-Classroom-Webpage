@@ -47,7 +47,13 @@ export default function App() {
     <div className="app-container">
       {isLoggedIn ? (
         userRole === 'teacher' ? (
-          <TeacherDashboard userInfo={userInfo} />
+          <div>
+            <h1>Flipped Classroom System</h1>
+            <p>Teacher Dashboard coming soon!</p>
+            <button className="logout-button" onClick={handleLogout}>
+              Logout
+            </button>
+          </div>
         ) : (
           <div>
             <h1>Flipped Classroom System</h1>
