@@ -1,5 +1,11 @@
 from flask import Blueprint
 
+db = None
+
+def init_db(mongo):
+    global db
+    db = mongo.db
+
 teacher_bp = Blueprint('teacher', __name__)
 
 # Teacher Dashboard

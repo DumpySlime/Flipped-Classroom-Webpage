@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react'
+import { useState } from 'react'
+import './styles.css'
+import Login from './component/Login.js'
 
-function App() {
+export default function App() {
 
   const [data, setData] = useState([{}])
   
   useEffect(() => {
-    fetch("/teacher/dashboard").then(
+    fetch("/auth").then(
       res => res.json()
     ).then(
       data => {
@@ -25,5 +27,3 @@ function App() {
     </div>
   )
 }
-
-export default App;

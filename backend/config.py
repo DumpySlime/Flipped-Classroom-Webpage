@@ -1,27 +1,24 @@
-from flask import Flask
-from flask_pymongo import PyMongo
-from flask_cors import CORS
-
 from dotenv import load_dotenv
 import os
 
 # take environment variables from .env
 load_dotenv()
 
-app = Flask(__name__)
-CORS(app)
+class Config:
+    # MongoDB
+    MONGO_URI = os.environ.get("MONGO_URI")
 
-# MongoDB
-app.config["MONGO_URI"] = os.environ.get("MONGO_URI")
-# Flask
-app.config["DEBUG"] = False
-app.config["TESTING"] = False
-app.config["DEBUG"] = os.environ.get("FLASK_DEBUG", "true")
+    # Flask
+    FLASK_DEBUG = os.environ.get("FLASK_DEBUG", "true")
+    TESTING = False
+    DEBUG = False
 
-try:
-    mongo = PyMongo(app)
-    db = mongo.db
-    print("Database connected:", db)
-except Exception as e:
-    print("Database connection error:", e)
-    db = None
+    # JWT
+    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
+    JWT_ACCESS_TOKEN_EXPIRES = int(os.environ.get("JWT_ACCESS_TOKEN_EXPIRES"))  # Default 1 hour
+    JWT_REFRESH_TOKEN_EXPIRES = int(os.environ.get("JWT_REFRESH_TOKEN_EXPIRES"))  # Default 1 day
+
+    # OpenAI
+    OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+    OPENAI_MODEL = os.environ.get("OPENAI_MODEL")
+    OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL")

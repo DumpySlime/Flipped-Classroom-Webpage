@@ -1,10 +1,37 @@
-from flask import request, jsonify
-from config import app, db
+from flask import Flask, jsonify
+from flask_jwt_extended import JWTManager
+from flask_cors import CORS
+from flask_pymongo import PyMongo
 
-from routes.admin import admin_bp
-from routes.auth import auth_bp
-from routes.student import student_bp
-from routes.teacher import teacher_bp
+from config import Config
+
+app = Flask(__name__)
+
+# Load configurations from Config class based on .env file
+app.config.from_object(Config)
+
+jwt = JWTManager(app)
+
+try:
+    mongo = PyMongo(app)
+    db = mongo.db
+    print("Database connected:", db)
+except Exception as e:
+    print("Database connection error:", e)
+    db = None
+
+CORS(app)
+
+from routes.admin import admin_bp, init_db as init_admin_db
+from routes.auth import auth_bp, init_db as init_auth_db
+from routes.student import student_bp, init_db as init_student_db
+from routes.teacher import teacher_bp, init_db as init_teacher_db
+
+# Initialize database for each blueprint
+init_admin_db(mongo)
+init_auth_db(mongo) 
+init_student_db(mongo)
+init_teacher_db(mongo)
 
 app.register_blueprint(admin_bp, url_prefix='/admin')
 app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -17,8 +44,7 @@ def index():
 
 @app.route("/test-db")
 def test_db():
-    print("Database connected:", db)
-    return "Check console for db object"
+    return jsonify({"message": f"Database connected: {db}"})
 
 if __name__ == '__main__':
     app.run(debug=True)

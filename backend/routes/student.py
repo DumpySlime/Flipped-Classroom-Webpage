@@ -1,5 +1,11 @@
 from flask import Blueprint
 
+db = None
+
+def init_db(mongo):
+    global db
+    db = mongo.db
+
 student_bp = Blueprint('student', __name__)
 
 @student_bp.route('/dashboard', methods=['GET'])
