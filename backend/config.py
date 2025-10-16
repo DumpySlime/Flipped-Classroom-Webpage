@@ -22,3 +22,6 @@ class Config:
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
     OPENAI_MODEL = os.environ.get("OPENAI_MODEL")
     OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL")
+
+    # Manim
+    RENDER_QUALITY = os.environ.get("RENDER_QUALITY").lower()

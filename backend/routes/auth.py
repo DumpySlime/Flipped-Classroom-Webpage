@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import (
-    create_access_token, create_refresh_token, jwt_required, get_jwt_identity
+    create_access_token, create_refresh_token
 )
 from flask_bcrypt import Bcrypt
 
@@ -12,61 +12,8 @@ def init_db(mongo):
 
 auth_bp = Blueprint('auth', __name__)
 
-def hash_password(password):
-    return Bcrypt().generate_password_hash(password).decode('utf-8')
-
 def check_password(password, hashed):
     return Bcrypt().check_password_hash(hashed, password)
-
-@auth_bp.route('/api/register', methods=['POST'])
-def register():
-    try:
-        user_info = request.json
-
-        # Validation
-        required_fields = ["username", "password", "role", "firstName", "lastName"]
-        for field in required_fields:
-            if field not in user_info:
-                return jsonify({"error": f"{field} is required"}), 400
-
-        # Check if user already exists
-        if db.users.find_one({"username": user_info["username"]}):
-            return jsonify({"error": "User already exists"}), 409
-
-        # Hash password and create user
-        hashed_password = hash_password(user_info["password"])
-
-        # Create user object
-        user = {
-            "username": user_info["username"],
-            "password": hashed_password,
-            "role": user_info["role"],
-            "firstName": user_info["firstName"],
-            "lastName": user_info["lastName"]
-        }
-        result = db.users.insert_one(user)
-
-        # Create tokens
-        access_token = create_access_token(identity=str(result.inserted_id))
-        refresh_token = create_refresh_token(identity=str(result.inserted_id))
-
-        response_user = {
-            "id": str(result.inserted_id),
-            "username": user["username"],
-            "role": user["role"],
-            "firstName": user["firstName"],
-            "lastName": user["lastName"]
-        }
-
-        return jsonify({
-            "message": "User registered successfully",
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "user": response_user
-        }), 201
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 @auth_bp.route('/api/login', methods=['POST'])
 def login():

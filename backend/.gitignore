@@ -67,3 +67,6 @@ logs/
 
 #mac
 .DS_Store
+
+# Generated videos
+videos/

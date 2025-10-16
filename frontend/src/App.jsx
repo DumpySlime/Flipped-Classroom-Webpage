@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import './styles.css'
 import Login from './component/Login.jsx'
-import TeacherDashboard from './component/TeacherDashboard.jsx'
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);

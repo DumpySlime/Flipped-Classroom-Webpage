@@ -1,4 +1,5 @@
 from flask import Blueprint
+from flask_jwt_extended import jwt_required
 
 db = None
 
@@ -13,9 +14,11 @@ def dashboard():
     return {"message": "Welcome to the Student Dashboard"}
 
 @student_bp.route('/materials', methods=['GET'])
+@jwt_required()
 def materials():
     return {"message": "Welcome to the Student Materials"}
 
 @student_bp.route('/chatbot', methods=['GET'])
+@jwt_required()
 def chatbot():
-    return {"message": "Welcom to Chatbot"}
+    return {"message": "Welcome to Chatbot"}

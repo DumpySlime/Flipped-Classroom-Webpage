@@ -1,4 +1,5 @@
 from flask import Blueprint
+from flask_jwt_extended import jwt_required
 
 db = None
 
@@ -15,10 +16,12 @@ def dashboard():
 
 # Teacher Materials
 @teacher_bp.route('/materials')
+@jwt_required()
 def materials():
     return {"message": "Welcome to the Teacher Materials"}
 
 # Teacher Video Generation
 @teacher_bp.route('/material_generation')
+@jwt_required()
 def generate():
     return {"message": "Welcome to Material Generation"}
