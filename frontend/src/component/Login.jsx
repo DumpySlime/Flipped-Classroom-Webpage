@@ -16,7 +16,7 @@ function Login({ onLogin }) {
 
         try {
             // Send login request to backend API
-            const response = await axios.post('/api/login', {
+            const response = await axios.post('auth/api/login', {
                 username: state.username,
                 password: state.password
             });
