@@ -20,8 +20,13 @@ A RESTful API backend built with Flask that connects to a MongoDB database.
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 2. Install dependencies:
-  ```
-  pip install -r requirements.txt
-  ```
+   ```
+   pip install -r requirements.txt
+   ```
 3. Environment configuration
    remove .example from .env.example, and input the required values
+
+4. Run backend
+   ```
+   python app.py
+   ```
