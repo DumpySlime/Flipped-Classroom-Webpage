@@ -1068,7 +1068,13 @@ class MainScene(Scene):
 @mat_bp.route('/index')
 def index():
     """Serve the main page."""
-    return render_template('index.html')
+    return jsonify({
+        "message": "Materials page loaded",
+        "examples": [
+            {"title": "Trigonometry", "img": "differential_equations.gif"},
+            # ... more examples
+        ]
+    }), 200
 
 @mat_bp.route('/generate', methods=['POST'])
 def generate():
