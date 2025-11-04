@@ -61,19 +61,6 @@ function Login({ onLogin }) {
             <h2>User Login</h2>
             <form onSubmit={handleOnSubmit} className="login-form">
                 <div className="form-group">
-                    <label htmlFor="role">Role</label>
-                    <select
-                        id="role"
-                        name="role"
-                        value={state.role}
-                        onChange={handleChange}
-                        className="role-select"
-                    >
-                        <option value="student">Student</option>
-                        <option value="teacher">Teacher</option>
-                    </select>
-                </div>
-                <div className="form-group">
                     <label htmlFor="username">Username</label>
                     <input
                         type="text"

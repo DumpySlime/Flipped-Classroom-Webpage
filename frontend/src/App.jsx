@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import './styles.css'
 import Login from './component/Login.jsx'
 import TeacherDashboard from './component/TeacherDashboard.jsx'
+import StudentDashboard from './component/Studentdashboard.jsx' 
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -49,13 +50,7 @@ export default function App() {
         userRole === 'teacher' ? (
           <TeacherDashboard userInfo={userInfo} />
         ) : (
-          <div>
-            <h1>Flipped Classroom System</h1>
-            <p>Student Dashboard coming soon!</p>
-            <button className="logout-button" onClick={handleLogout}>
-              Logout
-            </button>
-          </div>
+          <StudentDashboard userInfo={userInfo} />
         )
       ) : (
         <>
