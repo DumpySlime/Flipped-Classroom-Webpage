@@ -6,9 +6,9 @@ from flask_bcrypt import Bcrypt
 
 db = None
 
-def init_db(mongo):
+def init_db(db_instance):
     global db
-    db = mongo.db
+    db = db_instance
 
 auth_bp = Blueprint('auth', __name__)
 

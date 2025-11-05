@@ -12,7 +12,7 @@ code {
     monospace;
 }
 
-.teacher-dashboard {
+.dashboard {
   text-align: center;
 }
 
@@ -188,6 +188,7 @@ button:hover {
   border-bottom: 1px solid #e0e0e0;
 }
 
+.subject-form,
 .ai-generator {
   background-color: white;
   border: 1px solid #e0e0e0;

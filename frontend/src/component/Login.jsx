@@ -36,7 +36,7 @@ function Login({ onLogin }) {
                 onLogin(user.role);
             }
             
-            alert(`Login successful! Welcome ${user.role === 'teacher' ? 'Teacher' : 'Student'} ${user.firstName} ${user.lastName}`);
+            alert(`Login successful! Welcome ${user.role === 'teacher' ? 'Teacher' : user.role === 'student' ? 'Student' : 'Admin'} ${user.firstName} ${user.lastName}`);
             
         } catch (err) {
             setState(prevState => ({ ...prevState, error: 'Invalid username or password' }));
@@ -93,6 +93,7 @@ function Login({ onLogin }) {
                 <p>Demo credentials:</p>
                 <p>Teacher: username = 'teacher', password = 'teacher'</p>
                 <p>Student: username = 'student', password = 'student'</p>
+                <p>Admin: username = 'aa', password = 'aa'</p>
             </div>
         </div>
     )

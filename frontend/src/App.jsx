@@ -3,6 +3,7 @@ import './styles.css'
 import Login from './component/Login.jsx'
 import TeacherDashboard from './component/TeacherDashboard.jsx'
 import StudentDashboard from './component/Studentdashboard.jsx' 
+import AdminDashboard from './component/AdminDashboard.jsx'
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -49,9 +50,11 @@ export default function App() {
       {isLoggedIn ? (
         userRole === 'teacher' ? (
           <TeacherDashboard userInfo={userInfo} />
-        ) : (
-          <StudentDashboard userInfo={userInfo} />
-        )
+        ) : userRole === 'student' ? (
+            <StudentDashboard userInfo={userInfo} />
+          ) : (
+            <AdminDashboard userInfo={userInfo} />
+          )
       ) : (
         <>
           <h1>Flipped Classroom System</h1>

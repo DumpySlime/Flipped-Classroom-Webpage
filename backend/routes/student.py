@@ -2,9 +2,9 @@ from flask import Blueprint
 
 db = None
 
-def init_db(mongo):
+def init_db(db_instance):
     global db
-    db = mongo.db
+    db = db_instance
 
 student_bp = Blueprint('student', __name__)
 

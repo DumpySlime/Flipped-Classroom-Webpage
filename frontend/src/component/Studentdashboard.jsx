@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import '../styles.css';
-import '../student-dashboard.css';
+import '../dashboard.css';
 
 function StudentDashboard({ userInfo }) {
   const [activeSection, setActiveSection] = useState('overview');
