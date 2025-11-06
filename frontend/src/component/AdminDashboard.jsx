@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useState, useEffect } from 'react';
+import AddUser from './sub-component/AddUser';
 import '../styles.css';
 import '../dashboard.css';
 
@@ -454,22 +455,22 @@ function AdminDashboard({ userInfo }) {
   const [allTeachers, setAllTeachers] = useState([]);
   const [loadingTeachers, setLoadingTeachers] = useState(false);
   const [error, setError] = useState(null);
-
   const [selectedTeacherIds, setSelectedTeacherIds] = useState([]);
   const [activeTabId, setActiveTabId] = useState(null);
 
   useEffect(() => {
     if (activeSection !== 'add-subject') return;
     let ignore = false;
+    console.log('Fetching teachers for subject creation...');
     (async () => {
       try {
         setLoadingTeachers(true);
-        setTeaacherError(null);
-        const res = await fetch('/api/users?role=teacher')
+        setError(null);
+        const res = await fetch('/admin/users?role=teacher');
         const data = await res.json();
         if (ignore) return;
-
-        const list = (data || []).map(t => ({
+        console.log('Fetched teacher data:', data);
+        const list = (data.users || []).map(t => ({
           id: t.id,
           name: t.username
         }));
@@ -480,13 +481,13 @@ function AdminDashboard({ userInfo }) {
         setSelectedTeacherIds(ids);
         if (ids.length) setActiveTabId(ids[0]);
       } catch (e) {
-        if (!ignore) setTeacherError('Failed to load teachers');
+        if (!ignore) setError('Failed to load teachers');
       } finally {
         if (!ignore) setLoadingTeachers(false);
       }
     })();
     return () => {ignore = true};
-  })
+  }, [activeSection]);
 
   // create buttons for + - subjects
   const [topics, setTopics] = useState(['']);
@@ -510,24 +511,61 @@ function AdminDashboard({ userInfo }) {
   // add subject button
   const handleSubmitSubject = async() => {
     const subjectName = (document.getElementById('subject-input')?.value || '').trim();
+    
+    if (!subjectName) {
+        alert('Please enter a subject name');
+        return;
+    }
+    if (!topics.some(topic => topic.trim())) {
+        alert('Please add at least one topic');
+        return;
+    }
+    if (!selectedTeacherIds.length) {
+        alert('Please select at least one teacher');
+        return;
+    }
+
     const payload = {
       subject: subjectName,
-      topics,
+      topics: topics.filter(t => t.trim().length > 0),
       teachers: selectedTeacherIds
+    }
+
+    try {
+        const response = await fetch('/admin/api/subject/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        console.log('Subject creation response:', data);
+        if (response.ok) {
+            alert(`Success! Subject created:\n${JSON.stringify(data, null, 2)}`);
+            // Navigate to dashboard
+            setActiveSection('dashboard');
+        } else {
+            throw new Error(data.error || 'Failed to create subject');
+        }
+    } catch (error) {
+        alert(`Error: ${error.message}`);
     }
   }
 
   const renderSubjectCreationSection = () => (
     <div className="subject-creation-section">
       <h3>Subject Creation</h3>
-      <div className="subject-form">
+      <form className="subject-form">
         <div className="form-group">
           <label htmlFor="subject-input">Subject Name</label>
           <input
             type="text"
             id="subject-input"
-            placeholder="Enter subject name"
+            name="subject"
             className="subject-input"
+            placeholder="Enter subject name"
           />
         </div>
 
@@ -539,6 +577,7 @@ function AdminDashboard({ userInfo }) {
               <input
                 type="text"
                 id={`topic-input-${index}`}
+                name={`topic-${index}`}
                 placeholder={`Enter topic name ${index + 1}`}
                 value={topic}
                 className="topic-input"
@@ -567,34 +606,34 @@ function AdminDashboard({ userInfo }) {
         
         <div className="form-group">
           <label htmlFor="teacher-input">Teachers</label>
-          {/* Render dynamic teacher inputs */}
-          
           <div className="form-group">
             {loadingTeachers && <p> Loading teachers...</p>}
-            {teacherError && <p>{teacherError}</p>}
+            {error && <p>{error}</p>}
 
-            {!loadingTeachers && !teacherError && (
-              <>
-                {/* Tabs row */}
-                <div className="teacher-tabs">
-                  {selectedTeacherIds.map((id) => {
-                    const t = allTeachers.find(x => x.id === id);
-                    if (!t) return null;
-                    const active = activeTabId === id;
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        className="teacher-tab"
-                        title={t.username}
-                        onClick={() => setActiveTabId(id)}
-                      >
-                        {t.username}
-                      </button>
-                    )
-                  })}
-                </div>
-              </>
+            {!loadingTeachers && !error && (
+              <div className="teacher-tabs">
+                {allTeachers.map(t => {
+                  const tid = t.id;
+                  const isSelected = selectedTeacherIds.includes(tid);
+                  const isActive = activeTabId === tid;
+                  return (
+                    <button
+                      key={tid}
+                      type="button" 
+                      id={`teacher-tab-${tid}`}
+                      name={`teacher-${tid}-${t.name}`}
+                      className={`teacher-tab ${isSelected ? 'selected' : ''} ${isActive ? 'active' : ''}`}
+                      title={t.name}
+                      onClick={() => {
+                        setSelectedTeacherIds(prev => prev.includes(tid) ? prev.filter(id => id !== tid) : [...prev, tid]);
+                        setActiveTabId(tid);
+                      }}
+                    >
+                      {t.name}
+                    </button>
+                  )
+                })}
+              </div>
             )}
           </div>
         </div>
@@ -604,7 +643,7 @@ function AdminDashboard({ userInfo }) {
             Submit
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 
@@ -812,6 +851,7 @@ function AdminDashboard({ userInfo }) {
     if (activeSection === 'student-analytics') return renderStudentsSection();
     if (activeSection === 'assignments') return renderAssignmentsSection();
     if (activeSection === 'add-subject') return renderSubjectCreationSection();
+    if (activeSection === 'add-user') return <AddUser />;
     return renderOverviewSection();
   };
 
@@ -875,6 +915,12 @@ function AdminDashboard({ userInfo }) {
               onClick={() => setActiveSection('add-subject')}
             >
               <span>Add Subject</span>
+            </li>
+            <li 
+              className={activeSection === 'add-user' ? 'active' : ''}
+              onClick={() => setActiveSection('add-user')}
+            >
+              <span>Add User</span>
             </li>
           </ul>
         </nav>

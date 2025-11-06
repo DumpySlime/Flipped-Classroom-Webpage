@@ -2,8 +2,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from bson.objectid import ObjectId
 from datetime import datetime
-import bcrypt
-
+from flask_bcrypt import Bcrypt
 
 db = None
 
@@ -20,7 +19,6 @@ def admin_auth():
         return jsonify({"error": "Admin access is required"})
     
 @admin_bp.route('/users', methods=['GET'])
-@jwt_required
 def get_users():
     try:
         username = request.args.get("username")
@@ -36,26 +34,46 @@ def get_users():
             filt["firstName"] = firstName
         if username:
             filt["lastName"] = lastName
-        # Example name filter; adjust fields per your schema.
-        docs = list(db.user.find(filt, {"password": 0}))
+        docs = list(db.users.find(filt, {"password": 0, "firstName": 0, "lastName": 0, "role": 0}))
         results = []
         for u in docs:
             results.append({
                 "id": str(u["_id"]),
-                "username": u.get("username"),
-                "password": u.get("password").decrypt("utf-8"),
-                "role": u.get("role"),
-                "firstName": u.get("firstName"),
-                "lastName": u.get("lastName")
+                "username": u.get("username")
             })
+        print("User search results:", results)
         return jsonify({"users": results}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
-@admin_bp.route("/api/subject/add", method=['POST'])
-@jwt_required
+
+@admin_bp.route('/api/user/add', methods=['POST'])
+def add_user():
+    data = request.get_json()
+    required_fields = ["username", "password", "firstName", "lastName", "role"]
+    for field in required_fields:
+        if field not in data:
+            return jsonify({"error": f"{field} is required"}), 400
+    existing = db.users.find_one({"username": data["username"]})
+    if existing:
+        return jsonify({"error": "username already exists"}), 409
+    # Hash password
+    hashed_password = Bcrypt().generate_password_hash(data["password"]).decode('utf-8')
+    user_doc = {
+        "username": data["username"],
+        "password": hashed_password,
+        "firstName": data["firstName"],
+        "lastName": data["lastName"],
+        "role": data["role"]
+    }
+    db.users.insert_one(user_doc)
+    return jsonify({"message": "User added successfully"}), 201
+
+@admin_bp.route("/api/subject/add", methods=['POST'])
 def add_subject():
-    data = request.get_json(silent=True) or {}
+    data = request.get_json()
+
+    if not all(key in data for key in ["subject", "topics", "teachers"]):
+        return jsonify({"error": "Missing required fields"}), 400
 
     subject = (data.get("subject") or "").strip()
     topics = data.get("topics") or []
@@ -66,6 +84,7 @@ def add_subject():
     # clean u topic
     topics = lambda topics: [s for s in ((t or "").strip() for t in (topics or [])) if s]
 
+    print("Received teacher IDs for subject creation:", teacher_ids)
     valid_teacher_ids = []
     for tid in teacher_ids:
         try:
@@ -75,6 +94,8 @@ def add_subject():
         
         if valid_teacher_ids:
             count = db.user.count_documents({"_id": {"$in": valid_teacher_ids}, "role": "teacher"})
+            print("Validating teacher IDs, found count:", count)
+            print("Valid teacher IDs:", valid_teacher_ids)
             if count != len(valid_teacher_ids):
                 return jsonify({"error": "one or more teacher ids are invalid or not teachers"}), 400
             
@@ -87,8 +108,8 @@ def add_subject():
         "topics": topics,                 # simple list of topic strings
         "teachers": valid_teacher_ids,    # array of ObjectId
         "created_by": get_jwt_identity(),        # optional
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
+        "created_at": datetime.now(),
+        "updated_at": datetime.now(),
         # You can add meta like syllabus, grade scheme, locale, etc.
     }
 
