@@ -11,12 +11,20 @@ const [values, setValues] = useState({
 	instruction:'' ,
 });
 
-const [loadingSubject, setLoadingSubject] = useState(false);
+//const [loadingSubject, setLoadingSubject] = useState(false);
 const [error, setError] = useState(null)
 
 const handleChanges = (e) => {
 	setValues({...values, [e.target.name]:[e.target.value]})
 }
+
+const handleGenerateMaterial = async () => {
+	try {
+		await fetch(`/api/llm/query?subject=${values.subject}&topic=${values.topic}&instruction=${values.instruction}`);
+	}
+	catch (e) {
+		console.error('Error generating material:', e);
+	}};
 
 useEffect(() => {
 	if (activeSection === 'material-generator') return;
@@ -25,91 +33,80 @@ useEffect(() => {
 	console.log('Fetching Subject...')
 	(async () => {
 		try {
-			setLoadingSubject(true);
+			//setLoadingSubject(true);
 			setError(null);
 			const res = await fetch('/db/subject')
+			const data = await res.json();
+			console.log('Fetched subject data:', data);
+			const list = (data.subjects || []).map(s => ({
+				subject: s.subject,
+				topics: s.topics
+			}))
+			setAllSubject(list);
+			const tlist = (list.topics || []).map(t => ({
+				topic: t.topic
+			}))
+			setAllRelatedTopic(tlist)
 		} catch (e) {
 			if (e.name !== 'AbortError') setError('Failed to load teachers')
 		} finally {
-			setLoadingSubject(false);
+			//setLoadingSubject(false);
 		}
 	})();
 	return () => ac.abort();
 }, [activeSection]);
 
 return (
-	<form className="content-generator-section">
-	<h3>Content Generator</h3>
+	<form className="material-generator-section">
+	<h3>Material Generator</h3>
 	
 	<div className="ai-generator">
 		<div className="form-group">
-		<label htmlFor="material-subject-select">Subject</label>
-		<select id="subject-select" className="select" onChange={(e) => handleChanges(e)} required value={values.subject}>
-			<option value="">-- Choose subject --</option>
-			{
-			allSubject.map(s => {
-				
-			})
-			}
-		</select>
+			<label htmlFor="material-subject-select">Subject</label>
+			<select id="subject-select" className="select" onChange={(e) => handleChanges(e)} required value={values.subject}>
+				<option value="">-- Choose subject --</option>
+				{
+				allSubject.map(s => {
+					return (
+						<option value={s.subject}>{s.subject}</option>
+					)
+				})
+				}
+			</select>
 		</div>
 		
 		<div className="form-group">
-		<label htmlFor="material-topic-select">Content Topic</label>
-		<select id="topic-select" className="select" onChange={(e) => handleChanges(e)} required value={values.topic}>
-			{
-			allRelatedTopic.map(t => {
-
-			})
-			}
-		</select>
+			<label htmlFor="material-topic-select">Content Topic</label>
+			<select id="topic-select" className="select" onChange={(e) => handleChanges(e)} required value={values.topic}>
+				{
+				allRelatedTopic.map(t => {
+					return (
+						<option value={t.topic}>{t.topic}</option>
+					)
+				})
+				}
+			</select>
 		</div>
 		
 		<div className="form-group">
-		<label htmlFor="material-instructions-input">Additional Instructions</label>
-		<textarea
-			id="material-instructions-input"
-			placeholder="Provide more details for the AI content generation..."
-			rows="4"
-			className="textarea-input"
-		></textarea>
+			<label htmlFor="material-instructions-input">Additional Instructions</label>
+			<textarea
+				id="material-instructions-input"
+				placeholder="Provide more details for the AI content generation..."
+				rows="4"
+				className="textarea-input"
+				value={values.instruction}
+			></textarea>
 		</div>
 		
 		<button 
 			onClick={() => handleGenerateMaterial('content')}
-			className="generate-button"
-			disabled={loading}
+			className="button"
 		>
-		{loading ? 'Generating Content...' : 'Generate Content'}
+		Generate Content
 		</button>
 		
-		{message2 && (
-		<div className={`message ${message2.includes('success') ? 'success' : 'error'}`}>
-			{message2}
-		</div>
-		)}
-	</div>
-	
-	<div className="generated-content">
-		<h4>Your AI-generated Educational Content</h4>
-		<div className="content-list">
-		{mockGeneratedContent.map(content => (
-			<div key={content.id} className="content-card">
-			<div className="content-info">
-				<h5>{content.title}</h5>
-				<p>{content.type}</p>
-				<p className="content-date">Generated on {content.generationDate}</p>
-				{content.wordCount && <p>Word Count: {content.wordCount}</p>}
-				{content.questionCount && <p>Questions: {content.questionCount}</p>}
-				{content.problemCount && <p>Problems: {content.problemCount}</p>}
-			</div>
-			<div className="content-actions">
-				<button className="view-button">View</button>
-				<button className="download-button">Download</button>
-			</div>
-			</div>
-		))}
-		</div>
+		
 	</div>
 	
 	<div className="content-templates">

@@ -32,63 +32,65 @@ db_bp = Blueprint('db', __name__)
 @db_bp.route('/material-add', methods=['POST'])
 @jwt_required()
 def add_material():
-    # Handle file upload
-    if "file" not in request.files:
-        return {"error": "No file part in the request"}, 400
-    f = request.files.get('file')
-    subject = request.form.get('subject')
-    topic = request.form.get('topic')
+    try:
+        # Handle file upload
+        if "file" not in request.files:
+            return {"error": "No file part in the request"}, 400
+        f = request.files.get('file')
+        subject = request.form.get('subject')
+        topic = request.form.get('topic')
 
-    if not f:
-        return {"error": "file is required"}, 400
-    if not subject:
-        return {"error": "subject is required"}, 400
-    if not topic:
-        return {"error": "topic is required"}, 400
+        if not f:
+            return {"error": "file is required"}, 400
+        if not subject:
+            return {"error": "subject is required"}, 400
+        if not topic:
+            return {"error": "topic is required"}, 400
 
-    user = getUserById(get_jwt_identity())
+        user = getUserById(get_jwt_identity())
 
-    metadata = {
-        'subject': subject,
-        'topic': topic,
-        'uploaded_by': user,
-        'upload_date': datetime(),
-        'filename': f.filename
-    }
+        metadata = {
+            'subject': subject,
+            'topic': topic,
+            'uploaded_by': user,
+            'upload_date': datetime(),
+            'filename': f.filename
+        }
 
-    file_id = fs.put(
-        f.stream, 
-        filename=f.filename,
-        content_type=f.mimetype, 
-        metadata=metadata)
-    
-    gf = fs.get(file_id)
+        file_id = fs.put(
+            f.stream, 
+            filename=f.filename,
+            content_type=f.mimetype, 
+            metadata=metadata)
+        
+        gf = fs.get(file_id)
 
-    mat = {
-        'file_id': file_id,
-        'filename': gf.filename,
-        'subject': subject,
-        'topic': topic,
-        'uploaded_by': user,
-        'upload_date': gf.upload_date,
-        'size_bytes': gf.length,
-        'content_type': gf.content_type,
-    }
-    mat_id = db.materials.insert_one(mat).inserted_id
-    if mat_id:
-        return jsonify({
-            'result': 'Material uploaded successfully',
-            'material_id': str(mat_id),
-            "file_id": str(file_id),
-            "filename": gf.filename,
-            "subject": subject,
-            "topic": topic,
-            "uploaded_by": str(user),
-            "upload_date": gf.upload_date.isoformat(),
-            "size_bytes": gf.length,
-            "content_type": gf.content_type
-        }),201
-    return jsonify({'result': 'Error occurred during uploading'}),500
+        mat = {
+            'file_id': file_id,
+            'filename': gf.filename,
+            'subject': subject,
+            'topic': topic,
+            'uploaded_by': user,
+            'upload_date': gf.upload_date,
+            'size_bytes': gf.length,
+            'content_type': gf.content_type,
+        }
+        mat_id = db.materials.insert_one(mat).inserted_id
+        if mat_id:
+            return jsonify({
+                'result': 'Material uploaded successfully',
+                'material_id': str(mat_id),
+                "file_id": str(file_id),
+                "filename": gf.filename,
+                "subject": subject,
+                "topic": topic,
+                "uploaded_by": str(user),
+                "upload_date": gf.upload_date.isoformat(),
+                "size_bytes": gf.length,
+                "content_type": gf.content_type
+            }),201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # Get Materials
 @db_bp.route('/material', methods=['GET'])
@@ -162,6 +164,7 @@ def delete_material():
 # User CRUD operations
 # Add User
 @db_bp.route('/user-add', methods=['POST'])
+@jwt_required()
 def add_user():
     data = request.get_json()
     required_fields = ["username", "password", "firstName", "lastName", "role"]
@@ -178,13 +181,16 @@ def add_user():
         "password": hashed_password,
         "firstName": data["firstName"],
         "lastName": data["lastName"],
-        "role": data["role"]
+        "role": data["role"],
+        "created_at": datetime.now(),
+        "updated_at": datetime.now(),
     }
     db.users.insert_one(user_doc)
     return jsonify({"message": "User added successfully"}), 201
 
 # Get Users
 @db_bp.route('/user', methods=['GET'])
+@jwt_required()
 def get_users():
     try:
         username = request.args.get("username")
@@ -200,7 +206,7 @@ def get_users():
             filt["firstName"] = firstName
         if username:
             filt["lastName"] = lastName
-        docs = list(db.users.find(filt, {"password": 0, "firstName": 0, "lastName": 0, "role": 0}))
+        docs = list(db.users.find(filt, {}))
         results = []
         for u in docs:
             results.append({
@@ -208,76 +214,93 @@ def get_users():
                 "username": u.get("username")
             })
         print("User search results:", results)
-        return jsonify({"users": results}), 200
+        return jsonify({"users": docs}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 # Subject CRUD operations
 # Add Subject
 @db_bp.route("/subject-add", methods=['POST'])
+@jwt_required()
 def add_subject():
-    data = request.get_json()
+    try:
+        data = request.get_json()
 
-    if not all(key in data for key in ["subject", "topics", "teachers"]):
-        return jsonify({"error": "Missing required fields"}), 400
+        #if not all(key in data for key in ["subject", "topics", "teachers"]):
+        #    return jsonify({"error": "Missing required fields"}), 400
 
-    subject = (data.get("subject") or "").strip()
-    topics = data.get("topics") or []
-    teacher_ids = data.get("teachers") or []  
+        subject = (data.get("subject") or "").strip()
+        topics = data.get("topics") or []
+        teacher_ids = data.get("teachers") or []  
 
-    if not subject:
-        return jsonify({"error": "subject is required"}), 400
-    # clean u topic
-    topics = lambda topics: [s for s in ((t or "").strip() for t in (topics or [])) if s]
+        if not subject:
+            return jsonify({"error": "subject is required"}), 400
+        # clean u topic
+        clean_topics = []
+        for t in topics or []:
+            s = (t or "").strip()
+            if s:
+                clean_topics.append(s)
 
-    print("Received teacher IDs for subject creation:", teacher_ids)
-    valid_teacher_ids = []
-    for tid in teacher_ids:
-        try:
-            valid_teacher_ids.append(ObjectId(tid))
-        except Exception:
-            return jsonify({"error": f"invalid teacher id: {tid}"}), 400
-        
-        if valid_teacher_ids:
-            count = db.user.count_documents({"_id": {"$in": valid_teacher_ids}, "role": "teacher"})
-            print("Validating teacher IDs, found count:", count)
-            print("Valid teacher IDs:", valid_teacher_ids)
-            if count != len(valid_teacher_ids):
-                return jsonify({"error": "one or more teacher ids are invalid or not teachers"}), 400
+        print("Received teacher IDs for subject creation:", teacher_ids)
+        valid_teacher_ids = []
+        for tid in teacher_ids:
+            try:
+                valid_teacher_ids.append(ObjectId(tid))
+            except Exception:
+                return jsonify({"error": f"invalid teacher id: {tid}"}), 400
             
-    existing = db.subjects.find_one({"subject": subject})
-    if existing:
-        return jsonify({"error": "subject already exists"}), 409
-    
-    doc = {
-        "subject": subject,
-        "topics": topics,                 # simple list of topic strings
-        "teacher_ids": valid_teacher_ids,    # array of ObjectId
-        "created_by": get_jwt_identity(),        # optional
-        "created_at": datetime.now(),
-        "updated_at": datetime.now(),
-        # You can add meta like syllabus, grade scheme, locale, etc.
-    }
-
-    res = db.subjects.insert_one(doc)
-
-    # Return a view-friendly payload
-    return jsonify({
-        "id": str(res.inserted_id),
-        "subject": subject,
-        "topics": topics,
-        "teacher_ids": [str(t) for t in valid_teacher_ids],
-        "created_by": get_jwt_identity()
-    }), 201
+            if valid_teacher_ids:
+                count = db.user.count_documents({"_id": {"$in": valid_teacher_ids}, "role": "teacher"})
+                print("Validating teacher IDs, found count:", count)
+                print("Valid teacher IDs:", valid_teacher_ids)
+                if count != len(valid_teacher_ids):
+                    return jsonify({"error": "one or more teacher ids are invalid or not teachers"}), 400
+                
+        existing = db.subjects.find_one({"subject": subject})
+        if existing:
+            return jsonify({"error": "subject already exists"}), 409
+        #valid_teacher_ids = [ObjectId("690dcaa34fe33f7359ac5675"), ObjectId("690dcae74fe33f7359ac5676"), ObjectId("690dcb484fe33f7359ac567a"), ObjectId("690dd17fb1ba9740d7c402cc"), ObjectId("690dcb354fe33f7359ac5679")]
+        doc = {
+            "subject": subject,
+            "topics": clean_topics,
+            "teacher_ids": valid_teacher_ids,
+            "created_by": ObjectId(get_jwt_identity()),
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+        }
+        res = db.subjects.insert_one(doc)
+        doc["_id"] = res.inserted_id
+        doc_serializable = {**doc, "_id": str(res.inserted_id)}
+        return jsonify({"subjects": [doc_serializable]}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # Get Subjects
 @db_bp.route('/subject', methods=['POST'])
+@jwt_required()
 def get_subject():
-    subject = request.args.get('subject')
-    teacher_id = request.args.get('teacher')
-    filt = {}
-    if (subject):
-        filt['subject'] = subject
-    if (teacher_id):
-        filt['teacher_id'] = teacher_id
-    subjects = db.subject.find(filt, {subject: 1, })
+    try:
+        subject = request.args.get('subject')
+        teacher_id = request.args.get('teacher')
+        filt = {}
+        if (subject):
+            filt['subject'] = subject
+        if (teacher_id):
+            filt['teacher_id'] = teacher_id
+        subjects = list(db.subject.find(filt))
+        results = []
+        for u in subjects:
+            results.append({
+                "id": str(u["_id"]),
+                "subject": u.get("subject"),
+                "topics": u.get("topics"),
+                "teacher_ids": [str(tid) for tid in u.get("teacher_ids", [])],
+                "created_by": str[u["_id"]],
+                "created_at": u.get("created_at").isoformat(),
+                "updated_at": u.get("updated_at").isoformat()
+            })
+        print("Subject search results:", results)
+        return jsonify({"subjects": results}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

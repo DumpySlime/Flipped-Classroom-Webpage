@@ -3,6 +3,7 @@ from flask_jwt_extended import (
     create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 )
 from flask_bcrypt import Bcrypt
+from datetime import datetime
 
 db = None
 
@@ -42,7 +43,9 @@ def register():
             "password": hashed_password,
             "role": user_info["role"],
             "firstName": user_info["firstName"],
-            "lastName": user_info["lastName"]
+            "lastName": user_info["lastName"],
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
         }
         result = db.users.insert_one(user)
 
@@ -97,9 +100,18 @@ def login():
                 "username": user['username'],
                 "role": user['role'],
                 "firstName": user['firstName'],
-                "lastName": user['lastName']
+                "lastName": user['lastName'],
+                "created_at": datetime.now(),
+                "updated_at": datetime.now(),
             }
         }), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+
+@auth_bp.route("/test-login", methods=['GET'])
+@jwt_required()
+def test_login():
+    return jsonify({"message": "Login successful",
+                    "user": get_jwt_identity()}), 200

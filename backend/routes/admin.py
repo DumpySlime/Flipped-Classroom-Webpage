@@ -11,7 +11,7 @@ def init_db(db_instance):
     db = db_instance
 
 admin_bp = Blueprint('admin', __name__)
-
+@jwt_required()
 def admin_auth():
     current_user_id = get_jwt_identity()
     current_user = db.users.find_one({"_id": ObjectId(current_user_id)})

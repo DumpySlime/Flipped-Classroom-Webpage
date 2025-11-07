@@ -472,8 +472,8 @@ useEffect(() => {
 		const data = await res.json();
 		console.log('Fetched teacher data:', data);
 		const list = (data.users || []).map(t => ({
-		id: t.id,
-		name: t.username
+			id: t.id,
+			name: t.username
 		}));
 		setAllTeachers(list);
 		const ids = list.map(t => t.id);

@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from gridfs import GridFS
 import io
@@ -14,3 +14,13 @@ def init_db(db_instance, fs_instance):
     fs = fs_instance
 
 llm_bp = Blueprint('llm', __name__)
+
+llm_bp.route('/api/llm/query', methods=['GET'])
+@jwt_required()
+def llm_query():
+    try:
+        subject = request.args.get('subject')
+        topic = request.args.get('topic')
+        instruction = request.args.get('instruction')
+    except Exception as e:
+        return {"error": str(e)}, 500
