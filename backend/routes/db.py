@@ -166,7 +166,7 @@ def delete_material():
 @db_bp.route('/user-add', methods=['POST'])
 @jwt_required()
 def add_user():
-    data = request.get_json()
+    data = request.json
     required_fields = ["username", "password", "firstName", "lastName", "role"]
     for field in required_fields:
         if field not in data:

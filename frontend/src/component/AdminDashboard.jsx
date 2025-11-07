@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import AddUser from './sub-component/AddUser';
+import axios from 'axios';
 import '../styles.css';
 import '../dashboard.css';
 
@@ -464,12 +465,17 @@ useEffect(() => {
 	const ac = new AbortController();
 
 	console.log('Fetching teachers for subject creation...');
-	(async () => {
-	try {
-		setLoadingTeachers(true);
-		setError(null);
-		const res = await fetch('/db/user?role=teacher');
-		const data = await res.json();
+	(() => {
+	setLoadingTeachers(true);
+	setError(null);
+	axios.get('/db/user', {
+		params: {
+			role: "teacher"
+		}
+	})
+	.then(function (response) {
+		console.log(`response: ${response}`);
+		const data = response.data;
 		console.log('Fetched teacher data:', data);
 		const list = (data.users || []).map(t => ({
 			id: t.id,
@@ -479,11 +485,14 @@ useEffect(() => {
 		const ids = list.map(t => t.id);
 		setSelectedTeacherIds(ids);
 		if (ids.length) setActiveTabId(ids[0]);
-	} catch (e) {
-		if (e.name !== 'AbortError') setError('Failed to load teachers');
-	} finally {
+	})
+	.catch(function (error) {
+		console.log(error);
+		if (error.name !== 'AbortError') setError('Failed to load teachers');
+	})
+	.finally(function () {
 		setLoadingTeachers(false);
-	}
+	});
 	})();
 	return () => ac.abort();
 }, [activeSection]);
@@ -524,19 +533,11 @@ const handleSubmitSubject = async() => {
 		return;
 	}
 
-	const payload = {
-		subject: subjectName,
-		topics: topics.filter(t => t.trim().length > 0),
-		teachers: selectedTeacherIds
-	}
-
 	try {
-		const response = await fetch('/admin/api/subject/add', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify(payload)
+		const response = await axios.post('/admin/api/subject/add', {
+			subject: subjectName,
+			topics: topics.filter(t => t.trim().length > 0),
+			teachers: selectedTeacherIds
 		});
 
 		const data = await response.json();
@@ -850,7 +851,7 @@ const renderContent = () => {
 	if (activeSection === 'student-analytics') return renderStudentsSection();
 	if (activeSection === 'assignments') return renderAssignmentsSection();
 	if (activeSection === 'add-subject') return renderSubjectCreationSection();
-	if (activeSection === 'add-user') return <AddUser activeSection={activeSection} />;
+	if (activeSection === 'add-user') return <AddUser setActiveSection={setActiveSection} />;
 	return renderOverviewSection();
 };
 

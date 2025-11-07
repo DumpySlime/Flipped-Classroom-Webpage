@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import axios from 'axios';
 import '../../styles.css';
 import '../../dashboard.css';
 
-function AddUser() {
+function AddUser(props) {
 
     const [values, setValues] = useState({
         username: '',
@@ -13,28 +14,26 @@ function AddUser() {
     })
 
     const handleChanges = (e) => {
-        setValues({...values, [e.target.name]:[e.target.value]})
+        setValues({...values, [e.target.name]: e.target.value })
     }
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
         console.log('Form submitted with values:', values);
-
-        try {
-            const response = await fetch('/admin/api/user/add', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(values)
+        axios.post('/db/user-add', values)
+        .then(function (response) {
+            console.log(`User added successfully: ${response.data}`);
+            setValues({
+                username: '',
+                password: '',
+                firstName: '',
+                lastName: '',
+                role: ''
             })
-            
-            if (response.ok) {
-                console.log('User added successfully:', await response.json());
-            }
-        } catch (error) {
-            console.error('Error adding user:', error);
-        }
+        })
+        .catch(function (error) {
+            console.log(`Error adding user: ${error}`);
+        });
     }
 
     return (
@@ -70,7 +69,7 @@ function AddUser() {
                     <input
                         type="text"
                         id="first-name"
-                        name="first-name"
+                        name="firstName"
                         className="user-input"
                         placeholder="Enter First Name"
                         onChange={(e) => handleChanges(e)}
@@ -82,7 +81,7 @@ function AddUser() {
                     <input
                         type="text"
                         id="last-name"
-                        name="last-name"
+                        name="lastName"
                         className="user-input"
                         placeholder="Enter Last Name"
                         onChange={(e) => handleChanges(e)}

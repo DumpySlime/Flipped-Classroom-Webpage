@@ -25,8 +25,8 @@ function Login({ onLogin }) {
             const { access_token, user } = response.data;
             const token = access_token;
             
-            // Store tokens and user info in localStorage
-            localStorage.setItem('token', token);
+            // Store user info in localStorage and set token as dafult header
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             localStorage.setItem('user', JSON.stringify(user));
             
             setState(prevState => ({ ...prevState, error: '' }));
