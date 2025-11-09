@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import '../../styles.css';
 import '../../dashboard.css';
+import axios from 'axios';
 
 function MaterialGenerator({ activeSection }) {
 	const [allSubject, setAllSubject] = useState([]);

@@ -476,7 +476,7 @@ useEffect(() => {
 	.then(function (response) {
 		console.log(`response: ${response}`);
 		const data = response.data;
-		console.log('Fetched teacher data:', data);
+		console.log(`Fetched teacher data: ${data}`);
 		const list = (data.users || []).map(t => ({
 			id: t.id,
 			name: t.username
