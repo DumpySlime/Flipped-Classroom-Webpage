@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import AddUser from './sub-component/AddUser';
+import AIChatroom from './sub-component/chatroom/AIChatroom';
 import axios from 'axios';
 import '../styles.css';
 import '../dashboard.css';
@@ -852,6 +853,7 @@ const renderContent = () => {
 	if (activeSection === 'assignments') return renderAssignmentsSection();
 	if (activeSection === 'add-subject') return renderSubjectCreationSection();
 	if (activeSection === 'add-user') return <AddUser setActiveSection={setActiveSection} />;
+	if (activeSection === 'ai-chatroom') return <AIChatroom />;
 	return renderOverviewSection();
 };
 
@@ -921,6 +923,12 @@ return (
 			onClick={() => setActiveSection('add-user')}
 			>
 			<span>Add User</span>
+			</li>
+			<li 
+  			className={activeSection === 'ai-chatroom' ? 'active' : ''}
+  			onClick={() => setActiveSection('ai-chatroom')}
+			>
+  			<span>AI Chatroom</span>
 			</li>
 		</ul>
 		</nav>
