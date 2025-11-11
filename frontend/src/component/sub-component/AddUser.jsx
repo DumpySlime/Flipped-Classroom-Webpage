@@ -30,6 +30,7 @@ function AddUser(props) {
                 lastName: '',
                 role: ''
             })
+            props.setActiveSection('overview');
         })
         .catch(function (error) {
             console.log(`Error adding user: ${error}`);

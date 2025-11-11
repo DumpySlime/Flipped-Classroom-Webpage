@@ -33,7 +33,6 @@ db_bp = Blueprint('db', __name__)
 @jwt_required()
 def add_material():
     try:
-        # Handle file upload
         if "file" not in request.files:
             return {"error": "No file part in the request"}, 400
         f = request.files.get('file')

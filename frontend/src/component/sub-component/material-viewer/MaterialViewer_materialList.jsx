@@ -3,7 +3,7 @@ import '../../../styles.css';
 import '../../../dashboard.css';
 import axios from 'axios';
 
-function MaterialViewer({ activeSection }) {
+function MaterialViewer_materialList({ activeSection }) {
     const [materials, setMaterials] = useState([]);
 
     const [error, setError] = useState(null);
@@ -72,4 +72,4 @@ function MaterialViewer({ activeSection }) {
         </div>
     );
 }
-export default MaterialViewer;
+export default MaterialViewer_materialList;

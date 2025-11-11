@@ -1,11 +1,49 @@
 import { useState, useEffect } from 'react';
-import '../../styles.css';
-import '../../dashboard.css';
+import '../../../styles.css';
+import '../../../dashboard.css';
 import axios from 'axios';
 
 function MaterialGenerator({ activeSection }) {
 	const [allSubject, setAllSubject] = useState([]);
 	const [allRelatedTopic, setAllRelatedTopic] = useState([]);
+
+	const [loading, setLoading] = useState(false);
+	const [message, setMessage] = useState('');
+	const [message2, setMessage2] = useState('');
+
+
+
+const handleGenerateMaterials = async (type) => {
+	setLoading(true);
+	if (type === 'video') {
+	setMessage('');
+	try {
+		// In a real application, this would be an API call to the backend
+		// Simulating API call with timeout
+		await new Promise(resolve => setTimeout(resolve, 1500));
+		setMessage('Video generated successfully!');
+	} catch (error) {
+		setMessage('Failed to generate video. Please try again.');
+		console.error('Error generating video:', error);
+	} finally {
+		setLoading(false);
+	}
+	} else {
+	setMessage2('');
+	try {
+		// In a real application, this would be an API call to the backend
+		// Simulating API call with timeout
+		await new Promise(resolve => setTimeout(resolve, 1500));
+		setMessage2('Content generated successfully!');
+	} catch (error) {
+		setMessage2('Failed to generate content. Please try again.');
+		console.error('Error generating content:', error);
+	} finally {
+		setLoading(false);
+	}
+	}
+};
+
 	const [values, setValues] = useState({
 		subject: '',
 		topic:'' ,
@@ -29,7 +67,7 @@ function MaterialGenerator({ activeSection }) {
 
 	useEffect(() => {
 		if (activeSection === 'material-generator') return;
-		const ac = AbortController();
+		const ac = new AbortController();
 
 		console.log('Fetching Subject...')
 		(() => {

@@ -33,7 +33,7 @@ function Login({ onLogin }) {
             
             // Call the onLogin callback to notify parent component
             if (onLogin) {
-                onLogin(user.role);
+                onLogin(user.role, user);
             }
             
             alert(`Login successful! Welcome ${user.role === 'teacher' ? 'Teacher' : user.role === 'student' ? 'Student' : 'Admin'} ${user.firstName} ${user.lastName}`);
