@@ -1,9 +1,15 @@
-import { useState } from 'react';
+import { useState , useEffect } from 'react';
 import axios from 'axios';
 import '../../styles.css';
 import '../../dashboard.css';
 
 function StudentAnalytics(props) {
+
+    useEffect(() => {
+        if (props.activeSection !== 'student-analytics') return;
+        // Fetch data if needed
+    }, [props.activeSection]);
+
     return (
         <div className="students-section">
         <div className="section-header">

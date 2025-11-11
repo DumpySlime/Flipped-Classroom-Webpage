@@ -3,7 +3,7 @@ import axios from 'axios';
 import '../../styles.css';
 import '../../dashboard.css';
 
-function SubjectCreation(props) {
+function AddSubject(props) {
 
     const [allTeachers, setAllTeachers] = useState([]);
     const [selectedTeacherIds, setSelectedTeacherIds] = useState([]);
@@ -200,4 +200,4 @@ function SubjectCreation(props) {
     );
 }
 
-export default SubjectCreation;
+export default AddSubject;

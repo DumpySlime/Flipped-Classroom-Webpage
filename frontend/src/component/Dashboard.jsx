@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import '../styles.css';
 import '../dashboard.css';
 
@@ -7,7 +6,7 @@ import Overview from './sub-component/Overview';
 import AddUser from './sub-component/AddUser';
 import MaterialGenerator from './sub-component/material-generator/MaterialGenerator';
 import MaterialViewer from './sub-component/material-viewer/MaterialViewer';
-import SubjectCreation from './sub-component/SubjectCreation';
+import AddSubject from './sub-component/AddSubject';
 import StudentAnalytics from './sub-component/StudentAnalytics';
 import Assignment from './sub-component/Assignment';
 
@@ -281,7 +280,7 @@ const renderContent = () => {
 	if (activeSection === 'material-generation') return <MaterialGenerator activeSection={activeSection} />;
 	if (activeSection === 'student-analytics') return <StudentAnalytics activeSection={activeSection} mockStudentProgress={mockStudentProgress}/>;
 	if (activeSection === 'assignments') return <Assignment activeSection={activeSection} mockAssignments={mockAssignments} mockStudentProgress={mockStudentProgress}/>;
-	if (activeSection === 'add-subject') return <SubjectCreation activeSection={activeSection} />;
+	if (activeSection === 'add-subject') return <AddSubject activeSection={activeSection} />;
 	if (activeSection === 'add-user') return <AddUser setActiveSection={setActiveSection} />;
 	return <Overview activeSection={activeSection} totalStudents={totalStudents} mockMaterials={mockMaterials} mockGeneratedContent={mockGeneratedContent} mockGeneratedVideos={mockGeneratedVideos}/>;
 };

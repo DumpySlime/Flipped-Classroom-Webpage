@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState , useEffect } from 'react';
 import axios from 'axios';
 import '../../styles.css';
 import '../../dashboard.css';
@@ -25,6 +25,11 @@ const mockMaterials = [
 ];
 
 function Overview(props) {
+
+    useEffect(() => {
+        if (props.activeSection !== 'overview') return;
+        // Fetch data if needed
+    }, [props.activeSection]);
 
     return (
         <div className="dashboard-section">

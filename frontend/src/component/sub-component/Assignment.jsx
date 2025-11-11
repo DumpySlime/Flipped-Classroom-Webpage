@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState , useEffect } from 'react';
 import '../../styles.css';
 import '../../dashboard.css';
 
@@ -27,6 +27,11 @@ function Assignment(props) {
         alert('Please fill in all required fields and select at least one student.');
         }
     };
+
+    useEffect(() => {
+        if (props.activeSection !== 'assignments') return;
+        // Fetch data if needed
+    }, [props.activeSection]);
 
     return (
         <div className="assignments-section">
