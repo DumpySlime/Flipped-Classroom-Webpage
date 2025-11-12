@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState , useEffect } from 'react';
 import axios from 'axios';
 import '../../styles.css';
 import '../../dashboard.css';
@@ -30,11 +30,16 @@ function AddUser(props) {
                 lastName: '',
                 role: ''
             })
+            props.setActiveSection('overview');
         })
         .catch(function (error) {
             console.log(`Error adding user: ${error}`);
         });
     }
+
+    useEffect(() => {
+        if (props.activeSection !== 'add-user') return;
+    }, [props.activeSection]);
 
     return (
         <div className="user-creation-section">
