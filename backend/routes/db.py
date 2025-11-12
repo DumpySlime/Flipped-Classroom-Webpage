@@ -8,6 +8,11 @@ from datetime import datetime
 db = None
 fs = None
 
+db_bp = Blueprint('db', __name__)
+
+def process_ppt(file_id):
+    pass
+
 def init_db(db_instance, fs_instance):
     global db
     db = db_instance
@@ -24,8 +29,6 @@ def getUserById(user_id):
     if not user:
         return {"error": "User not found"}, 404
     return user
-
-db_bp = Blueprint('db', __name__)
 
 # Material CRUD operations
 # Add Material
@@ -316,7 +319,7 @@ def get_subject():
                 "topics": u.get("topics"),
                 "teacher_ids": [str(tid) for tid in u.get("teacher_ids", [])],
                 "student_ids": [str(tid) for tid in u.get("student_ids", [])],
-                "created_by": str[u["_id"]],
+                "created_by": str(u["_id"]),
                 "created_at": u.get("created_at").isoformat(),
                 "updated_at": u.get("updated_at").isoformat()
             })

@@ -6,8 +6,8 @@ import MaterialList from './MaterialList';
 import SubjectList from './SubjectList';
 
 function MaterialViewer(props) {
-    const [userMaterials, setUserMaterials] = useState({});
-    const [userSubjects, setUserSubjects] = useState({});
+    const [userMaterials, setUserMaterials] = useState([]);
+    const [userSubjects, setUserSubjects] = useState([]);
     /*
         if teacher => 
             fetch subjects with teacher id
@@ -29,93 +29,59 @@ function MaterialViewer(props) {
         if (props.activeSection !== 'materials') return;
         
         const ac = new AbortController();
-        switch (props.userRole) {
-            case 'teacher':
-                // fetch subjects taught by teacher
-                axios.get('/db/subject', {
+        
+        let subjectParams = {};
+        let materialParams = {};
+
+        if (props.userRole === 'teacher') {
+            subjectParams = { teacher_id: props.userInfo.id };
+            materialParams = { uploaded_by: props.userInfo.id };
+        } else if (props.userRole === 'student') {
+            subjectParams = { student_id: props.userInfo.id };
+        }
+
+        // fetch subjects
+        axios.get('/db/subject', {
+            params: subjectParams, 
+            signal: ac.signal
+        })
+        .then((response) => {
+            const subjects = response.data.subjects
+            setUserSubjects(subjects);
+            // fetch materials and divide them by subjects
+            Promise.all(subjects.map(s =>
+                axios.get('/db/material', {
                     params: {
-                        teacher_id: props.userInfo.id
-                    }
+                        ...materialParams,
+                        subject_ids: s.id
+                    }, 
+                    signal: ac.signal
                 })
-                .then((response) => {
-                    setUserSubjects(response.subject);
-                    // fetch materials for subjects taught by that teacher
-                    response.subjects.map(s => {
-                        axios.get('/db/material', {
-                            params: {
-                                uploaded_by: props.userInfo.id,
-                                subject_ids: s.id
-                            }
-                        })
-                        .then((response) => {
-                            setUserMaterials(prevMaterials => ({
-                                ...prevMaterials,
-                                [s.id]: response.materials
-                            }));
-                        })
-                        .catch((error) => {
-                            console.error('Error fetching materials for teacher:', error);
-                        });
-                    });
-                })
-                .catch((error) => {
-                    console.error('Error fetching subjects for teacher:', error);
-                });
-                break;
-            case 'student':
-                // fetch subjects taught by teacher
-                axios.get('/db/subject', {
-                    params: {
-                        student_id: props.userInfo.id
-                    }
-                })
-                .then((response) => {
-                    setUserSubjects(response.subject);
-                    // fetch materials for subjects the student enrolled
-                    response.subjects.map(s => {
-                        axios.get('/db/material', {
-                            params: {
-                                subject_ids: s.id
-                            }
-                        })
-                        .then((response) => {
-                            setUserMaterials(prevMaterials => ({
-                                ...prevMaterials,
-                                [s.id]: response.materials
-                            }));
-                        })
-                        .catch((error) => {
-                            console.error('Error fetching materials for student:', error);
-                        });
-                    });
-                })
-                .catch((error) => {
-                    console.error('Error fetching subjects for student:', error);
-                });
-                break;
-            case 'admin':
-                // fetch subjects
-                axios.get('/db/subject')
-                .then((response) => {
-                    setUserSubjects(response.subject);
-                    response.subjects.map(s => {
-                        axios.get('/db/material')
-                        .then((response) => {
-                            setUserMaterials(prevMaterials => ({
-                                ...prevMaterials,
-                                [s.id]: response.materials
-                            }));
-                        })
-                        .catch((error) => {
-                            console.error('Error fetching materials for admin:', error);
-                        });
-                    });
-                })
-                .catch((error) => {
-                    console.error('Error fetching subjects for admin:', error);
-                });
-                break;
-        };
+                .then((materialResponse) => ({
+                    subjectId: s.id,
+                    materials: materialResponse.data.materials
+                }))
+            ))
+            .then(results => {
+                const materialsObj = results.reduce((acc, cur) => 
+                    {
+                        acc[cur.subjectId] = cur.materials;
+                        return acc;
+                    }, {});
+                setUserMaterials(materialsObj);
+            })
+            .catch(error => {
+                if (error.name !== 'CanceledError') {
+                    console.error('Error fetching materials:', error);
+                }
+            })
+        })
+        .catch((error) => {
+            if (error.name !== 'CanceledError') {
+                console.error('Error fetching subjects:', error);
+            }
+        });
+
         return () => ac.abort();
     }, [props.activeSection, props.userRole]);
     
