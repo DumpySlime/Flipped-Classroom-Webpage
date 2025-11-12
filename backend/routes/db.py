@@ -36,22 +36,22 @@ def add_material():
         if "file" not in request.files:
             return {"error": "No file part in the request"}, 400
         f = request.files.get('file')
-        subject = request.form.get('subject')
+        subject_id = request.form.get('subject_id')
         topic = request.form.get('topic')
 
         if not f:
             return {"error": "file is required"}, 400
-        if not subject:
-            return {"error": "subject is required"}, 400
+        if not subject_id:
+            return {"error": "subject_id is required"}, 400
         if not topic:
             return {"error": "topic is required"}, 400
 
         user = getUserById(get_jwt_identity())
 
         metadata = {
-            'subject': subject,
+            'subject_id': ObjectId(subject_id),
             'topic': topic,
-            'uploaded_by': user,
+            'uploaded_by': ObjectId(user),
             'upload_date': datetime(),
             'filename': f.filename
         }
@@ -65,9 +65,9 @@ def add_material():
         gf = fs.get(file_id)
 
         mat = {
-            'file_id': file_id,
+            'file_id': ObjectId(file_id),
             'filename': gf.filename,
-            'subject': subject,
+            'subject_id': ObjectId(subject_id),
             'topic': topic,
             'uploaded_by': user,
             'upload_date': gf.upload_date,
@@ -81,7 +81,7 @@ def add_material():
                 'material_id': str(mat_id),
                 "file_id": str(file_id),
                 "filename": gf.filename,
-                "subject": subject,
+                "subject_id": subject_id,
                 "topic": topic,
                 "uploaded_by": str(user),
                 "upload_date": gf.upload_date.isoformat(),
@@ -98,7 +98,7 @@ def get_material():
     try:
         material_id = request.args.get('material_id')
         filename = request.args.get('filename')
-        subject = request.args.get('subject')
+        subject_id = request.args.get('subject_id')
         topic = request.args.get('topic')
         uploaded_by = request.args.get('uploaded_by')
         filt = {}
@@ -106,8 +106,8 @@ def get_material():
             filt['_id'] = ObjectId(material_id)
         if filename:
             filt['filename'] = filename
-        if subject:
-            filt['subject'] = subject
+        if subject_id:
+            filt['subject_id'] = subject_id
         if topic:
             filt['topic'] = topic
         if uploaded_by:
@@ -116,7 +116,7 @@ def get_material():
         mats = db.materials.find(filt, {
             "file_id": 1, 
             "filename": 1, 
-            "subject": 1, 
+            "subject_id": 1, 
             "topic": 1, 
             "uploaded_by": 1, 
             "upload_date": 1, 
@@ -130,7 +130,7 @@ def get_material():
                 "id": str(m["_id"]),
                 "file_id": str(m["file_id"]),
                 "filename": m.get("filename"),
-                "subject": m.get("subject"),
+                "subject_id": m.get("subject_id"),
                 "topic": m.get("topic"),
                 "uploaded_by": str(m.get("uploaded_by")),
                 "upload_date": m.get("upload_date").isoformat() if m.get("upload_date") else None,
@@ -209,11 +209,11 @@ def get_users():
         results = []
         for u in docs:
             results.append({
-                "id": str(u["_id"]),
+                "id": u["_id"],
                 "username": u.get("username")
             })
         print("User search results:", results)
-        return jsonify({"users": docs}), 200
+        return jsonify({"users": results}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -225,13 +225,10 @@ def add_subject():
     try:
         data = request.get_json()
 
-        #if not all(key in data for key in ["subject", "topics", "teachers"]):
-        #    return jsonify({"error": "Missing required fields"}), 400
-
         subject = (data.get("subject") or "").strip()
         topics = data.get("topics") or []
-        teacher_ids = data.get("teachers") or []  
-
+        teacher_ids = data.get("teacher_ids") or []  
+        student_ids = data.get("student_ids") or []
         if not subject:
             return jsonify({"error": "subject is required"}), 400
         # clean u topic
@@ -246,24 +243,41 @@ def add_subject():
         for tid in teacher_ids:
             try:
                 valid_teacher_ids.append(ObjectId(tid))
+                print("added teacher id: ", tid)
             except Exception:
-                return jsonify({"error": f"invalid teacher id: {tid}"}), 400
+                return jsonify({"error": f"error: {tid}"}), 400
             
-            if valid_teacher_ids:
-                count = db.user.count_documents({"_id": {"$in": valid_teacher_ids}, "role": "teacher"})
-                print("Validating teacher IDs, found count:", count)
-                print("Valid teacher IDs:", valid_teacher_ids)
-                if count != len(valid_teacher_ids):
-                    return jsonify({"error": "one or more teacher ids are invalid or not teachers"}), 400
+        if valid_teacher_ids:
+            count = db.users.count_documents({"_id": {"$in": valid_teacher_ids}, "role": "teacher"})
+            print("Validating teacher IDs, found count:", count)
+            print("Valid teacher IDs:", valid_teacher_ids)
+            if count != len(valid_teacher_ids):
+                return jsonify({"error": "one or more teacher ids are invalid or not teachers"}), 400
+
+        print("Received student IDs for subject creation:", student_ids)
+        valid_student_ids = []
+        for sid in student_ids:
+            try:
+                valid_student_ids.append(ObjectId(sid))
+            except Exception:
+                return jsonify({"error": f"invalid student id: {sid}"}), 400
+            
+        if valid_student_ids:
+            count = db.users.count_documents({"_id": {"$in": valid_student_ids}, "role": "student"})
+            print("Validating student IDs, found count:", count)
+            print("Valid student IDs:", valid_student_ids)
+            if count != len(valid_student_ids):
+                return jsonify({"error": "one or more student ids are invalid or not student"}), 400
+
                 
         existing = db.subjects.find_one({"subject": subject})
         if existing:
             return jsonify({"error": "subject already exists"}), 409
-        #valid_teacher_ids = [ObjectId("690dcaa34fe33f7359ac5675"), ObjectId("690dcae74fe33f7359ac5676"), ObjectId("690dcb484fe33f7359ac567a"), ObjectId("690dd17fb1ba9740d7c402cc"), ObjectId("690dcb354fe33f7359ac5679")]
         doc = {
             "subject": subject,
             "topics": clean_topics,
             "teacher_ids": valid_teacher_ids,
+            "student_ids": valid_student_ids,
             "created_by": ObjectId(get_jwt_identity()),
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
@@ -280,13 +294,19 @@ def add_subject():
 @jwt_required()
 def get_subject():
     try:
+        id = request.args.get('id')
         subject = request.args.get('subject')
-        teacher_id = request.args.get('teacher')
+        teacher_id = request.args.get('teacher_id')
+        student_id = request.args.get('student_id')
         filt = {}
+        if (id):
+            filt['_id'] = ObjectId(id)
         if (subject):
             filt['subject'] = subject
         if (teacher_id):
-            filt['teacher_id'] = teacher_id
+            filt['teacher_ids'] = teacher_id
+        if (student_id):
+            filt['student_ids'] = student_id
         subjects = list(db.subject.find(filt))
         results = []
         for u in subjects:
@@ -295,6 +315,7 @@ def get_subject():
                 "subject": u.get("subject"),
                 "topics": u.get("topics"),
                 "teacher_ids": [str(tid) for tid in u.get("teacher_ids", [])],
+                "student_ids": [str(tid) for tid in u.get("student_ids", [])],
                 "created_by": str[u["_id"]],
                 "created_at": u.get("created_at").isoformat(),
                 "updated_at": u.get("updated_at").isoformat()
