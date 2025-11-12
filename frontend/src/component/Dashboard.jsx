@@ -9,6 +9,7 @@ import MaterialViewer from './sub-component/material-viewer/MaterialViewer';
 import AddSubject from './sub-component/AddSubject';
 import StudentAnalytics from './sub-component/StudentAnalytics';
 import Assignment from './sub-component/Assignment';
+import AIChatroom from './sub-component/chatroom/AIChatroom';
 
 function Dashboard(props) {
 const [activeSection, setActiveSection] = useState('overview');
@@ -253,14 +254,16 @@ const allowedSectionsByRole = {
     overview: 'Overview',
     materials: 'Materials',
     assignments: 'Assignments',
-    'student-analytics': 'Student Analytics'
+    'student-analytics': 'Student Analytics',
+	chatroom: 'AI Chatroom'
   },
   teacher: {
     overview: 'Overview',
     materials: 'Materials',
     assignments: 'Assignments',
     'student-analytics': 'Student Analytics',
-    'material-generation': 'Material Generation'
+    'material-generation': 'Material Generation',
+	chatroom: 'AI Chatroom'
   },
   admin: {
     overview: 'Overview',
@@ -269,7 +272,8 @@ const allowedSectionsByRole = {
     'student-analytics': 'Student Analytics',
     'material-generation': 'Material Generation',
     'add-subject': 'Add Subject',
-    'add-user': 'Add User'
+    'add-user': 'Add User',
+	chatroom: 'AI Chatroom'
   }
 };
 
@@ -282,6 +286,7 @@ const renderContent = () => {
 	if (activeSection === 'assignments') return <Assignment activeSection={activeSection} mockAssignments={mockAssignments} mockStudentProgress={mockStudentProgress}/>;
 	if (activeSection === 'add-subject') return <AddSubject activeSection={activeSection} />;
 	if (activeSection === 'add-user') return <AddUser setActiveSection={setActiveSection} />;
+	if (activeSection === 'chatroom') return <AIChatroom />;
 	return <Overview activeSection={activeSection} totalStudents={totalStudents} mockMaterials={mockMaterials} mockGeneratedContent={mockGeneratedContent} mockGeneratedVideos={mockGeneratedVideos}/>;
 };
 	
