@@ -145,7 +145,7 @@ def get_material():
                 "subject_id": str(m.get("subject_id")),
                 "topic": m.get("topic"),
                 "uploaded_by": str(m.get("uploaded_by")),
-                "upload_date": m.get("upload_date").isoformat() if m.get("upload_date") else None,
+                "upload_date": m.get("upload_date").strftime("%Y/%m/%d") if m.get("upload_date") else None,
                 "content_type": m.get("content_type")
             })
         print('Materials:', materials)
