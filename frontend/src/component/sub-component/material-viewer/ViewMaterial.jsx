@@ -3,12 +3,11 @@ import '../../../styles.css';
 import '../../../dashboard.css';
 import axios from 'axios'
 
-function ViewMaterial ({ material }, { activeSection }) {
+function ViewMaterial ({ material }) {
     const [signedUrl, setSignedUrl] = useState(null);
     const [err, setErr] = useState(null);
 
     useEffect(() => {
-        if (activeSection !== 'material-viewer') return;
         const ac = new AbortController();
         let active = true;
 
@@ -25,7 +24,7 @@ function ViewMaterial ({ material }, { activeSection }) {
             active = false;
             ac.abort();
         }
-    }, [activeSection, material]);
+    }, [material]);
 
     if (err) return (
         <div>

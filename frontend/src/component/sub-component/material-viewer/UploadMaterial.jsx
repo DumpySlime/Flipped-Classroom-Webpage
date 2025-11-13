@@ -5,7 +5,7 @@ import axios from 'axios'
 
 import FileUpload from './FileUpload.jsx'
 
-function UploadMaterial ({activeSection, subject, onClose}) {
+function UploadMaterial ({subject, onClose}) {
     const [file, setFile] = useState(null)
     const [topics, setTopics] = useState([])
     const [values, setValues] = useState({

@@ -44,19 +44,12 @@ function MaterialList(props) {
     }
 
     useEffect(() => {
-        if (props.activeSection !== 'material-viewer') return;
-        // set materials related to subject
-        for (let mat in props.materials) {
-            if (mat.subject_id === props.subject.id) {
-                setMaterials(prevMaterials => ({...prevMaterials, mat}));
-            }
-        }
-    }, [props.activeSection, props.materials, props.subject]);
+        setMaterials(props.materials);
+    }, [props.materials, props.subject]);
 
     if (showUpload) {
         return (
             <UploadMaterial 
-                activeSection={props.activeSection} 
                 subject={props.subject}
                 onClose={() => setShowUpload(false)}
             />
@@ -68,7 +61,6 @@ function MaterialList(props) {
         return (
             <ViewMaterial 
                 material={selectedMaterial} 
-                activeSection={props.activeSection}
                 onClose={() => setShowView(false)}
             />
         );
@@ -79,7 +71,6 @@ function MaterialList(props) {
         return (
             <EditMaterial 
                 material={selectedMaterial} 
-                activeSection={props.activeSection}
                 onClose={() => setShowEdit(false)}
             />
         );

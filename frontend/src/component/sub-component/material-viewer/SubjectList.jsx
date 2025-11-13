@@ -8,17 +8,13 @@ function SubjectList(props) {
 
     const [selectedSubject, setSelectedSubject] = useState(null)
 
-    useEffect(() => {
-        if (props.activeSection !== 'material-viewer') return;
-    }, [props.activeSection])
-
     if (selectedSubject) {
         return (
             <div>
                 {
                     (props.subjects.length > 1) ? <button onClick={() => setSelectedSubject(null)}>Back to Subjects</button> : null
                 }
-                <MaterialList {...props} subject={selectedSubject}/>
+                <MaterialList {...props} subject={selectedSubject} materials={props.materials[selectedSubject.id] || []}/>
             </div>
         );
     }
@@ -34,7 +30,7 @@ function SubjectList(props) {
             </div>
             {/* Subject List */}
             <div className="subject-list">
-                {props.subjects.map(s => (
+                {props.subjects.map((s) => (
                 <div key={s.id} className="course-card" onClick={() => setSelectedSubject(s)}>
                     <div className="course-info">
                     <h4>{s.subject}</h4>

@@ -31,7 +31,7 @@ function MaterialViewer(props) {
             signal: ac.signal
         })
         .then((response) => {
-            const subjects = response.data.subjects
+            const subjects = response.data.subjects || [];
             setUserSubjects(subjects);
             // fetch materials and divide them by subjects
             Promise.all(subjects.map(s => {
@@ -43,12 +43,22 @@ function MaterialViewer(props) {
                     }, 
                     signal: ac.signal
                 })
-                .then((materialResponse) => ({
-                    subjectId: s.id,
-                    materials: materialResponse.data.materials
-                }))
+                .then((response) => {
+                    console.log(`Materials response for subjectId ${s.id}:`, response.data);
+                    return {
+                        subjectId: s.id,
+                        materials: response.data.materials
+                    }
+                })
+                .catch((error) => {
+                    if (error.name != 'CanceledError') {
+                        console.error('Error in Promise: ', error);
+                    }
+                    return { subjectId: s.id, materials: [] };
+                })
             }))
             .then(results => {
+                console.log("MaterialViewer material response:", JSON.stringify(results,null,2))
                 const materialsObj = results.reduce((acc, cur) => 
                     {
                         acc[cur.subjectId] = cur.materials;
@@ -71,12 +81,18 @@ function MaterialViewer(props) {
         return () => ac.abort();
     }, [props.activeSection, props.userRole]);
 
+    useEffect(() => {
+        console.log("MaterialViewer userSubjects: ", JSON.stringify(userSubjects, null, 2));
+        console.log("MaterialViewer userMaterials: ", JSON.stringify(userMaterials, null, 2));
+    }, [userSubjects, userMaterials])
+
     return (
         <>
-        {userSubjects.length > 1 ? (
-            <SubjectList {...props} subjects={userSubjects} materials={userMaterials} />
-        ) : (
-            <MaterialList {...props} subject={userSubjects} materials={userMaterials} />
+        {userSubjects.length === 1 ? (
+            
+            <MaterialList {...props} subject={userSubjects[0]} materials={userMaterials[userSubjects[0]?.id] || [] } />
+        ) : (userSubjects.length > 1 ?            
+            <SubjectList {...props} subjects={userSubjects} materials={userMaterials} /> : <div>Loading Subjects...</div>    
         )}
         </>
     )
