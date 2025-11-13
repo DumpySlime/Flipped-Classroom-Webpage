@@ -1,17 +1,25 @@
-from flask import Blueprint, jsonify, request, send_file
+from flask import Blueprint, jsonify, request, Response
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from bson.objectid import ObjectId
 from flask_bcrypt import Bcrypt
 import io
+import os
 from datetime import datetime
-
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 db = None
 fs = None
+SIGNER = None
 
 db_bp = Blueprint('db', __name__)
 
-def process_ppt(file_id):
-    pass
+@db_bp.record_once
+def register_signer(setup_state):
+    global SIGNER
+    app = setup_state.app
+    SIGNER = URLSafeTimedSerializer(
+        app.config["OFFICE_SECRET_KEY"],
+        salt="pptx-embed"
+    )
 
 def init_db(db_instance, fs_instance):
     global db
@@ -49,13 +57,13 @@ def add_material():
         if not topic:
             return {"error": "topic is required"}, 400
 
-        user = getUserById(get_jwt_identity())
+        user_id = getUserById(get_jwt_identity())['_id']
 
         metadata = {
             'subject_id': ObjectId(subject_id),
             'topic': topic,
-            'uploaded_by': ObjectId(user),
-            'upload_date': datetime(),
+            'uploaded_by': user_id,
+            'upload_date': datetime.now(),
             'filename': f.filename
         }
 
@@ -72,7 +80,7 @@ def add_material():
             'filename': gf.filename,
             'subject_id': ObjectId(subject_id),
             'topic': topic,
-            'uploaded_by': user,
+            'uploaded_by': user_id,
             'upload_date': gf.upload_date,
             'size_bytes': gf.length,
             'content_type': gf.content_type,
@@ -86,7 +94,7 @@ def add_material():
                 "filename": gf.filename,
                 "subject_id": subject_id,
                 "topic": topic,
-                "uploaded_by": str(user),
+                "uploaded_by": str(user_id),
                 "upload_date": gf.upload_date.isoformat(),
                 "size_bytes": gf.length,
                 "content_type": gf.content_type
@@ -104,28 +112,30 @@ def get_material():
         subject_id = request.args.get('subject_id')
         topic = request.args.get('topic')
         uploaded_by = request.args.get('uploaded_by')
+        
+        print(f'Query params: material_id={material_id}, filename={filename}, subject_id={subject_id}, topic={topic}, uploaded_by={uploaded_by}')
+        
         filt = {}
         if material_id:
             filt['_id'] = ObjectId(material_id)
         if filename:
             filt['filename'] = filename
         if subject_id:
-            filt['subject_id'] = subject_id
+            filt['subject_id'] = ObjectId(subject_id)
         if topic:
             filt['topic'] = topic
         if uploaded_by:
             filt['uploaded_by'] = ObjectId(uploaded_by)
 
-        mats = db.materials.find(filt, {
-            "file_id": 1, 
-            "filename": 1, 
-            "subject_id": 1, 
-            "topic": 1, 
-            "uploaded_by": 1, 
-            "upload_date": 1, 
-            "size_bytes": 0, 
-            "content_type": 1
-        })
+        print(f'MongoDB filter: {filt}')
+
+        mats = list(db.materials.find(filt, {}))
+
+        print(f'Found {len(mats)} materials')
+
+        if not mats and not filt:
+            all_mats = list(db.materials.find({}).limit(5))
+            print(f'Sample materials in DB: {all_mats}')
 
         materials = []
         for m in mats:
@@ -133,13 +143,13 @@ def get_material():
                 "id": str(m["_id"]),
                 "file_id": str(m["file_id"]),
                 "filename": m.get("filename"),
-                "subject_id": m.get("subject_id"),
+                "subject_id": str(m.get("subject_id")),
                 "topic": m.get("topic"),
                 "uploaded_by": str(m.get("uploaded_by")),
                 "upload_date": m.get("upload_date").isoformat() if m.get("upload_date") else None,
                 "content_type": m.get("content_type")
             })
-
+        print('Materials:', materials)
         if not materials:
             return jsonify({"message": "No materials found"}), 404
         return jsonify({"materials": materials}), 200
@@ -163,6 +173,53 @@ def delete_material():
     except Exception as e:
         return {"error": str(e)}, 500
     
+# process ppt
+# create a short-lived signed URL
+@db_bp.route('/material/<file_id>/signed-url', methods=['GET'])
+@jwt_required()
+def get_signed_url(file_id):
+    user_id = get_jwt_identity()
+
+    # authorize file
+    mat = db.materials.find_one({'file_id': ObjectId(file_id)}, {'_id': 1, 'subject_id': 1, 'uploaded_by': 1})
+    if not mat:
+        return jsonify({'error': 'Forbidden'}), 403
+
+    token = SIGNER.dumps({"f_id": file_id, "u_id": str(user_id)})
+    public_url = request.host_url.rstrip('/') + f"/public/pptx/{token}"
+    return jsonify({"url": public_url}), 200
+
+
+# public route for office web viewer
+@db_bp.route("public/pptx/<token>", methods=['GET'])
+def display_pptx(token):
+    try:
+        data = SIGNER.loads(token, max_age=600) # 10 minutes of access
+    except SignatureExpired:
+        return jsonify({"error": "Powerpoint link expired"}), 410
+    except BadSignature:
+        return jsonify({"error": "Invalid link"}), 400
+    
+    fid = data.get("f_id")
+    try: 
+        file = fs.get(ObjectId(fid))
+    except Exception:
+        return jsonify({"error": "File not found"}), 404
+
+# stream in chunks so large files don’t load into memory
+    def generate():
+        chunk = file.read(8192)
+        while chunk:
+            yield chunk
+            chunk = file.read(8192)
+
+    headers = {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "Content-Disposition": f'inline; filename="{file.filename or "slide.pptx"}"',
+        "Cache-Control": "no-store",  # viewer can fetch within token lifetime; tune as needed
+    }
+    return Response(generate(), headers=headers)
+
 # User CRUD operations
 # Add User
 @db_bp.route('/user-add', methods=['POST'])
@@ -293,7 +350,7 @@ def add_subject():
         return jsonify({"error": str(e)}), 500
 
 # Get Subjects
-@db_bp.route('/subject', methods=['POST'])
+@db_bp.route('/subject', methods=['GET'])
 @jwt_required()
 def get_subject():
     try:
@@ -310,7 +367,7 @@ def get_subject():
             filt['teacher_ids'] = teacher_id
         if (student_id):
             filt['student_ids'] = student_id
-        subjects = list(db.subject.find(filt))
+        subjects = list(db.subjects.find(filt))
         results = []
         for u in subjects:
             results.append({

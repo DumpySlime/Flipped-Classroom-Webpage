@@ -1,31 +1,47 @@
 import '../../../styles.css';
 import '../../../dashboard.css';
+import { useState , useEffect } from 'react'
 
 import MaterialList from './MaterialList';
 
 function SubjectList(props) {
 
-    const handleSubjectSelect = (subject) => {
+    const [selectedSubject, setSelectedSubject] = useState(null)
+
+    useEffect(() => {
+        if (props.activeSection !== 'material-viewer') return;
+    }, [props.activeSection])
+
+    if (selectedSubject) {
         return (
-            <MaterialList {...props} subject={subject}/>
+            <div>
+                {
+                    (props.subjects.length > 1) ? <button onClick={() => setSelectedSubject(null)}>Back to Subjects</button> : null
+                }
+                <MaterialList {...props} subject={selectedSubject}/>
+            </div>
         );
     }
 
+    if (!props.subjects || props.subjects.length === 0) {
+        return <div>Loading subjects...</div>;
+    }
+
     return (
-        <div className="materials-section">
-        <div className="section-header">
-            <h3>Subjects</h3>
-        </div>
-        {/* Subject List */}
-        <div className="materials-list">
-            {props.userSubjects.map(s => (
-            <div key={s.id} className="material-card" onClick={() => handleSubjectSelect(s)}>
-                <div className="material-info">
-                <h4>{s.subject}</h4>
-                </div>
+        <div className="subject-section">
+            <div className="section-header">
+                <h3>Subjects</h3>
             </div>
-            ))}
-        </div>
+            {/* Subject List */}
+            <div className="subject-list">
+                {props.subjects.map(s => (
+                <div key={s.id} className="course-card" onClick={() => setSelectedSubject(s)}>
+                    <div className="course-info">
+                    <h4>{s.subject}</h4>
+                    </div>
+                </div>
+                ))}
+            </div>
         </div>
     )
 }

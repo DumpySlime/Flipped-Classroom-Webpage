@@ -8,7 +8,11 @@ import EditMaterial from './EditMaterial';
 import ViewMaterial from './ViewMaterial';
 
 function MaterialList(props) {
-    const [materials, setMaterials] = useState([]);
+    const [materials, setMaterials] = useState([]);    
+    const [showUpload, setShowUpload] = useState(false);
+    const [showEdit, setShowEdit] = useState(false);
+    const [showView, setShowView] = useState(false);
+    const [selectedMaterial, setSelectedMaterial] = useState(null);
 
     function deleteMaterial(matId) {
         const ac = new AbortController();
@@ -29,6 +33,16 @@ function MaterialList(props) {
         })
     }
 
+    function handleViewMaterial(material) {
+        setSelectedMaterial(material);
+        setShowView(true);
+    }
+
+    function handleEditMaterial(material) {
+        setSelectedMaterial(material);
+        setShowEdit(true);
+    }
+
     useEffect(() => {
         if (props.activeSection !== 'material-viewer') return;
         // set materials related to subject
@@ -37,22 +51,54 @@ function MaterialList(props) {
                 setMaterials(prevMaterials => ({...prevMaterials, mat}));
             }
         }
-    }, [props.activeSection, props.materials, props.subject.id]);
+    }, [props.activeSection, props.materials, props.subject]);
+
+    if (showUpload) {
+        return (
+            <UploadMaterial 
+                activeSection={props.activeSection} 
+                subject={props.subject}
+                onClose={() => setShowUpload(false)}
+            />
+        );
+    }
+
+    // If showing view
+    if (showView && selectedMaterial) {
+        return (
+            <ViewMaterial 
+                material={selectedMaterial} 
+                activeSection={props.activeSection}
+                onClose={() => setShowView(false)}
+            />
+        );
+    }
+
+    // If showing edit
+    if (showEdit && selectedMaterial) {
+        return (
+            <EditMaterial 
+                material={selectedMaterial} 
+                activeSection={props.activeSection}
+                onClose={() => setShowEdit(false)}
+            />
+        );
+    }
 
     return (
         <div className="materials-section">
         <div className="section-header">
-            <h3>Materials</h3>
+            <h3>{props.subject.subject} Materials</h3>
             {/* disable upload button if role = student */}
             {
                 (props.userRole !== "student") ? 
-                <button className="button" onClick={<UploadMaterial activeSection={props.activeSection}/>}>Upload Material</button> : null
+                <button className="button" onClick={() => setShowUpload(true)}>Upload Material</button> : null
             }
         </div>
         <div className="materials-list">
             {
                 materials.map(m => (
-                    <div key={m.id} className="material-card" onClick={<ViewMaterial material={m} activeSection={props.activeSection}/>}>
+                    <div key={m.id} className="material-card" onClick={() => handleViewMaterial(m)}>
                         <div className="material-info">
                         <h4>{m.topic}</h4>
                         <p>{m.filename}</p>
@@ -64,8 +110,14 @@ function MaterialList(props) {
                         {
                             (props.userRole !== "student") ? (
                                 <>
-                                <button className="button" onClick={() => deleteMaterial(m.id)}>Delete</button>
-                                <button className="button" onClick={<EditMaterial material={m} activeSection={props.activeSection}/>}>Edit</button>
+                                <button className="button" onClick={(e) => {
+                                    e.stopPropagation(); 
+                                    deleteMaterial(m.id);
+                                }}>Delete</button>
+                                <button className="button" onClick={(e) => {
+                                    e.stopPropagation(); 
+                                    handleEditMaterial(m)
+                                }}>Edit</button>
                                 </>
                                 ) : null
                         }

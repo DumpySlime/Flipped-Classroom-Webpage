@@ -8,22 +8,6 @@ import SubjectList from './SubjectList';
 function MaterialViewer(props) {
     const [userMaterials, setUserMaterials] = useState([]);
     const [userSubjects, setUserSubjects] = useState([]);
-    /*
-        if teacher => 
-            fetch subjects with teacher id
-            fetch materials with subject ids and teacher id
-            if multiple subjects => show subject list view
-            else => show material list view
-
-        if student => fetch subjects enrolled by student
-            fetch subjects with teacher id
-            fetch materials with subject ids and teacher id
-            if multiple subjects => show subject list view
-            else => show material list view
-
-        if admin => if multiple subjects => show subject list view
-            else => show material list view
-    */
 
     useEffect(() => {
         if (props.activeSection !== 'materials') return;
@@ -33,6 +17,7 @@ function MaterialViewer(props) {
         let subjectParams = {};
         let materialParams = {};
 
+        // set parameters for different roles
         if (props.userRole === 'teacher') {
             subjectParams = { teacher_id: props.userInfo.id };
             materialParams = { uploaded_by: props.userInfo.id };
@@ -49,11 +34,12 @@ function MaterialViewer(props) {
             const subjects = response.data.subjects
             setUserSubjects(subjects);
             // fetch materials and divide them by subjects
-            Promise.all(subjects.map(s =>
-                axios.get('/db/material', {
+            Promise.all(subjects.map(s => {
+                console.log(`Fetching materials for subject: ${s.id} (${s.subject})`);
+                return axios.get('/db/material', {
                     params: {
                         ...materialParams,
-                        subject_ids: s.id
+                        subject_id: s.id
                     }, 
                     signal: ac.signal
                 })
@@ -61,7 +47,7 @@ function MaterialViewer(props) {
                     subjectId: s.id,
                     materials: materialResponse.data.materials
                 }))
-            ))
+            }))
             .then(results => {
                 const materialsObj = results.reduce((acc, cur) => 
                     {
@@ -84,10 +70,10 @@ function MaterialViewer(props) {
 
         return () => ac.abort();
     }, [props.activeSection, props.userRole]);
-    
+
     return (
         <>
-        {Object.keys(userSubjects).length > 1 ? (
+        {userSubjects.length > 1 ? (
             <SubjectList {...props} subjects={userSubjects} materials={userMaterials} />
         ) : (
             <MaterialList {...props} subject={userSubjects} materials={userMaterials} />
