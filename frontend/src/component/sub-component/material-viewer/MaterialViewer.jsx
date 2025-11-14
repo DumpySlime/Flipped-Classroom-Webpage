@@ -19,15 +19,18 @@ function MaterialViewer(props) {
 
         // set parameters for different roles
         if (props.userRole === 'teacher') {
-            subjectParams = { teacher_id: props.userInfo.id };
-            materialParams = { uploaded_by: props.userInfo.id };
+            subjectParams = { "teacher_id": props.userInfo.id };
+            materialParams = { "uploaded_by": props.userInfo.id };
         } else if (props.userRole === 'student') {
-            subjectParams = { student_id: props.userInfo.id };
+            subjectParams = { "student_id": props.userInfo.id };
         }
+
+        console.log(`/db/subject params: ${JSON.stringify(subjectParams)}`);
+        console.log(`/db/material params: ${JSON.stringify(materialParams)}`);
 
         // fetch subjects
         axios.get('/db/subject', {
-            params: subjectParams, 
+            params: subjectParams,
             signal: ac.signal
         })
         .then((response) => {
@@ -92,7 +95,7 @@ function MaterialViewer(props) {
             
             <MaterialList {...props} subject={userSubjects[0]} materials={userMaterials[userSubjects[0]?.id] || [] } />
         ) : (userSubjects.length > 1 ?            
-            <SubjectList {...props} subjects={userSubjects} materials={userMaterials} /> : <div>Loading Subjects...</div>    
+            <SubjectList {...props} subjects={userSubjects} materials={userMaterials} /> : <div>There is no subject assigned</div>    
         )}
         </>
     )

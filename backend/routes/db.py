@@ -363,9 +363,9 @@ def get_subject():
         if (subject):
             filt['subject'] = subject
         if (teacher_id):
-            filt['teacher_ids'] = teacher_id
+            filt['teacher_ids'] = ObjectId(teacher_id)
         if (student_id):
-            filt['student_ids'] = student_id
+            filt['student_ids'] = ObjectId(student_id)
         subjects = list(db.subjects.find(filt))
         results = []
         for u in subjects:
@@ -375,7 +375,7 @@ def get_subject():
                 "topics": u.get("topics"),
                 "teacher_ids": [str(tid) for tid in u.get("teacher_ids", [])],
                 "student_ids": [str(tid) for tid in u.get("student_ids", [])],
-                "created_by": str(u["_id"]),
+                "created_by": str(u["created_by"]),
                 "created_at": u.get("created_at").isoformat(),
                 "updated_at": u.get("updated_at").isoformat()
             })
