@@ -6,12 +6,14 @@ import axios from 'axios';
 import UploadMaterial from './UploadMaterial';
 import EditMaterial from './EditMaterial';
 import ViewMaterial from './ViewMaterial';
+import GenerateMaterial from './GenerateMaterial';
 
 function MaterialList(props) {
     const [materials, setMaterials] = useState([]);    
     const [showUpload, setShowUpload] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
     const [showView, setShowView] = useState(false);
+    const [showGenerate, setShowGenerate] = useState(false);
     const [selectedMaterial, setSelectedMaterial] = useState(null);
 
     function deleteMaterial(matId) {
@@ -47,6 +49,7 @@ function MaterialList(props) {
         setMaterials(props.materials);
     }, [props.materials, props.subject]);
 
+    // If showing upload
     if (showUpload) {
         return (
             <UploadMaterial 
@@ -54,6 +57,16 @@ function MaterialList(props) {
                 onClose={() => setShowUpload(false)}
             />
         );
+    }
+
+    // If showing generate
+    if (showGenerate) {
+        return (
+            <GenerateMaterial            
+                subject={props.subject}
+                onClose={() => setShowGenerate(false)}
+            />
+        )
     }
 
     // If showing view
@@ -82,8 +95,12 @@ function MaterialList(props) {
             <h3>{props.subject.subject} Materials</h3>
             {/* disable upload button if role = student */}
             {
-                (props.userRole !== "student") ? 
-                <button className="button" onClick={() => setShowUpload(true)}>Upload Material</button> : null
+                (props.userRole !== "student") ? (
+                    <>
+                    <button className="button" onClick={() => setShowUpload(true)}>Upload Material</button> 
+                    <button className="button" onClick={() => setShowGenerate(true)}>Generate Material</button> 
+                    </>
+                ) : null
             }
         </div>
         <div className="materials-list">
