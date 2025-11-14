@@ -8,17 +8,19 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 db = None
 fs = None
 SIGNER = None
+PUBLIC_BASE_URL = None
 
 db_bp = Blueprint('db', __name__)
 
 @db_bp.record_once
 def register_signer(setup_state):
-    global SIGNER
+    global SIGNER, PUBLIC_BASE_URL
     app = setup_state.app
     SIGNER = URLSafeTimedSerializer(
         app.config["OFFICE_SECRET_KEY"],
         salt="pptx-embed"
     )
+    PUBLIC_BASE_URL = app.config["PUBLIC_BASE_URL"]
 
 def init_db(db_instance, fs_instance):
     global db
@@ -185,12 +187,17 @@ def get_signed_url(file_id):
         return jsonify({'error': 'Forbidden'}), 403
 
     token = SIGNER.dumps({"f_id": file_id, "u_id": str(user_id)})
-    public_url = request.host_url.rstrip('/') + f"/public/pptx/{token}"
+    
+    base_url = os.environ.get('PUBLIC_BASE_URL', request.host_url.rstrip('/'))
+    public_url = base_url + f"/db/public/pptx/{token}"
+    
+    print(f"Generated signed URL: {public_url}")
+
     return jsonify({"url": public_url}), 200
 
 
 # public route for office web viewer
-@db_bp.route("public/pptx/<token>", methods=['GET'])
+@db_bp.route("/public/pptx/<token>", methods=['GET'])
 def display_pptx(token):
     try:
         data = SIGNER.loads(token, max_age=600) # 10 minutes of access

@@ -23,7 +23,11 @@ except Exception as e:
     fs = None
     print("Database connection error:", e)
 
-CORS(app)
+CORS(app, 
+     origins=["http://localhost:3005", "https://flippedclassroom.ngrok-free.app"],
+     supports_credentials=True,  # Allow cookies/auth headers
+     allow_headers=["Content-Type", "Authorization"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
 from routes.admin import admin_bp, init_db as init_admin_db
 from routes.auth import auth_bp, init_db as init_auth_db

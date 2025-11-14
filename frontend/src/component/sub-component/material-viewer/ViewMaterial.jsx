@@ -11,7 +11,7 @@ function ViewMaterial ({ material }) {
         const ac = new AbortController();
         let active = true;
 
-        axios.get(`/material/${material.file_id}/signed-url`, {
+        axios.get(`https://flippedclassroom.ngrok-free.app/db/material/${material.file_id}/signed-url`, {
             signal: ac.signal
         })
         .then(response => {
@@ -38,7 +38,7 @@ function ViewMaterial ({ material }) {
         </div>
     )
 
-    const src = "https://view.officeapps.live.com/op/embed.aspx?src=" + encodeURIComponent(signedUrl);
+    const src = "http://" + encodeURIComponent(signedUrl);
 
     return (
         <div className="slide-viewer">
