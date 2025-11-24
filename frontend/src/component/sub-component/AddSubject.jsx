@@ -23,7 +23,8 @@ function AddSubject(props) {
         axios.get('/db/user', {
             params: {
                 role: "teacher"
-            }
+            },
+            signal: ac.signal
         })
         .then(function (response) {
             console.log(`response: ${response}`);

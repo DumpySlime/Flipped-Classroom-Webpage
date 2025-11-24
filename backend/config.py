@@ -22,3 +22,7 @@ class Config:
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
     OPENAI_MODEL = os.environ.get("OPENAI_MODEL")
     OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL")
+
+    # Office Web Viewer
+    OFFICE_SECRET_KEY = os.environ.get("OFFICE_SECRET_KEY")
+    PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL")

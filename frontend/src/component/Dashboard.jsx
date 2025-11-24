@@ -280,7 +280,7 @@ const allowedSectionsByRole = {
 const renderContent = () => {
 
 	if (activeSection === 'overview') return <Overview activeSection={activeSection} totalStudents={totalStudents} mockMaterials={mockMaterials} mockGeneratedContent={mockGeneratedContent} mockGeneratedVideos={mockGeneratedVideos}/>;
-	if (activeSection === 'materials') return <MaterialViewer activeSection={activeSection} userId={props.userInfo.id} userRole={props.userRole} mockMaterials={mockMaterials}/>;
+	if (activeSection === 'materials') return <MaterialViewer activeSection={activeSection} userInfo={props.userInfo} userRole={props.userRole} mockMaterials={mockMaterials}/>;
 	if (activeSection === 'material-generation') return <MaterialGenerator activeSection={activeSection} />;
 	if (activeSection === 'student-analytics') return <StudentAnalytics activeSection={activeSection} mockStudentProgress={mockStudentProgress}/>;
 	if (activeSection === 'assignments') return <Assignment activeSection={activeSection} mockAssignments={mockAssignments} mockStudentProgress={mockStudentProgress}/>;

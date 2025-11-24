@@ -23,9 +23,17 @@ def init_db(db_instance, fs_instance):
 llm_bp = Blueprint('llm', __name__, url_prefix='/api')
 
 # Load AI API configuration from environment variables
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'deepseek-chat')
-OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL', 'https://api.deepseek.com')
+OPENAI_API_KEY = None
+OPENAI_MODEL = None
+OPENAI_BASE_URL = None
+
+@llm_bp.record_once
+def on_load(state):
+    global OPENAI_API_KEY, OPENAI_MODEL, OPENAI_BASE_URL
+    app = state.app
+    OPENAI_API_KEY = app.config.get("OPENAI_API_KEY")
+    OPENAI_MODEL = app.config.get("OPENAI_MODEL")
+    OPENAI_BASE_URL = app.config.get("OPENAI_BASE_URL")
 print(f"API Key loaded: {'YES' if OPENAI_API_KEY else 'NO key in .env'}")
 print(f"Using model: {OPENAI_MODEL}")
 print(f"Using base URL: {OPENAI_BASE_URL}")

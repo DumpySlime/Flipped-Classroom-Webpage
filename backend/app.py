@@ -21,27 +21,24 @@ except Exception as e:
     fs = None
     print("Database connection error:", e)
 
-# 關鍵！允許 cookie + 3005 port
-CORS(
-    app,
-    resources={r"/api/*": {"origins": "http://localhost:3005"}},
-    supports_credentials=True
-)
+CORS(app, 
+     origins=["http://localhost:3005", "https://flippedclassroom.ngrok-free.app"],
+     supports_credentials=True,  # Allow cookies/auth headers
+     allow_headers=["Content-Type", "Authorization"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],   # 關鍵！允許 cookie + 3005 port
+     resources={r"/api/*": {"origins": "http://localhost:3005"}},
+     supports_credentials=True)
 
 # Import 所有 routes
 from routes.admin import admin_bp, init_db as init_admin_db
 from routes.auth import auth_bp, init_db as init_auth_db
-from routes.student import student_bp, init_db as init_student_db
-from routes.teacher import teacher_bp, init_db as init_teacher_db
 from routes.db import db_bp, init_db as init_db_db
 from routes.llm import llm_bp, init_db as init_llm_db
 from routes.ai import ai_bp                          # 已 import
 
 # Init DB
 init_admin_db(db)
-init_auth_db(db)
-init_student_db(db)
-init_teacher_db(db)
+init_auth_db(db) 
 init_db_db(db, fs)
 init_llm_db(db, fs)
 
@@ -49,8 +46,6 @@ init_llm_db(db, fs)
 app.register_blueprint(ai_bp)                        # 加返呢行！
 app.register_blueprint(admin_bp, url_prefix='/admin')
 app.register_blueprint(auth_bp, url_prefix='/auth')
-app.register_blueprint(student_bp, url_prefix='/student')
-app.register_blueprint(teacher_bp, url_prefix='/teacher')
 app.register_blueprint(db_bp, url_prefix='/db')
 app.register_blueprint(llm_bp, url_prefix='/llm')
 

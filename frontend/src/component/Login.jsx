@@ -28,7 +28,7 @@ function Login({ onLogin }) {
             // Store user info in localStorage and set token as dafult header
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             localStorage.setItem('user', JSON.stringify(user));
-            
+            console.log("saved user info: ", JSON.stringify(localStorage.getItem('user'),null,2))
             setState(prevState => ({ ...prevState, error: '' }));
             
             // Call the onLogin callback to notify parent component

@@ -6,125 +6,96 @@ import MaterialList from './MaterialList';
 import SubjectList from './SubjectList';
 
 function MaterialViewer(props) {
-    const [userMaterials, setUserMaterials] = useState({});
-    const [userSubjects, setUserSubjects] = useState({});
-    /*
-        if teacher => 
-            fetch subjects with teacher id
-            fetch materials with subject ids and teacher id
-            if multiple subjects => show subject list view
-            else => show material list view
-
-        if student => fetch subjects enrolled by student
-            fetch subjects with teacher id
-            fetch materials with subject ids and teacher id
-            if multiple subjects => show subject list view
-            else => show material list view
-
-        if admin => if multiple subjects => show subject list view
-            else => show material list view
-    */
+    const [userMaterials, setUserMaterials] = useState([]);
+    const [userSubjects, setUserSubjects] = useState([]);
 
     useEffect(() => {
         if (props.activeSection !== 'materials') return;
         
         const ac = new AbortController();
-        switch (props.userRole) {
-            case 'teacher':
-                // fetch subjects taught by teacher
-                axios.get('/db/subject', {
+        
+        let subjectParams = {};
+        let materialParams = {};
+
+        // set parameters for different roles
+        if (props.userRole === 'teacher') {
+            subjectParams = { "teacher_id": props.userInfo.id };
+            materialParams = { "uploaded_by": props.userInfo.id };
+        } else if (props.userRole === 'student') {
+            subjectParams = { "student_id": props.userInfo.id };
+        }
+
+        console.log(`/db/subject params: ${JSON.stringify(subjectParams)}`);
+        console.log(`/db/material params: ${JSON.stringify(materialParams)}`);
+
+        // fetch subjects
+        axios.get('/db/subject', {
+            params: subjectParams,
+            signal: ac.signal
+        })
+        .then((response) => {
+            const subjects = response.data.subjects || [];
+            setUserSubjects(subjects);
+            // fetch materials and divide them by subjects
+            Promise.all(subjects.map(s => {
+                console.log(`Fetching materials for subject: ${s.id} (${s.subject})`);
+                return axios.get('/db/material', {
                     params: {
-                        teacher_id: props.userInfo.id
+                        ...materialParams,
+                        subject_id: s.id
+                    }, 
+                    signal: ac.signal
+                })
+                .then((response) => {
+                    console.log(`Materials response for subjectId ${s.id}:`, response.data);
+                    return {
+                        subjectId: s.id,
+                        materials: response.data.materials
                     }
                 })
-                .then((response) => {
-                    setUserSubjects(response.subject);
-                    // fetch materials for subjects taught by that teacher
-                    response.subjects.map(s => {
-                        axios.get('/db/material', {
-                            params: {
-                                uploaded_by: props.userInfo.id,
-                                subject_ids: s.id
-                            }
-                        })
-                        .then((response) => {
-                            setUserMaterials(prevMaterials => ({
-                                ...prevMaterials,
-                                [s.id]: response.materials
-                            }));
-                        })
-                        .catch((error) => {
-                            console.error('Error fetching materials for teacher:', error);
-                        });
-                    });
-                })
                 .catch((error) => {
-                    console.error('Error fetching subjects for teacher:', error);
-                });
-                break;
-            case 'student':
-                // fetch subjects taught by teacher
-                axios.get('/db/subject', {
-                    params: {
-                        student_id: props.userInfo.id
+                    if (error.name != 'CanceledError') {
+                        console.error('Error in Promise: ', error);
                     }
+                    return { subjectId: s.id, materials: [] };
                 })
-                .then((response) => {
-                    setUserSubjects(response.subject);
-                    // fetch materials for subjects the student enrolled
-                    response.subjects.map(s => {
-                        axios.get('/db/material', {
-                            params: {
-                                subject_ids: s.id
-                            }
-                        })
-                        .then((response) => {
-                            setUserMaterials(prevMaterials => ({
-                                ...prevMaterials,
-                                [s.id]: response.materials
-                            }));
-                        })
-                        .catch((error) => {
-                            console.error('Error fetching materials for student:', error);
-                        });
-                    });
-                })
-                .catch((error) => {
-                    console.error('Error fetching subjects for student:', error);
-                });
-                break;
-            case 'admin':
-                // fetch subjects
-                axios.get('/db/subject')
-                .then((response) => {
-                    setUserSubjects(response.subject);
-                    response.subjects.map(s => {
-                        axios.get('/db/material')
-                        .then((response) => {
-                            setUserMaterials(prevMaterials => ({
-                                ...prevMaterials,
-                                [s.id]: response.materials
-                            }));
-                        })
-                        .catch((error) => {
-                            console.error('Error fetching materials for admin:', error);
-                        });
-                    });
-                })
-                .catch((error) => {
-                    console.error('Error fetching subjects for admin:', error);
-                });
-                break;
-        };
+            }))
+            .then(results => {
+                console.log("MaterialViewer material response:", JSON.stringify(results,null,2))
+                const materialsObj = results.reduce((acc, cur) => 
+                    {
+                        acc[cur.subjectId] = cur.materials;
+                        return acc;
+                    }, {});
+                setUserMaterials(materialsObj);
+            })
+            .catch(error => {
+                if (error.name !== 'CanceledError') {
+                    console.error('Error fetching materials:', error);
+                }
+            })
+        })
+        .catch((error) => {
+            if (error.name !== 'CanceledError') {
+                console.error('Error fetching subjects:', error);
+            }
+        });
+
         return () => ac.abort();
     }, [props.activeSection, props.userRole]);
-    
+
+    useEffect(() => {
+        console.log("MaterialViewer userSubjects: ", JSON.stringify(userSubjects, null, 2));
+        console.log("MaterialViewer userMaterials: ", JSON.stringify(userMaterials, null, 2));
+    }, [userSubjects, userMaterials])
+
     return (
         <>
-        {Object.keys(userSubjects).length > 1 ? (
-            <SubjectList {...props} subjects={userSubjects} materials={userMaterials} />
-        ) : (
-            <MaterialList {...props} subject={userSubjects} materials={userMaterials} />
+        {userSubjects.length === 1 ? (
+            
+            <MaterialList {...props} subject={userSubjects[0]} materials={userMaterials[userSubjects[0]?.id] || [] } />
+        ) : (userSubjects.length > 1 ?            
+            <SubjectList {...props} subjects={userSubjects} materials={userMaterials} /> : <div>There is no subject assigned</div>    
         )}
         </>
     )
