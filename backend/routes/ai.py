@@ -5,14 +5,18 @@ from urllib3.util import Retry
 import os
 import re
 import json
-from dotenv import load_dotenv
-
-load_dotenv()
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/api')
 
-DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
-print(f"[DEEPSEEK] API Key loaded: {'YES' if DEEPSEEK_API_KEY else 'NO key in .env'}")
+OPENAI_API_KEY = None
+
+@ai_bp.record_once
+def on_load(state):
+    global OPENAI_API_KEY
+    app = state.app
+    OPENAI_API_KEY = app.config.get("OPENAI_API_KEY")
+
+    print(f"[OPENAI] API Key loaded: {'YES' if OPENAI_API_KEY else 'NO key in .env'}")
 
 BAD_KEYWORDS = [
     "answer", "solution"

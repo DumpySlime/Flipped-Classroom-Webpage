@@ -26,8 +26,7 @@ CORS(app,
      supports_credentials=True,  # Allow cookies/auth headers
      allow_headers=["Content-Type", "Authorization"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],   # 關鍵！允許 cookie + 3005 port
-     resources={r"/api/*": {"origins": "http://localhost:3005"}},
-     supports_credentials=True)
+     resources={r"/api/*": {"origins": "http://localhost:3005"}})
 
 # Import 所有 routes
 from routes.admin import admin_bp, init_db as init_admin_db

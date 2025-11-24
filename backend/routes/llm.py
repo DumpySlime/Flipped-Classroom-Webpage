@@ -34,9 +34,10 @@ def on_load(state):
     OPENAI_API_KEY = app.config.get("OPENAI_API_KEY")
     OPENAI_MODEL = app.config.get("OPENAI_MODEL")
     OPENAI_BASE_URL = app.config.get("OPENAI_BASE_URL")
-print(f"API Key loaded: {'YES' if OPENAI_API_KEY else 'NO key in .env'}")
-print(f"Using model: {OPENAI_MODEL}")
-print(f"Using base URL: {OPENAI_BASE_URL}")
+    
+    print(f"API Key loaded: {'YES' if OPENAI_API_KEY else 'NO key in .env'}")
+    print(f"Using model: {OPENAI_MODEL}")
+    print(f"Using base URL: {OPENAI_BASE_URL}")
 
 def get_session():
     """Create a requests session with retry mechanism"""
