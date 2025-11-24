@@ -262,7 +262,6 @@ const allowedSectionsByRole = {
     materials: 'Materials',
     assignments: 'Assignments',
     'student-analytics': 'Student Analytics',
-    'material-generation': 'Material Generation',
 	chatroom: 'AI Chatroom'
   },
   admin: {
@@ -270,7 +269,6 @@ const allowedSectionsByRole = {
     materials: 'Materials',
     assignments: 'Assignments',
     'student-analytics': 'Student Analytics',
-    'material-generation': 'Material Generation',
     'add-subject': 'Add Subject',
     'add-user': 'Add User',
 	chatroom: 'AI Chatroom'
@@ -281,7 +279,6 @@ const renderContent = () => {
 
 	if (activeSection === 'overview') return <Overview activeSection={activeSection} totalStudents={totalStudents} mockMaterials={mockMaterials} mockGeneratedContent={mockGeneratedContent} mockGeneratedVideos={mockGeneratedVideos}/>;
 	if (activeSection === 'materials') return <MaterialViewer activeSection={activeSection} userInfo={props.userInfo} userRole={props.userRole} mockMaterials={mockMaterials}/>;
-	if (activeSection === 'material-generation') return <MaterialGenerator activeSection={activeSection} />;
 	if (activeSection === 'student-analytics') return <StudentAnalytics activeSection={activeSection} mockStudentProgress={mockStudentProgress}/>;
 	if (activeSection === 'assignments') return <Assignment activeSection={activeSection} mockAssignments={mockAssignments} mockStudentProgress={mockStudentProgress}/>;
 	if (activeSection === 'add-subject') return <AddSubject activeSection={activeSection} />;
