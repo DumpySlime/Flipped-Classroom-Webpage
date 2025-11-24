@@ -2,7 +2,6 @@ from flask import Blueprint, request, jsonify, Response
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
-import os
 import re
 import json
 
@@ -68,8 +67,8 @@ def ai_chat():
         mimetype='text/event-stream'
 )
 
-    if not DEEPSEEK_API_KEY:
-        return jsonify({'error': 'DEEPSEEK_API_KEY missing in .env'}), 400
+    if not OPENAI_API_KEY:
+        return jsonify({'error': 'OPENAI_API_KEY missing in .env'}), 400
 
     def generate():
         try:
@@ -93,7 +92,7 @@ def ai_chat():
             with requests.post(
                 "https://api.deepseek.com/chat/completions",
                 json=payload,
-                headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
+                headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
                 stream=True,
                 timeout=90
             ) as resp:
