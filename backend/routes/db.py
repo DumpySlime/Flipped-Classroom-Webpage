@@ -150,7 +150,7 @@ def get_material():
                 "upload_date": m.get("upload_date").strftime("%Y/%m/%d") if m.get("upload_date") else None,
                 "content_type": m.get("content_type")
             })
-        print('Materials:', materials)
+        print(f'Materials of {subject_id}:', materials)
         if not materials:
             return jsonify({"message": "No materials found"}), 404
         return jsonify({"materials": materials}), 200
@@ -161,13 +161,18 @@ def get_material():
 @db_bp.route('/material-delete', methods=['DELETE'])
 @jwt_required()
 def delete_material():
+    print("Received request to delete material")
     try:
         material_id = request.args.get('material_id')
+        print(f"Received request to delete material with id: {material_id}")
         if not material_id:
+            print("material_id is missing in request")
             return {"error": "material_id is required"}, 400
         mat = db.materials.find_one({'_id': ObjectId(material_id)})
         if not mat:
+            print(f"Material with id {material_id} not found")
             return {"error": "Material not found"}, 404
+        print(f"Deleting file with id {mat['file_id']}")
         fs.delete(mat['file_id'])
         db.materials.delete_one({'_id': ObjectId(material_id)})
         return jsonify({"message": "Material deleted successfully"}), 200

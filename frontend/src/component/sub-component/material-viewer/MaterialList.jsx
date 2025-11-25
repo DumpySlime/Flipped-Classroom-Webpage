@@ -18,7 +18,7 @@ function MaterialList(props) {
 
     function deleteMaterial(matId) {
         const ac = new AbortController();
-        axios.delete('/material-delete', {
+        axios.delete('/db/material-delete', {
             params: {
                 material_id: matId
             }, 
@@ -120,10 +120,12 @@ function MaterialList(props) {
                                 <>
                                 <button className="button" onClick={(e) => {
                                     e.stopPropagation(); 
+                                    console.log("Deleting material id:", m.id);
                                     deleteMaterial(m.id);
                                 }}>Delete</button>
                                 <button className="button" onClick={(e) => {
                                     e.stopPropagation(); 
+                                    console.log("Editing material id:", m.id);
                                     handleEditMaterial(m)
                                 }}>Edit</button>
                                 </>

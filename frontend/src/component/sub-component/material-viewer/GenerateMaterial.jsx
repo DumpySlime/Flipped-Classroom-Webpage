@@ -19,7 +19,7 @@ function GenerateMaterial({subject, onClose}) {
         e.preventDefault();
 
         console.log('Form submitted with values:', values);
-        axios.get('/llm/api/query', values)
+        axios.get('/llm/api/query/material', values)
         .then(function (response) {
             console.log(`User added successfully: ${response.data}`);
             setValues({

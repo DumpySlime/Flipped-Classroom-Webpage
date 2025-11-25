@@ -7,9 +7,6 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 from datetime import datetime
-from dotenv import load_dotenv
-
-load_dotenv()
 
 db = None
 fs = None
@@ -48,7 +45,7 @@ def get_session():
     session.mount('https://', adapter)
     return session
 
-@llm_bp.route('/llm/query', methods=['POST'])
+@llm_bp.route('/api/query/material', methods=['POST'])
 @jwt_required()
 def llm_query():
     """API endpoint for generating teaching materials"""
