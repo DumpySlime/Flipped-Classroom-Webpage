@@ -19,7 +19,11 @@ function GenerateMaterial({subject, onClose}) {
         e.preventDefault();
 
         console.log('Form submitted with values:', values);
-        axios.get('/llm/api/query/material', values)
+        axios.post('/llm/api/query/material', values, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        })
         .then(function (response) {
             console.log(`User added successfully: ${response.data}`);
             setValues({
@@ -70,6 +74,17 @@ function GenerateMaterial({subject, onClose}) {
                 </div>
                 <button className="submit-button" type="submit">Generate</button>
             </form>
+            <br/>
+            <br/>
+            <div className="ai-generator">
+                <h3>Your Generated </h3>
+                <ul>
+                    <li>Select a topic from the dropdown list related to the subject.</li>
+                    <li>Optionally, provide specific instructions or requirements for the generated material in the description box.</li>
+                    <li>Click the "Generate" button to submit your request.</li>
+                    <li>The system will process your request and generate the material based on the provided topic and description.</li>
+                </ul>
+            </div>
         </div>
     );
 }
