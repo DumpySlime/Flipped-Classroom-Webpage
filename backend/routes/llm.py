@@ -58,7 +58,7 @@ def llm_query():
         print(f"Request from user: {current_user_id}")
         
         # Get data from request body
-        data = request.get_json()
+        data = request.form.to_dict()
         if not data:
             print(f"Error: No JSON data provided in request")
             return jsonify({"error": "No data provided in request body"}), 400
