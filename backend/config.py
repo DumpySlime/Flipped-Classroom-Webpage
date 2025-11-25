@@ -26,3 +26,8 @@ class Config:
     # Office Web Viewer
     OFFICE_SECRET_KEY = os.environ.get("OFFICE_SECRET_KEY")
     PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL")
+    
+    # XF PPTv2
+    XF_PPT_APP_ID = os.environ.get("XF_PPT_APP_ID")
+    XF_PPT_SECRET = os.environ.get("XF_PPT_SECRET")
+    XF_PPT_BASE_URL = os.environ.get("XF_PPT_BASE_URL")
