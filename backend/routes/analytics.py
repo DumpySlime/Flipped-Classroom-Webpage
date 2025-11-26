@@ -111,7 +111,6 @@ def get_student_analytics():
         
         if not students:
             print("INFO: 'students' collection is empty. Using mock data.")
-            students = MOCK_STUDENTS
 
         # Serialize documents for JSON response
         results = [serialise_doc(s.copy()) for s in students]
@@ -152,8 +151,7 @@ def generate_ai_report():
 
         # 2. Only check mock data if REAL data wasn't found
         if not student_data:
-            print(f"Student {student_id} not found in DB, checking mock...")
-            student_data = next((s for s in MOCK_STUDENTS if s['_id'] == student_id), None)
+            print(f"Student {student_id} not found in DB.")
 
     # ... rest of the function ...
 
