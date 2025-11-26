@@ -29,17 +29,12 @@ XF_PPT_APP_ID = None
 XF_PPT_SECRET = None
 XF_PPT_BASE_URL = "https://zwapi.xfyun.cn"
 
-DEEPSEEK_API_KEY = None
-DEEPSEEK_MODEL = None
-DEEPSEEK_BASE_URL = None
-
 subject_id = None
 
 @llm_bp.record_once
 def on_load(state):
     """Loads configuration variables from Flask app config."""
     global XF_PPT_APP_ID, XF_PPT_SECRET, XF_PPT_BASE_URL
-    global DEEPSEEK_API_KEY, DEEPSEEK_MODEL, DEEPSEEK_BASE_URL
     
     app = state.app
     
@@ -50,15 +45,6 @@ def on_load(state):
     
     print(f"XF PPT AppId loaded: {'YES' if XF_PPT_APP_ID else 'NO XF_PPT_APP_ID'}")
     print(f"XF PPT Base URL: {XF_PPT_BASE_URL}")
-
-    # DeepSeek Configuration
-    DEEPSEEK_API_KEY = app.config.get("DEEPSEEK_API_KEY")
-    DEEPSEEK_MODEL = app.config.get("DEEPSEEK_MODEL")
-    DEEPSEEK_BASE_URL = app.config.get("DEEPSEEK_BASE_URL")
-    
-    print(f"DeepSeek API Key loaded: {'YES' if DEEPSEEK_API_KEY else 'NO key in .env'}")
-    print(f"Using DeepSeek model: {DEEPSEEK_MODEL}")
-    print(f"Using DeepSeek base URL: {DEEPSEEK_BASE_URL}")
 
 # --- Utility Functions ---
 
