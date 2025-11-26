@@ -22,7 +22,7 @@ def init_db(db_instance, fs_instance):
 
 # --- Configuration & Blueprint Setup ---
 
-llm_bp = Blueprint('llm', __name__, url_prefix='/api')
+llm_bp = Blueprint('llm', __name__)
 
 # Global configuration variables initialized in on_load
 XF_PPT_APP_ID = None
@@ -143,7 +143,7 @@ def ppt_create():
         instruction = (data.get("instruction") or data.get("description") or "").strip()
         template_id = (data.get("templateId") or "").strip()
         # Default author to 'SmartDoc', language to 'en'
-        author = (data.get("author") or "").strip() or "SmartDoc" 
+        author = (data.get("username") or "").strip() or "SmartDoc" 
         language = (data.get("language") or "en").strip()      # Default to English
         # Store subject_id for uploading files to db/material-add
         global subject_id
@@ -163,9 +163,7 @@ def ppt_create():
             if not query_parts:
                  return jsonify({"error": "Subject and topic are required or a direct query must be provided"}), 400
                  
-            query = ". ".join(query_parts)
-        if not query:
-            return jsonify({"error": "Subject and topic are required"}), 400      
+            query = ". ".join(query_parts)  
         form = {
             "query": query,
             "language": language,
@@ -325,6 +323,19 @@ def save_ppt_file_to_db(user_id: str, subject: str, topic: str, ppt_url: str, fi
     print(f"Attempting to download and save PPT file from: {ppt_url}")
     
     # Set up URL and headers for internal POST to /db/material-add
+    
+        
+    # use subject_id from global if available
+    global subject_id 
+    if not subject_id:
+        # Find corresponding subject_id
+        print("global subject_id not set, attempting to find subject in database")
+        try:
+            subject_doc = db.subjects.find_one({"subject": subject})
+            if subject_doc and "_id" in subject_doc:
+                subject_id = subject_doc["_id"]
+        except Exception as db_err:
+            print(f"Warning: Error finding subject in database: {str(db_err)}")
     try:
         base = request.host_url.rstrip('/')
         auth_hdr = {}
@@ -358,18 +369,6 @@ def save_ppt_file_to_db(user_id: str, subject: str, topic: str, ppt_url: str, fi
             content_type='application/vnd.openxmlformats-officedocument.presentationml.presentation',
             upload_date=datetime.utcnow()
         )
-        
-        # use subject_id from global if available
-        global subject_id 
-        if not subject_id:
-            # Find corresponding subject_id
-            print("global subject_id not set, attempting to find subject in database")
-            try:
-                subject_doc = db.subjects.find_one({"subject": subject})
-                if subject_doc and "_id" in subject_doc:
-                    subject_id = subject_doc["_id"]
-            except Exception as db_err:
-                print(f"Warning: Error finding subject in database: {str(db_err)}")
         
         # Make the POST request through /db/material-add
         try:
