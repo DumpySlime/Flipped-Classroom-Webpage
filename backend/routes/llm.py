@@ -179,9 +179,7 @@ def ppt_create():
                  
             query = ". ".join(query_parts)
         if not query:
-            return jsonify({"error": "Subject and topic are required"}), 400
-
-      
+            return jsonify({"error": "Subject and topic are required"}), 400      
         form = {
             "query": query,
             "language": language,
@@ -336,10 +334,26 @@ def save_ppt_task(user_id: str, sid: str, subject: str, topic: str, instruction:
         return None
 
 
-def save_ppt_file_to_db(user_id, subject, topic, ppt_url, filename="simpleppt.pptx"):
+def save_ppt_file_to_db(user_id: str, subject: str, topic: str, ppt_url: str, filename: str):
     """Download and save PPT file to MongoDB GridFS and create record only in materials collection"""
     print(f"Attempting to download and save PPT file from: {ppt_url}")
     
+    # Set up URL and headers for internal POST to /db/material-add
+    try:
+        base = request.host_url.rstrip('/')
+        auth_hdr = {}
+        auth = request.headers.get("Authorization")
+        if auth:
+            auth_hdr["Authorization"] = auth
+        
+        session = get_session()
+        url = f"{base}/db/material-add"
+
+        print(f"Preparing to post material via /db/material-add route at {url}")
+        print(f"Subject ID: {subject_id}, Topic: {topic}, User ID: {user_id}")
+    except Exception as e:
+        raise Exception(f"Error preparing url: {str(e)}")
+
     try:
         # Validate database and GridFS connection
         if not db or not fs:
@@ -424,8 +438,8 @@ def save_ppt_file_to_db(user_id, subject, topic, ppt_url, filename="simpleppt.pp
         
     except Exception as e:
         print(f"Error saving PPT file to database: {str(e)}")
-        return None
-
+        return None  
+   
 # Add a GET endpoint for testing
 @llm_bp.route('/llm/query', methods=['GET'])
 @jwt_required()
