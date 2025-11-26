@@ -9,6 +9,7 @@ function GenerateMaterial({subject, onClose}) {
         topic: '',
         description: '',
         subject: subject?.subject || '',
+        subject_id: subject?.id || '',
     })
 
     const handleChanges = (e) => {
@@ -30,6 +31,7 @@ function GenerateMaterial({subject, onClose}) {
                 topic: '',
                 instruction: '',
                 subject: subject?.subject || '',
+                subject_id: subject?.id || '',
             })
             if (onClose) onClose();
         })

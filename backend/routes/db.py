@@ -51,14 +51,17 @@ def add_material():
         subject_id = request.form.get('subject_id')
         topic = request.form.get('topic')
 
+        try:
+            user_id = request.form.get('user_id')
+        except Exception as e:
+            print("No user_id in form, getting from token")
+            user_id = getUserById(get_jwt_identity())['_id']  
         if not f:
             return {"error": "file is required"}, 400
         if not subject_id:
             return {"error": "subject_id is required"}, 400
         if not topic:
             return {"error": "topic is required"}, 400
-
-        user_id = getUserById(get_jwt_identity())['_id']
 
         metadata = {
             'subject_id': ObjectId(subject_id),

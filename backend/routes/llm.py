@@ -1,8 +1,5 @@
 from flask import Blueprint, request, jsonify, Response
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from gridfs import GridFS
-import os
-import json
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
@@ -26,6 +23,8 @@ llm_bp = Blueprint('llm', __name__, url_prefix='/api')
 XF_PPT_APP_ID = None
 XF_PPT_SECRET = None
 XF_PPT_BASE_URL = "https://zwapi.xfyun.cn"
+
+subject_id = None
 
 @llm_bp.record_once
 def on_load(state):
@@ -121,13 +120,16 @@ def ppt_create():
         current_user_id = get_jwt_identity()
         print(f"PPT create request from user: {current_user_id}")
 
-        data = request.get_json(silent=True) or request.form.to_dict() or {}
+        data = request.form.to_dict()
 
         # Get parameters from frontend
         subject = (data.get("subject") or "").strip()
         topic = (data.get("topic") or "").strip()
-        instruction = (data.get("instruction") or data.get("description") or "").strip()
-        
+        instruction = (data.get("instruction") or data.get("description") or "").strip()             
+        # Store subject_id for uploading files to db/material-add
+        global subject_id
+        subject_id = (data.get('subject_id') or "")
+
         # Construct query content
         query_parts = []
         if subject:
@@ -146,7 +148,6 @@ def ppt_create():
 
         if not query:
             return jsonify({"error": "Subject and topic are required"}), 400
-
       
         form = {
             "query": query,
@@ -233,52 +234,6 @@ def ppt_progress():
         print(f"Error querying PPT progress: {e}")
         return jsonify({"error": str(e)}), 500
 
-
-def save_material_to_db(subject, topic, content, user_id):
-    """Save generated material to database"""
-    print(f"Attempting to save generated material to database")
-    
-    try:
-        # Validate database connection
-        if not db:
-            print("Warning: Database not initialized, cannot save material")
-            return None
-        
-        safe_topic = "".join(c if c.isalnum() or c in '_-' else '_' for c in topic)
-        if not safe_topic:
-            safe_topic = "untitled"
-        
-        # Find subject_id 
-        subject_id = None
-        try:
-            subject_doc = db.subjects.find_one({"subject": subject})
-            if subject_doc and "_id" in subject_doc:
-                subject_id = subject_doc["_id"]
-        except Exception as db_err:
-            print(f"Warning: Error finding subject in database: {str(db_err)}")
-        
-        # Create material document
-        material_doc = {
-            "subject": subject,
-            "subject_id": subject_id,
-            "topic": topic,
-            "content": content,
-            "uploaded_by": user_id,
-            "upload_date": datetime.utcnow(),
-            "type": "generated",
-            "filename": f"{safe_topic[:50]}_generated_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.md"
-        }
-        
-        # Insert into database
-        result = db.materials.insert_one(material_doc)
-        print(f"Material successfully saved to database with ID: {result.inserted_id}")
-        return result.inserted_id
-        
-    except Exception as e:
-        print(f"Error saving material to database: {str(e)}")
-        return None
-        
-
 def save_ppt_task(user_id, sid, subject, topic, instruction, template_id, author, language):
     """Save PPT task information to database"""
     print(f"Attempting to save PPT task to database: {sid}")
@@ -317,6 +272,22 @@ def save_ppt_file_to_db(user_id, subject, topic, ppt_url, filename="simpleppt.pp
     """Download and save PPT file to MongoDB GridFS and create record only in materials collection"""
     print(f"Attempting to download and save PPT file from: {ppt_url}")
     
+    # Set up URL and headers for internal POST to /db/material-add
+    try:
+        base = request.host_url.rstrip('/')
+        auth_hdr = {}
+        auth = request.headers.get("Authorization")
+        if auth:
+            auth_hdr["Authorization"] = auth
+        
+        session = get_session()
+        url = f"{base}/db/material-add"
+
+        print(f"Preparing to post material via /db/material-add route at {url}")
+        print(f"Subject ID: {subject_id}, Topic: {topic}, User ID: {user_id}")
+    except Exception as e:
+        raise Exception(f"Error preparing url: {str(e)}")
+
     try:
         # Validate database and GridFS connection
         if not db or not fs:
@@ -336,40 +307,73 @@ def save_ppt_file_to_db(user_id, subject, topic, ppt_url, filename="simpleppt.pp
             upload_date=datetime.utcnow()
         )
         
-        # Find corresponding subject_id
-        subject_id = None
+        # use subject_id from global if available
+        global subject_id 
+        if not subject_id:
+            # Find corresponding subject_id
+            print("global subject_id not set, attempting to find subject in database")
+            try:
+                subject_doc = db.subjects.find_one({"subject": subject})
+                if subject_doc and "_id" in subject_doc:
+                    subject_id = subject_doc["_id"]
+            except Exception as db_err:
+                print(f"Warning: Error finding subject in database: {str(db_err)}")
+        
+        # Make the POST request through /db/material-add
         try:
-            subject_doc = db.subjects.find_one({"subject": subject})
-            if subject_doc and "_id" in subject_doc:
-                subject_id = subject_doc["_id"]
-        except Exception as db_err:
-            print(f"Warning: Error finding subject in database: {str(db_err)}")
-        
-        # Create material document for materials collection
-        material_doc = {
-            "subject": subject,
-            "subject_id": subject_id,
-            "topic": topic,
-            "content": f"PPT presentation: {topic}",
-            "uploaded_by": user_id,
-            "upload_date": datetime.utcnow(),
-            "type": "ppt",
-            "filename": filename,
-            "file_id": file_id,  # Reference to the GridFS file
-            "size_bytes": response.headers.get('content-length', 0)
-        }
-        
-        # Insert to materials collection
-        material_result = db.materials.insert_one(material_doc)
-        print(f"PPT file successfully saved to materials collection with ID: {material_result.inserted_id}")
-        
-        # Return the materials collection ID
-        return material_result.inserted_id
+            # Prepare file object
+            filename = f"{subject[:50]}_{topic[:50]}_generated_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pptx"
+            files = {
+                "file": (filename, response.raw, "application/vnd.openxmlformats-officedocument.presentationml.presentation")
+            }
+
+            data = {
+                "subject_id": subject_id,
+                "topic": topic,
+                "user_id": user_id
+            }
+
+            resp = session.post(
+                url,
+                files=files,
+                data=data,
+                headers=auth_hdr,
+                timeout=30
+            )
+            resp.raise_for_status()
+            material_result = resp
+
+            print(f"Material successfully posted via /db/material-add: {material_result}")
+
+            '''# Create material document for materials collection
+            material_doc = {
+                "subject": subject,
+                "subject_id": subject_id,
+                "topic": topic,
+                "content": f"PPT presentation: {topic}",
+                "uploaded_by": user_id,
+                "upload_date": datetime.utcnow(),
+                "type": "ppt",
+                "filename": filename,
+                "file_id": file_id,  # Reference to the GridFS file
+                "size_bytes": response.headers.get('content-length', 0)
+            }
+            # Insert to materials collection
+            material_result = db.materials.insert_one(material_doc)'''
+            
+            subject_id = None  # Reset global subject_id after use
+
+            print(f"PPT file successfully saved to materials collection with ID: {material_result.inserted_id}")
+            
+            # Return the materials collection ID
+            return material_result.inserted_id
+        except Exception as e:
+            raise Exception(f"Failed to save material via /db/material-add route: {str(e)}")
         
     except Exception as e:
         print(f"Error saving PPT file to database: {str(e)}")
-        return None
-
+        return None  
+   
 # Add a GET endpoint for testing
 @llm_bp.route('/llm/query', methods=['GET'])
 @jwt_required()
