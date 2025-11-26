@@ -74,25 +74,29 @@ def _generate_llm_report_content(prompt, model="deepseek-chat"):
         return f"Error communicating with AI service: {e}. Details: {error_details}"
 
 
-# --- Helper Function for Data Serialisation ---
-def serialise_doc(doc):
-    """Converts a MongoDB document (including ObjectId) or mock doc to a serializable dictionary."""
-    if doc:
-        # Check if the ID is an ObjectId before converting
-        if isinstance(doc.get('_id'), ObjectId):
-            doc['id'] = str(doc.pop('_id'))
-        else:
-            # If it's already a string (like 'S001'), just rename it
-            doc['id'] = doc.pop('_id')
-        return doc
-    return None
+# In analytics.py
 
-# --- Mock Student Data Setup ---
-MOCK_STUDENTS = [
-    { "_id": 'S001', "name": "Alice Smith", "progress": 85, "avgQuizScore": 92, "aiInteractions": 15, "lastActivity": "2 hours ago", "email": "alice@school.edu" },
-    { "_id": 'S002', "name": "Bob Johnson", "progress": 45, "avgQuizScore": 68, "aiInteractions": 4, "lastActivity": "2 days ago", "email": "bob@school.edu" },
-    { "_id": 'S003', "name": "Charlie Brown", "progress": 95, "avgQuizScore": 98, "aiInteractions": 25, "lastActivity": "30 minutes ago", "email": "charlie@school.edu" },
-]
+from datetime import datetime # Add this import at the top
+
+def serialise_doc(doc):
+    """Converts a MongoDB document to a serializable dictionary."""
+    if not doc:
+        return None
+        
+    # 1. Handle ObjectId -> String
+    if isinstance(doc.get('_id'), ObjectId):
+        doc['id'] = str(doc.pop('_id'))
+    else:
+        # If _id is already a string (e.g., "S001"), just rename it to id
+        doc['id'] = str(doc.pop('_id'))
+        
+    # 2. Handle Date Objects (Crucial for MongoDB dates)
+    # This prevents "Object of type datetime is not JSON serializable" errors
+    for key, value in doc.items():
+        if isinstance(value, datetime):
+            doc[key] = value.isoformat() # Convert date to string (ISO 8601)
+
+    return doc
 
 # Endpoint to fetch student analytics data (list view)
 @analytics_bp.route('/students', methods=['GET'])
@@ -134,21 +138,24 @@ def generate_ai_report():
     student_data = None
     
     try:
-        # 1. Try to fetch data using both ObjectId and string ID formats
-        try:
-            # Check for real Mongo ID (24-char hex string)
-            if len(student_id) == 24 and student_id.isalnum():
-                mongo_id = ObjectId(student_id)
-                student_data = db.students.find_one({"_id": mongo_id})
-        except Exception:
-            pass # Ignore conversion error, proceed to check mock data
+        # 1. Try to find student in the Database first
+        mongo_id = None
+        
+        # If it looks like a valid Mongo ObjectId, try converting it
+        if ObjectId.is_valid(student_id):
+            mongo_id = ObjectId(student_id)
+            student_data = db.students.find_one({"_id": mongo_id})
+        
+        # If not found by ObjectId, try searching as a string (e.g., "S001")
+        if not student_data:
+            student_data = db.students.find_one({"_id": student_id})
 
-        # 2. Check mock data if real data wasn't found
+        # 2. Only check mock data if REAL data wasn't found
         if not student_data:
+            print(f"Student {student_id} not found in DB, checking mock...")
             student_data = next((s for s in MOCK_STUDENTS if s['_id'] == student_id), None)
-            
-        if not student_data:
-            return jsonify({"error": f"Failed to generate report: Student data not found for ID {student_id}. Ensure data exists in the 'students' collection or the mock list."}), 404
+
+    # ... rest of the function ...
 
         # 3. Prepare data for the LLM
         summary_data = {

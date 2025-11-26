@@ -97,6 +97,24 @@ const renderMarkdown = (markdown) => {
     return elements;
 };
 
+// Helper to format ISO dates (from DB) into relative time
+const formatLastActivity = (dateString) => {
+    // If it's already a simple string like "2 hours ago", just return it
+    if (!dateString || !dateString.includes('T') && !dateString.includes('-')) {
+        return dateString; 
+    }
+
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    
+    if (isNaN(diffInSeconds)) return dateString; // Fallback
+
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} mins ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    return `${Math.floor(diffInSeconds / 86400)} days ago`;
+};
 
 const StudentAnalytics = (props) => {
     const [studentData, setStudentData] = useState(mockData); // Initialize with mockData
@@ -248,8 +266,7 @@ const StudentAnalytics = (props) => {
                                     
                                     <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.avgQuizScore}%</td>
                                     <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.aiInteractions}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.lastActivity}</td>
-                                    
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatLastActivity(student.lastActivity)}</td>                     
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <button
                                             onClick={() => handleGenerateReport(student.id, student.name)}
