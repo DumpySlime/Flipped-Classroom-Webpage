@@ -8,6 +8,7 @@ import base64
 import hashlib
 import hmac
 import time
+from bson.objectid import ObjectId
 
 # --- Global DB/FS Handlers ---
 db = None
@@ -28,8 +29,6 @@ llm_bp = Blueprint('llm', __name__)
 XF_PPT_APP_ID = None
 XF_PPT_SECRET = None
 XF_PPT_BASE_URL = "https://zwapi.xfyun.cn"
-
-subject_id = None
 
 @llm_bp.record_once
 def on_load(state):
@@ -85,6 +84,8 @@ def xf_ppt_headers() -> dict:
     ).digest()
     signature = base64.b64encode(raw_hmac).decode("utf-8")
 
+    print(f"[Auth Debug] appId={XF_PPT_APP_ID}, ts={ts}, md5={md5_text}, sig={signature[:20]}...")
+
     return {
         "appId": XF_PPT_APP_ID,
         "timestamp": str(ts),
@@ -100,6 +101,17 @@ def xf_post_multipart(path: str, data: dict | None = None, files: dict | None = 
     session = get_session() 
     headers = xf_ppt_headers() 
     url = f"{XF_PPT_BASE_URL}{path}"
+
+    if files:
+        # If files present, let requests auto-set multipart
+        headers.pop('Content-Type', None)  # Remove if exists, let requests set it
+    else:
+        # For form-urlencoded data
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
+
+    print(f"POST {url}")
+    print(f"Headers: {headers}")
+    print(f"Data: {data}")
 
     resp = session.post(url, data=data, files=files, headers=headers, timeout=120)
     resp.raise_for_status()
@@ -146,7 +158,6 @@ def ppt_create():
         author = (data.get("username") or "").strip() or "SmartDoc" 
         language = (data.get("language") or "en").strip()      # Default to English
         # Store subject_id for uploading files to db/material-add
-        global subject_id
         subject_id = (data.get('subject_id') or "")
 
         # Construct 'query' for the XF API (prefer explicit query or combine parts)
@@ -172,7 +183,7 @@ def ppt_create():
         if template_id:
             form["templateId"] = template_id
 
-        print(f"Calling XF PPT create with query: {query[:50]}...")
+        print(f"Calling XF PPT create with query: {query}")
 
         try:
             result = xf_post_multipart("/api/ppt/v2/create", data=form)
@@ -184,7 +195,7 @@ def ppt_create():
         
         # Save PPT task regardless of XF's 'flag' or specific codes, as long as sid exists
         if result.get("data", {}).get("sid"):
-            save_ppt_task(current_user_id, result["data"]["sid"], subject, topic, instruction, template_id, author, language)
+            save_ppt_task(current_user_id, result["data"]["sid"], subject, topic, instruction, template_id, author, language, subject_id)
         
         return jsonify(result), 200
 
@@ -226,8 +237,10 @@ def ppt_progress():
                 
                 print(f"PPT generation completed, attempting to save file: {filename}")
                 
+                subject_id = ppt_task.get("subject_id")
+
                 # Save to GridFS and materials collection
-                material_id = save_ppt_file_to_db(current_user_id, subject, topic, ppt_url, filename)
+                material_id = save_ppt_file_to_db(current_user_id, subject, topic, ppt_url, filename, subject_id)
                 
                 if material_id:
                     # Only update the task if the material was successfully saved
@@ -241,65 +254,21 @@ def ppt_progress():
     except Exception as e:
         print(f"Error querying PPT progress: {e}")
         return jsonify({"error": f"Error querying PPT progress: {str(e)}"}), 500
+ 
 
-
-def save_material_to_db(subject, topic, content, user_id):
-    """Save generated material to database"""
-    print(f"Attempting to save generated material to database")
-    
-    try:
-        # Validate database connection
-        if not db:
-            print("Warning: Database not initialized, cannot save material")
-            return None
-        
-        safe_topic = "".join(c if c.isalnum() or c in '_-' else '_' for c in topic)
-        if not safe_topic:
-            safe_topic = "untitled"
-        
-        # Find subject_id 
-        subject_id = None
-        try:
-            subject_doc = db.subjects.find_one({"subject": subject})
-            if subject_doc and "_id" in subject_doc:
-                subject_id = subject_doc["_id"]
-        except Exception as db_err:
-            print(f"Warning: Error finding subject in database: {str(db_err)}")
-        
-        # Create material document
-        material_doc = {
-            "subject": subject,
-            "subject_id": subject_id,
-            "topic": topic,
-            "content": content,
-            "uploaded_by": user_id,
-            "upload_date": datetime.utcnow(),
-            "type": "generated",
-            "filename": f"{safe_topic[:50]}_generated_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.md"
-        }
-        
-        # Insert into database
-        result = db.materials.insert_one(material_doc)
-        print(f"Material successfully saved to database with ID: {result.inserted_id}")
-        return result.inserted_id
-        
-    except Exception as e:
-        print(f"Error saving material to database: {str(e)}")
-        return None
-        
-
-def save_ppt_task(user_id: str, sid: str, subject: str, topic: str, instruction: str, template_id: str, author: str, language: str):
+def save_ppt_task(user_id: str, sid: str, subject: str, topic: str, instruction: str, template_id: str, author: str, language: str, subject_id: str):
     """Save PPT task information to database"""
     print(f"Attempting to save PPT task to database: {sid}")
     
     try:
-        if not db:
+        if db is None:
             print("Warning: Database not initialized, cannot save PPT task")
             return None
         
         ppt_task_doc = {
             "sid": sid,
             "subject": subject,
+            "subject_id": subject_id,
             "topic": topic,
             "instruction": instruction,
             "template_id": template_id,
@@ -318,7 +287,7 @@ def save_ppt_task(user_id: str, sid: str, subject: str, topic: str, instruction:
         return None
 
 
-def save_ppt_file_to_db(user_id: str, subject: str, topic: str, ppt_url: str, filename: str):
+def save_ppt_file_to_db(user_id: str, subject: str, topic: str, ppt_url: str, filename: str, subject_id: str):
     """Download and save PPT file to MongoDB GridFS and create record only in materials collection"""
     print(f"Attempting to download and save PPT file from: {ppt_url}")
     
@@ -326,7 +295,6 @@ def save_ppt_file_to_db(user_id: str, subject: str, topic: str, ppt_url: str, fi
     
         
     # use subject_id from global if available
-    global subject_id 
     if not subject_id:
         # Find corresponding subject_id
         print("global subject_id not set, attempting to find subject in database")
@@ -353,33 +321,32 @@ def save_ppt_file_to_db(user_id: str, subject: str, topic: str, ppt_url: str, fi
 
     try:
         # Validate database and GridFS connection
-        if not db or not fs:
-            print("Warning: Database or GridFS not initialized, cannot save PPT file")
-            return None
+        #if not db or not fs:
+        #    print("Warning: Database or GridFS not initialized, cannot save PPT file")
+        #    return None
         
         # Download PPT file
-        session = get_session()
         response = session.get(ppt_url, stream=True, timeout=300)
         response.raise_for_status() # Check for bad status codes
         
         # Save to GridFS
-        file_id = fs.put(
-            response.raw,
-            filename=filename,
-            content_type='application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            upload_date=datetime.utcnow()
-        )
+        #file_id = fs.put(
+        #    response.raw,
+        #    filename=filename,
+        #    content_type='application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        #    upload_date=datetime.utcnow()
+        #)
         
         # Make the POST request through /db/material-add
         try:
             # Prepare file object
-            filename = f"{subject[:50]}_{topic[:50]}_generated_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pptx"
+            #filename = f"{subject[:50]}_{topic[:50]}_generated_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pptx"
             files = {
-                "file": (filename, response.raw, "application/vnd.openxmlformats-officedocument.presentationml.presentation")
+                "file": (filename, response.content, "application/vnd.openxmlformats-officedocument.presentationml.presentation")
             }
 
             data = {
-                "subject_id": subject_id,
+                "subject_id": str(subject_id) if subject_id else "",
                 "topic": topic,
                 "user_id": user_id
             }
@@ -392,7 +359,7 @@ def save_ppt_file_to_db(user_id: str, subject: str, topic: str, ppt_url: str, fi
                 timeout=30
             )
             resp.raise_for_status()
-            material_result = resp
+            material_result = resp.json()
 
             print(f"Material successfully posted via /db/material-add: {material_result}")
 
@@ -412,12 +379,10 @@ def save_ppt_file_to_db(user_id: str, subject: str, topic: str, ppt_url: str, fi
             # Insert to materials collection
             material_result = db.materials.insert_one(material_doc)'''
             
-            subject_id = None  # Reset global subject_id after use
-
-            print(f"PPT file successfully saved to materials collection with ID: {material_result.inserted_id}")
+            material_id = material_result.get("material_id") or material_result.get("_id")
+            print(f"PPT file successfully saved via /db/material-add with ID: {material_id}")
             
-            # Return the materials collection ID
-            return material_result.inserted_id
+            return material_id
         except Exception as e:
             raise Exception(f"Failed to save material via /db/material-add route: {str(e)}")
         
@@ -445,3 +410,45 @@ def llm_query_get():
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@llm_bp.route('/test/xf-auth', methods=['POST'])
+@jwt_required()
+def test_xf_auth():
+    """Test endpoint to verify XF API authentication without creating PPT"""
+    try:
+        print("=== Testing XF API Authentication ===")
+        
+        # Call xf_post_multipart with minimal test data
+        test_data = {
+            "query": "Test query",
+            "language": "en",
+            "author": "TestUser"
+        }
+        
+        print(f"Calling xf_post_multipart with: {test_data}")
+        result = xf_post_multipart("/api/ppt/v2/create", data=test_data)
+        
+        print(f"✅ Success! XF API response: {result}")
+        return jsonify({
+            "status": "success",
+            "message": "XF API authentication is working",
+            "response": result
+        }), 200
+        
+    except requests.exceptions.HTTPError as e:
+        print(f"❌ HTTP Error: {e}")
+        return jsonify({
+            "status": "error",
+            "message": f"HTTP Error: {str(e)}",
+            "error_code": 405 if "405" in str(e) else "unknown"
+        }), 500
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500

@@ -52,7 +52,7 @@ def add_material():
         topic = request.form.get('topic')
 
         try:
-            user_id = request.form.get('user_id')
+            user_id = ObjectId(request.form.get('user_id'))
         except Exception as e:
             print("No user_id in form, getting from token")
             user_id = getUserById(get_jwt_identity())['_id']  

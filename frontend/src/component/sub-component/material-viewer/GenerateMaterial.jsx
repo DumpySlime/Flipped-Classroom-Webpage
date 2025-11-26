@@ -3,14 +3,16 @@ import '../../../styles.css';
 import '../../../dashboard.css';
 import axios from 'axios';
 
-function GenerateMaterial({subject, onClose}) {
+function GenerateMaterial({subject, username, onClose}) {
     const [topics, setTopics] = useState([])
     const [values, setValues] = useState({
         topic: '',
         description: '',
         subject: subject?.subject || '',
         subject_id: subject?.id || '',
+        username: username || '',
     })
+    const [error, setError] = useState(null);
 
     const handleChanges = (e) => {
         setValues({...values, [e.target.name]: e.target.value })
@@ -19,24 +21,39 @@ function GenerateMaterial({subject, onClose}) {
     const handleSubmit = (e) => {
         e.preventDefault();
 
+        if (!values.topic) {
+            setError("Please select a topic.");
+            return;
+        }
+
         console.log('Form submitted with values:', values);
-        axios.post('/llm/api/query/material', values, {
+        axios.post('/api/ppt/create', values, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
         })
         .then(function (response) {
             console.log(`User added successfully: ${response.data}`);
+            
+            const sid = response.data?.data?.sid;
+
+            if (sid) {
+                console.log(`PPT task created with sid: ${sid}`);
+                pollPptProgress(sid);
+            }
+
             setValues({
                 topic: '',
                 instruction: '',
                 subject: subject?.subject || '',
                 subject_id: subject?.id || '',
+                username: username || '',
             })
             if (onClose) onClose();
         })
         .catch(function (error) {
             console.log(`Error send material generation parameters: ${error}`);
+            setError("Failed to generation material. Please try again.");
         });
     }
 
@@ -45,6 +62,44 @@ function GenerateMaterial({subject, onClose}) {
         setTopics(subject.topics || ["undefined"]);
         setValues(prev => ({...prev, subject: subject.subject}))
     }, [subject])
+
+    const pollPptProgress = (sid) => {
+        const maxAttempts = 60; // e.g., poll for up to 60 times
+        let attempts = 0;
+
+        const checkProgress = () => {
+            if (attempts>=maxAttempts) {
+                console.log("PPT generation timed out. Please try again later.");
+                return;
+            }
+
+            axios.get(`/api/ppt/progress?sid=${sid}`)
+            .then( (response) => {
+                const data = response.data?.data || {};
+                const status = data.pptStatus
+                
+                console.log(`PPT progress: ${status} (attempt ${attempts + 1}/${maxAttempts})`);
+
+                if (status === 'done') {
+                    console.log("PPT generation completed!");
+                    setError(null);
+                    if (onClose) onClose();
+                } else if (status === 'failed') {
+                    setError('PPT generation failed. Please try again.');
+                    console.log("PPT generation failed.");
+                } else {
+                    attempts += 1;
+                    setTimeout(checkProgress, 5000); // Poll every 5 seconds
+                }
+            })
+            .catch( (error) => {
+                console.log(`Error checking progress: ${error}`);
+                setError('Error checking generation progress.');
+            });
+        }
+        checkProgress();
+    }
+
 
     if (!subject) {
         return <div>Loading Topics...</div>;
@@ -58,11 +113,12 @@ function GenerateMaterial({subject, onClose}) {
                     <label htmlFor="topic">Topic</label>
                     {/* Return a list of topics related to the subject */}
                     <select id="topic" name="topic" className="user-input" onChange={(e) => handleChanges(e)} required value={values.topic}>
-                        <option className="topic-row">---Choose Topic---</option>
+                        <option className="topic-row" value="">---Choose Topic---</option>
                         {topics.map((topic, index) => (
                             <option key={index} className="topic-row" value={topic}>{topic}</option> 
                         ))}
                     </select>
+                    {error && <p className="error-message" style={{color: 'red'}}>{error}</p>}
                     <br/>
                     {/* Textbox to return teacher description/ requirements on the powerpoint */}
                     <textarea 
