@@ -3,7 +3,7 @@ import '../../../styles.css';
 import '../../../dashboard.css';
 import axios from 'axios';
 import ViewMaterial from './ViewMaterial';
-import QuestionMaterial from './QuestionMaterial';
+import ViewQuestion from './ViewQuestion';
 
 function GenerateMaterial({subject, username, onClose}) {
     const [topics, setTopics] = useState([])
@@ -16,7 +16,8 @@ function GenerateMaterial({subject, username, onClose}) {
     })
     const [error, setError] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [generatedMaterial, setGeneratedMaterial] = useState(null);
+    const [generatedMaterialId, setGeneratedMaterialId] = useState(null);
+    const [hasCreatedQuestions, setHasCreatedQuestions] = useState(false);
 
     // Maybe used in the future to get question separately, or ViewMaterial.jsx requires it
     const [generatedQuestionId, setGeneratedQuestionId] = useState(null);
@@ -33,8 +34,10 @@ function GenerateMaterial({subject, username, onClose}) {
             return;
         }
 
+        setIsGenerating(true);
+
         console.log('Form submitted with values:', values);
-        axios.post('/api/llm/test/ppt/create', values, {
+        axios.post('/api/llm/ppt/create', values, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
@@ -74,8 +77,6 @@ function GenerateMaterial({subject, username, onClose}) {
         const maxAttempts = 60; // e.g., poll for up to 60 times
         let attempts = 0;
 
-        setIsGenerating(true);
-
         const checkProgress = () => {
             if (attempts>=maxAttempts) {
                 console.log("PPT generation timed out. Please try again later.");
@@ -83,7 +84,8 @@ function GenerateMaterial({subject, username, onClose}) {
                 return;
             }
 
-            axios.get(`/api/llm/test/ppt/progress?sid=${sid}`)
+            // use 38c772f66e04402882c520f0ec1fc5c7 for local testing to replace ${sid}
+            axios.get(`/api/llm/ppt/progress?sid=38c772f66e04402882c520f0ec1fc5c7`)
             .then( (response) => {
                 const data = response.data?.data || {};
                 const status = data.pptStatus
@@ -94,7 +96,7 @@ function GenerateMaterial({subject, username, onClose}) {
                     console.log("PPT generation completed!");
                     console.log("Generated material:", data.material);
                     setError(null);
-                    setGeneratedMaterial(data.material);
+                    setGeneratedMaterialId(data.material);
                     generateQuestions();
                     //if (onClose) onClose();
                 } else if (status === 'failed') {
@@ -119,7 +121,7 @@ function GenerateMaterial({subject, username, onClose}) {
 
         const questionData = {
             ...values,
-            material_id: generatedMaterial.material_id
+            material_id: generatedMaterialId
         }
         axios.post('/api/ai/generate-question', questionData, {
             headers: {
@@ -130,6 +132,7 @@ function GenerateMaterial({subject, username, onClose}) {
             const data = response.data;
             console.log(`Question generation request sent successfully: ${data}`);
             setGeneratedQuestionId(data._id);
+            setHasCreatedQuestions(true);
         })
         .catch( (error) => {
             console.log(`Error sending question generation request: ${error}`);
@@ -184,17 +187,17 @@ function GenerateMaterial({subject, username, onClose}) {
             <br/>
             <br/>
             <div className="ai-generator" visible={isGenerating}>
-                {(generatedMaterial === null && !isGenerating) ? (
+                {/**(generatedMaterialId === null && !isGenerating) ? (
                     <p>Your Generated Material will be shown here.</p>
-                ) : (generatedMaterial === null && isGenerating) ? (
+                ) : (generatedMaterialId === null && isGenerating) ? (
                     <p>Generating your material, please wait...</p>
                 ) : (
-                    <>
-                    <ViewMaterial material={generatedMaterial}/>
-                    <br/>
-                    <QuestionMaterial materialId={generatedMaterial.material_id}/> 
-                    </>                   
-                )}
+                    <ViewMaterial materialId={generatedMaterialId}/>           
+                )**/}
+                <br/>
+                {(generatedMaterialId !== null && hasCreatedQuestions) ? (
+                    <ViewQuestion materialId={generatedMaterialId}/> 
+                ) : null}
             </div>
         </div>
     );

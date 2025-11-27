@@ -1,6 +1,5 @@
 from flask import Blueprint, request, jsonify, Response
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from openai import OpenAI
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry

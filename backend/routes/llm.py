@@ -250,7 +250,7 @@ def ppt_progress():
                         {"$set": {"status": "done", "saved_material_id": material.get("material_id")}}
                     )
                     # Return the material json in the response for frontend use
-                    result["data"]["material"] = material
+                    result["data"]["material"] = material # this is a id
         return jsonify(result), 200
 
     except Exception as e:
@@ -350,7 +350,7 @@ def save_ppt_file_to_db(user_id: str, subject: str, topic: str, ppt_url: str, fi
 
             print(f"Material successfully posted via /db/material-add: {material_result}")
 
-            return material_result
+            return material_result 
         except Exception as e:
             raise Exception(f"Failed to save material via /db/material-add route: {str(e)}")
         
