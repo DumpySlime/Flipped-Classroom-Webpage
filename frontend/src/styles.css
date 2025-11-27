@@ -100,6 +100,28 @@ button:hover {
   background-color: #4fa8c7;
 }
 
+.submit-button {
+  background-color: #61dafb;
+  color: #282c34;
+  border: none;
+  padding: 10px 16px;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 0.3s;
+}
+
+.submit-button.hovered-disabled {
+  background-color: #4fa8c7; /* darkened background */
+  cursor: not-allowed;
+  color: #282c34;
+  border: none;
+  padding: 10px 16px;
+  font-size: 16px;
+  border-radius: 3px;
+  transition: background-color 0.3s;
+}
+
 .error-message {
   color: red;
   font-size: 14px;

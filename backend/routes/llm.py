@@ -240,15 +240,16 @@ def ppt_progress():
                 subject_id = ppt_task.get("subject_id")
 
                 # Save to GridFS and materials collection
-                material_id = save_ppt_file_to_db(current_user_id, subject, topic, ppt_url, filename, subject_id)
+                material = save_ppt_file_to_db(current_user_id, subject, topic, ppt_url, filename, subject_id)
                 
-                if material_id:
+                if material:
                     # Only update the task if the material was successfully saved
                     db.ppt_tasks.update_one(
                         {"_id": ppt_task["_id"]},
-                        {"$set": {"status": "done", "saved_material_id": material_id}}
+                        {"$set": {"status": "done", "saved_material_id": material.get("material_id")}}
                     )
-
+                    # Return the material json in the response for frontend use
+                    result["data"]["material"] = material
         return jsonify(result), 200
 
     except Exception as e:
@@ -363,26 +364,7 @@ def save_ppt_file_to_db(user_id: str, subject: str, topic: str, ppt_url: str, fi
 
             print(f"Material successfully posted via /db/material-add: {material_result}")
 
-            '''# Create material document for materials collection
-            material_doc = {
-                "subject": subject,
-                "subject_id": subject_id,
-                "topic": topic,
-                "content": f"PPT presentation: {topic}",
-                "uploaded_by": user_id,
-                "upload_date": datetime.utcnow(),
-                "type": "ppt",
-                "filename": filename,
-                "file_id": file_id,  # Reference to the GridFS file
-                "size_bytes": response.headers.get('content-length', 0)
-            }
-            # Insert to materials collection
-            material_result = db.materials.insert_one(material_doc)'''
-            
-            material_id = material_result.get("material_id") or material_result.get("_id")
-            print(f"PPT file successfully saved via /db/material-add with ID: {material_id}")
-            
-            return material_id
+            return material_result
         except Exception as e:
             raise Exception(f"Failed to save material via /db/material-add route: {str(e)}")
         
@@ -411,7 +393,7 @@ def llm_query_get():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
+# === Test Endpoint ===
 @llm_bp.route('/test/xf-auth', methods=['POST'])
 @jwt_required()
 def test_xf_auth():
@@ -452,3 +434,150 @@ def test_xf_auth():
             "status": "error",
             "message": str(e)
         }), 500
+    
+import time
+from threading import Thread
+
+# Test storage for simulated PPT tasks
+TEST_PPT_TASKS = {}
+
+@llm_bp.route('/test/ppt/create', methods=['POST'])
+@jwt_required()
+def test_ppt_create():
+    """Test endpoint for PPT creation with simulated delay"""
+    try:
+        current_user_id = get_jwt_identity()
+        print(f"TEST PPT create request from user: {current_user_id}")
+
+        data = request.form.to_dict() or request.get_json(silent=True) or {}
+
+        # Get and sanitize parameters
+        subject = (data.get("subject") or "Test Subject").strip()
+        topic = (data.get("topic") or "Test Topic").strip()
+        instruction = (data.get("instruction") or "").strip()
+        username = (data.get("username") or "TestUser").strip()
+        subject_id = (data.get("subject_id") or "507f1f77bcf86cd799439011").strip()
+
+        # Generate test SID
+        test_sid = f"test_sid_{current_user_id}_{int(time.time())}"
+        
+        print(f"Creating test PPT task: {test_sid}")
+        print(f"Subject: {subject}, Topic: {topic}")
+
+        # Save test PPT task
+        TEST_PPT_TASKS[test_sid] = {
+            "sid": test_sid,
+            "subject": subject,
+            "topic": topic,
+            "instruction": instruction,
+            "username": username,
+            "subject_id": subject_id,
+            "created_by": current_user_id,
+            "created_at": datetime.utcnow(),
+            "status": "processing",
+            "progress": 0,
+            "start_time": time.time()
+        }
+
+        # Simulate async processing (in real scenario, this would be async)
+        def simulate_generation():
+            """Simulate PPT generation with progress updates"""
+            print(f"Starting simulated generation for {test_sid}")
+            
+            # Simulate 20 seconds of generation
+            for i in range(20):
+                time.sleep(1)
+                progress = (i + 1) * 5
+                TEST_PPT_TASKS[test_sid]["progress"] = progress
+                print(f"[{test_sid}] Progress: {progress}%")
+            
+            # After "generation", set status to done and add mock URL
+            TEST_PPT_TASKS[test_sid]["status"] = "done"
+            TEST_PPT_TASKS[test_sid]["progress"] = 100
+            TEST_PPT_TASKS[test_sid]["pptUrl"] = f"https://example.com/ppt/{test_sid}.pptx"
+            print(f"[{test_sid}] Generation complete!")
+
+        # Start simulation in background thread
+        thread = Thread(target=simulate_generation, daemon=True)
+        thread.start()
+
+        return jsonify({
+            "code": 0,
+            "message": "success",
+            "data": {
+                "sid": test_sid,
+                "message": "PPT generation started (simulated with 20 second delay)"
+            }
+        }), 200
+
+    except Exception as e:
+        print(f"Error in test PPT create: {e}")
+        return jsonify({"error": f"Error: {str(e)}"}), 500
+
+
+@llm_bp.route('/test/ppt/progress', methods=['GET'])
+@jwt_required()
+def test_ppt_progress():
+    """Test endpoint for checking PPT progress with simulated generation"""
+    try:
+        sid = (request.args.get("sid") or "").strip()
+        if not sid:
+            return jsonify({"error": "sid is required"}), 400
+
+        current_user_id = get_jwt_identity()
+
+        # Check if SID exists in test tasks
+        if sid not in TEST_PPT_TASKS:
+            return jsonify({"error": f"Test SID not found: {sid}"}), 404
+
+        task = TEST_PPT_TASKS[sid]
+        status = task.get("status", "processing")
+        progress = task.get("progress", 0)
+
+        print(f"Checking progress for {sid}: status={status}, progress={progress}%")
+
+        # Build response
+        response_data = {
+            "sid": sid,
+            "pptStatus": status,
+            "progress": progress
+        }
+
+        # If done, add mock material data
+        if status == "done":
+            mock_material = {
+                "material_id": f"material_{sid}",
+                "subject": task.get("subject"),
+                "topic": task.get("topic"),
+                "filename": f"{task.get('topic')}_generated_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pptx",
+                "uploaded_by": current_user_id,
+                "created_at": task.get("created_at").isoformat(),
+                "file_size": 2048576,
+                "file_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            }
+            response_data["pptUrl"] = task.get("pptUrl")
+            response_data["material"] = mock_material
+
+        return jsonify({
+            "code": 0,
+            "message": "success",
+            "data": response_data
+        }), 200
+
+    except Exception as e:
+        print(f"Error in test PPT progress: {e}")
+        return jsonify({"error": f"Error: {str(e)}"}), 500
+
+
+@llm_bp.route('/test/ppt/reset', methods=['POST'])
+@jwt_required()
+def test_ppt_reset():
+    """Reset all test PPT tasks (useful for testing)"""
+    try:
+        count = len(TEST_PPT_TASKS)
+        TEST_PPT_TASKS.clear()
+        return jsonify({
+            "message": f"Cleared {count} test PPT tasks"
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
