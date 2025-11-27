@@ -20,9 +20,9 @@ class Config:
     JWT_REFRESH_TOKEN_EXPIRES = int(os.environ.get("JWT_REFRESH_TOKEN_EXPIRES", 86400))  # Default 1 day
 
     # DeepSeek (LLM) Configuration - Updated to replace OpenAI
-    DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
-    DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL")
-    DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL")
+    OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+    OPENAI_MODEL = os.environ.get("OPENAI_MODEL")
+    OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL")
 
     # Office Web Viewer
     OFFICE_SECRET_KEY = os.environ.get("OFFICE_SECRET_KEY")

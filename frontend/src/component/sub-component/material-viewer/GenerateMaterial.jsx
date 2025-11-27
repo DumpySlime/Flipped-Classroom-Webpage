@@ -30,7 +30,7 @@ function GenerateMaterial({subject, username, onClose}) {
         }
 
         console.log('Form submitted with values:', values);
-        axios.post('/api/ppt/create', values, {
+        axios.post('/api/llm/test/ppt/create', values, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
@@ -61,7 +61,7 @@ function GenerateMaterial({subject, username, onClose}) {
     }
 
     useEffect(() => {
-        {/* set subject name to current subject once detected */}
+        // set subject name to current subject once detected
         setTopics(subject.topics || ["undefined"]);
         setValues(prev => ({...prev, subject: subject.subject}))
     }, [subject])
@@ -79,7 +79,7 @@ function GenerateMaterial({subject, username, onClose}) {
                 return;
             }
 
-            axios.get(`/api/ppt/progress?sid=${sid}`)
+            axios.get(`/api/llm/test/ppt/progress?sid=${sid}`)
             .then( (response) => {
                 const data = response.data?.data || {};
                 const status = data.pptStatus
