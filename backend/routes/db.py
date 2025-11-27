@@ -119,7 +119,7 @@ def get_material():
         subject_id = request.args.get('subject_id')
         topic = request.args.get('topic')
         uploaded_by = request.args.get('uploaded_by')
-        
+
         print(f'Query params: material_id={material_id}, filename={filename}, subject_id={subject_id}, topic={topic}, uploaded_by={uploaded_by}')
         
         filt = {}
@@ -411,24 +411,58 @@ def add_question():
         data = request.get_json()
         subject_id = data.get("subject_id")
         topic = data.get("topic")
-        question_text = data.get("question_text")
+        created_by = data.get("user_id")
+        question_content = data.get("question_content") or None
+        create_type = data.get("create_type", "undefined")  # 'upload' or 'generate'
+        material_id = data.get("material_id") or "69273672bf870f9934222d4b" # default material id for questions without material
         if not subject_id:
             return jsonify({"error": "subject_id is required"}), 400
         if not topic:
             return jsonify({"error": "topic is required"}), 400
-        if not question_text:
+        if not question_content:
             return jsonify({"error": "question_text is required"}), 400
         doc = {
             "subject_id": ObjectId(subject_id),
+            "material_id": ObjectId(material_id),
             "topic": topic,
-            "question_text": question_text,
-            "created_by": ObjectId(get_jwt_identity()),
+            "question_content": question_content,
+            "created_by": ObjectId(created_by),
+            "create_type": create_type,
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
         }
+        print ("Inserting question document:", doc)
         res = db.questions.insert_one(doc)
         doc["_id"] = res.inserted_id
         doc_serializable = {**doc, "_id": str(res.inserted_id)}
         return jsonify({"questions": [doc_serializable]}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+# Get Questions
+@db_bp.route('/question', methods=['GET'])
+@jwt_required()
+def get_question():
+    try:
+        material_id = request.args.get('material_id')
+        filt = {}
+        if (material_id):
+            filt['material_id'] = ObjectId(material_id)
+        questions = list(db.questions.find(filt))
+        results = []
+        for u in questions:
+            results.append({
+                "id": str(u["_id"]),
+                "subject_id": str(u.get("subject_id")),
+                "material_id": str(u.get("material_id")),
+                "topic": u.get("topic"),
+                "question_content": u.get("question_content"),
+                "created_by": str(u["created_by"]),
+                "create_type": u.get("create_type"),
+                "created_at": u.get("created_at").isoformat(),
+                "updated_at": u.get("updated_at").isoformat()
+            })
+        print("Question search results:", results)
+        return jsonify({"questions": results}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
