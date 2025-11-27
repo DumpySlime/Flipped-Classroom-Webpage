@@ -30,7 +30,7 @@ function GenerateMaterial({subject, username, onClose}) {
         }
 
         console.log('Form submitted with values:', values);
-        axios.post('/api/test/ppt/create', values, {
+        axios.post('/api/ppt/create', values, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
@@ -79,7 +79,7 @@ function GenerateMaterial({subject, username, onClose}) {
                 return;
             }
 
-            axios.get(`/api/test/ppt/progress?sid=${sid}`)
+            axios.get(`/api/ppt/progress?sid=${sid}`)
             .then( (response) => {
                 const data = response.data?.data || {};
                 const status = data.pptStatus

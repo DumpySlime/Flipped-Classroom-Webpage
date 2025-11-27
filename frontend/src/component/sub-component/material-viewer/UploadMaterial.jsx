@@ -41,6 +41,8 @@ function UploadMaterial ({subject, onClose}) {
             setValues({
                 topic: '',
                 subject_id: subject.id,
+                subject: subject.subject,
+                create_type: "upload"
             });
             setFile(null);
             if (onClose) onClose();

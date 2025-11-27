@@ -8,7 +8,6 @@ import base64
 import hashlib
 import hmac
 import time
-from bson.objectid import ObjectId
 
 # --- Global DB/FS Handlers ---
 db = None
@@ -294,11 +293,8 @@ def save_ppt_file_to_db(user_id: str, subject: str, topic: str, ppt_url: str, fi
     
     # Set up URL and headers for internal POST to /db/material-add
     
-        
-    # use subject_id from global if available
     if not subject_id:
         # Find corresponding subject_id
-        print("global subject_id not set, attempting to find subject in database")
         try:
             subject_doc = db.subjects.find_one({"subject": subject})
             if subject_doc and "_id" in subject_doc:
@@ -321,27 +317,14 @@ def save_ppt_file_to_db(user_id: str, subject: str, topic: str, ppt_url: str, fi
         raise Exception(f"Error preparing url: {str(e)}")
 
     try:
-        # Validate database and GridFS connection
-        #if not db or not fs:
-        #    print("Warning: Database or GridFS not initialized, cannot save PPT file")
-        #    return None
         
         # Download PPT file
         response = session.get(ppt_url, stream=True, timeout=300)
-        response.raise_for_status() # Check for bad status codes
-        
-        # Save to GridFS
-        #file_id = fs.put(
-        #    response.raw,
-        #    filename=filename,
-        #    content_type='application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        #    upload_date=datetime.utcnow()
-        #)
-        
+        response.raise_for_status() # Check for bad status codes        
+      
         # Make the POST request through /db/material-add
         try:
             # Prepare file object
-            #filename = f"{subject[:50]}_{topic[:50]}_generated_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pptx"
             files = {
                 "file": (filename, response.content, "application/vnd.openxmlformats-officedocument.presentationml.presentation")
             }
@@ -349,7 +332,8 @@ def save_ppt_file_to_db(user_id: str, subject: str, topic: str, ppt_url: str, fi
             data = {
                 "subject_id": str(subject_id) if subject_id else "",
                 "topic": topic,
-                "user_id": user_id
+                "user_id": user_id,
+                "create_type": "generate"
             }
 
             resp = session.post(
@@ -371,7 +355,9 @@ def save_ppt_file_to_db(user_id: str, subject: str, topic: str, ppt_url: str, fi
     except Exception as e:
         print(f"Error saving PPT file to database: {str(e)}")
         return None  
-   
+
+# === Test Endpoint ===
+
 # Add a GET endpoint for testing
 @llm_bp.route('/llm/query', methods=['GET'])
 @jwt_required()
@@ -393,7 +379,7 @@ def llm_query_get():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# === Test Endpoint ===
+# test endpoint for XF authentication
 @llm_bp.route('/test/xf-auth', methods=['POST'])
 @jwt_required()
 def test_xf_auth():

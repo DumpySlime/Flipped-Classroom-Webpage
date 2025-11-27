@@ -51,6 +51,8 @@ def add_material():
         subject_id = request.form.get('subject_id')
         topic = request.form.get('topic')
 
+        create_type = request.form.get('create_type', 'undefined')  # 'upload' or 'generate'
+
         try:
             user_id = ObjectId(request.form.get('user_id'))
         except Exception as e:
@@ -85,6 +87,7 @@ def add_material():
             'subject_id': ObjectId(subject_id),
             'topic': topic,
             'uploaded_by': user_id,
+            'create_type': create_type,
             'upload_date': gf.upload_date,
             'size_bytes': gf.length,
             'content_type': gf.content_type,
@@ -396,5 +399,36 @@ def get_subject():
             })
         print("Subject search results:", results)
         return jsonify({"subjects": results}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+# Question CRUD operations
+# Add Question
+@db_bp.route('/question-add', methods=['POST'])
+@jwt_required()
+def add_question():
+    try:
+        data = request.get_json()
+        subject_id = data.get("subject_id")
+        topic = data.get("topic")
+        question_text = data.get("question_text")
+        if not subject_id:
+            return jsonify({"error": "subject_id is required"}), 400
+        if not topic:
+            return jsonify({"error": "topic is required"}), 400
+        if not question_text:
+            return jsonify({"error": "question_text is required"}), 400
+        doc = {
+            "subject_id": ObjectId(subject_id),
+            "topic": topic,
+            "question_text": question_text,
+            "created_by": ObjectId(get_jwt_identity()),
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+        }
+        res = db.questions.insert_one(doc)
+        doc["_id"] = res.inserted_id
+        doc_serializable = {**doc, "_id": str(res.inserted_id)}
+        return jsonify({"questions": [doc_serializable]}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
