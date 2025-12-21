@@ -15,7 +15,7 @@ function GenerateMaterial({subject, username, onClose}) {
     })
     const [error, setError] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [generatedMaterialId, setGeneratedMaterialId] = useState(null);
+    const [generatedMaterial, setGeneratedMaterial] = useState(null);
 
     const handleChanges = (e) => {
         setValues({...values, [e.target.name]: e.target.value })
@@ -92,7 +92,7 @@ function GenerateMaterial({subject, username, onClose}) {
                     console.log("Generated material:", data.material);
                     setError(null);
                     setIsGenerating(false);
-                    setGeneratedMaterialId(data.material);
+                    setGeneratedMaterial(data.material);
                     //if (onClose) onClose();
                 } else if (status === 'failed') {
                     setError('PPT generation failed. Please try again.');
@@ -156,12 +156,12 @@ function GenerateMaterial({subject, username, onClose}) {
             <br/>
             <br/>
             <div className="ai-generator" visible={isGenerating}>
-                {(generatedMaterialId === null && !isGenerating) ? (
+                {(generatedMaterial === null && !isGenerating) ? (
                     <p>Your Generated Material will be shown here.</p>
-                ) : (generatedMaterialId === null && isGenerating) ? (
+                ) : (generatedMaterial === null && isGenerating) ? (
                     <p>Generating your material, please wait...</p>
                 ) : (
-                    <ViewMaterial material={generatedMaterialId} />
+                    <ViewMaterial material={generatedMaterial} />
                 )}
             </div>
         </div>
