@@ -41,6 +41,7 @@ def getUserById(user_id):
 
 # Material CRUD operations
 # Add Material
+# create a temporary object in db once press generate first, add a 'progress' field to track status
 @db_bp.route('/material-add', methods=['POST'])
 @jwt_required()
 def add_material():

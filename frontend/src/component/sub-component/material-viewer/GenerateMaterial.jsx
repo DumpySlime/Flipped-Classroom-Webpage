@@ -66,6 +66,7 @@ function GenerateMaterial({subject, username, onClose}) {
         setValues(prev => ({...prev, subject: subject.subject}))
     }, [subject])
 
+    // Function to poll the PPT generation progress
     const pollPptProgress = (sid) => {
         const maxAttempts = 60; // e.g., poll for up to 60 times
         let attempts = 0;
