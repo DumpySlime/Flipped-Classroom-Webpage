@@ -8,6 +8,7 @@ import SlideExample from './slide-template/SlideExample';
 
 function ViewMaterial ({ material }) {
     const [materialData, setMaterialData] = useState(null);
+    const [questions, setQuestions] = useState([]);
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
     const [err, setErr] = useState(null);
 
@@ -28,8 +29,7 @@ function ViewMaterial ({ material }) {
         .then(response => {
             /* returns an array of material slide info: 
                 {
-                slides: 
-                    [
+                slides: [
                     {subtitle: introduction,
                         content: (introduction point form),
                         slide_type: explanation,
@@ -56,6 +56,24 @@ function ViewMaterial ({ material }) {
         .catch(e => {
             if (active) setErr("Unable to Slide");
         });
+
+        // Fetch questions related to material
+        axios.get(`/db/questions`, {
+            signal: ac.signal,
+            params: {
+                material_id: material?.id,
+                subject_id: material?.subject_id,
+                topic: material?.topic
+            }
+        })
+        .then(response => {
+            if (!active) return;
+            setQuestions(response.data);
+        })
+        .catch(e => {
+            if (active) setErr("Unable to fetch questions");
+        });
+
         return () => {
             active = false;
             ac.abort();
@@ -105,7 +123,7 @@ function ViewMaterial ({ material }) {
     }
 
     return (
-        <div className="slide-viewer">
+        <div className="material-viewer">
             <div className="slide-block">
                 <div className="slide-container">
                     {/* left click zone */}
@@ -123,6 +141,9 @@ function ViewMaterial ({ material }) {
             </div>
             <div className="slide-progress-text">
                 Slide {currentSlideIndex + 1} of {totalSlides}
+            </div>
+            <div className="question-block">
+
             </div>
         </div>
     );
