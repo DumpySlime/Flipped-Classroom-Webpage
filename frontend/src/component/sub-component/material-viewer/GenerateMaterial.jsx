@@ -3,6 +3,7 @@ import '../../../styles.css';
 import '../../../dashboard.css';
 import axios from 'axios';
 import ViewMaterial from './ViewMaterial';
+import ViewQuestion from './ViewQuestion';
 
 function GenerateMaterial({subject, username, onClose}) {
     const [topics, setTopics] = useState([])
@@ -15,7 +16,11 @@ function GenerateMaterial({subject, username, onClose}) {
     })
     const [error, setError] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [generatedMaterial, setGeneratedMaterial] = useState(null);
+    const [generatedMaterialId, setGeneratedMaterialId] = useState(null);
+    const [hasCreatedQuestions, setHasCreatedQuestions] = useState(false);
+
+    // Maybe used in the future to get question separately, or ViewMaterial.jsx requires it
+    const [generatedQuestionId, setGeneratedQuestionId] = useState(null);
 
     const handleChanges = (e) => {
         setValues({...values, [e.target.name]: e.target.value })
@@ -29,8 +34,10 @@ function GenerateMaterial({subject, username, onClose}) {
             return;
         }
 
+        setIsGenerating(true);
+
         console.log('Form submitted with values:', values);
-        axios.post('/api/ppt/create', values, {
+        axios.post('/api/llm/ppt/create', values, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
@@ -61,7 +68,7 @@ function GenerateMaterial({subject, username, onClose}) {
     }
 
     useEffect(() => {
-        {/* set subject name to current subject once detected */}
+        // set subject name to current subject once detected
         setTopics(subject.topics || ["undefined"]);
         setValues(prev => ({...prev, subject: subject.subject}))
     }, [subject])
@@ -71,8 +78,6 @@ function GenerateMaterial({subject, username, onClose}) {
         const maxAttempts = 60; // e.g., poll for up to 60 times
         let attempts = 0;
 
-        setIsGenerating(true);
-
         const checkProgress = () => {
             if (attempts>=maxAttempts) {
                 console.log("PPT generation timed out. Please try again later.");
@@ -80,7 +85,8 @@ function GenerateMaterial({subject, username, onClose}) {
                 return;
             }
 
-            axios.get(`/api/ppt/progress?sid=${sid}`)
+            // use 38c772f66e04402882c520f0ec1fc5c7 for local testing to replace ${sid}
+            axios.get(`/api/llm/ppt/progress?sid=38c772f66e04402882c520f0ec1fc5c7`)
             .then( (response) => {
                 const data = response.data?.data || {};
                 const status = data.pptStatus
@@ -91,8 +97,8 @@ function GenerateMaterial({subject, username, onClose}) {
                     console.log("PPT generation completed!");
                     console.log("Generated material:", data.material);
                     setError(null);
-                    setIsGenerating(false);
-                    setGeneratedMaterial(data.material);
+                    setGeneratedMaterialId(data.material);
+                    generateQuestions();
                     //if (onClose) onClose();
                 } else if (status === 'failed') {
                     setError('PPT generation failed. Please try again.');
@@ -111,6 +117,32 @@ function GenerateMaterial({subject, username, onClose}) {
         checkProgress();
     }
 
+    // function for question generation
+    const generateQuestions = () => {
+
+        const questionData = {
+            ...values,
+            material_id: generatedMaterialId
+        }
+        axios.post('/api/ai/generate-question', questionData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        })
+        .then( (response) => {
+            const data = response.data;
+            console.log(`Question generation request sent successfully: ${data}`);
+            setGeneratedQuestionId(data._id);
+            setHasCreatedQuestions(true);
+        })
+        .catch( (error) => {
+            console.log(`Error sending question generation request: ${error}`);
+            setError("Failed to send question generation request.");
+        })
+        .finally(() =>
+            setIsGenerating(false)
+        )
+    }
 
     if (!subject) {
         return <div>Loading Topics...</div>;
@@ -156,13 +188,17 @@ function GenerateMaterial({subject, username, onClose}) {
             <br/>
             <br/>
             <div className="ai-generator" visible={isGenerating}>
-                {(generatedMaterial === null && !isGenerating) ? (
+                {/**(generatedMaterialId === null && !isGenerating) ? (
                     <p>Your Generated Material will be shown here.</p>
                 ) : (generatedMaterial === null && isGenerating) ? (
                     <p>Generating your material, please wait...</p>
                 ) : (
-                    <ViewMaterial material={generatedMaterial} />
-                )}
+                    <ViewMaterial materialId={generatedMaterialId}/>           
+                )**/}
+                <br/>
+                {(generatedMaterialId !== null && hasCreatedQuestions) ? (
+                    <ViewQuestion materialId={generatedMaterialId}/> 
+                ) : null}
             </div>
         </div>
     );

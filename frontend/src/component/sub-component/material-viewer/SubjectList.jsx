@@ -1,6 +1,6 @@
 import '../../../styles.css';
 import '../../../dashboard.css';
-import { useState , useEffect } from 'react'
+import { useState } from 'react'
 
 import MaterialList from './MaterialList';
 

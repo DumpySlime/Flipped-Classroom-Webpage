@@ -217,11 +217,13 @@ def ppt_progress():
 
     try:
         result = xf_get("/api/ppt/v2/progress", params={"sid": sid})
-        
+        print(f"PPT progress result for sid {sid}: {result}")
         # Process and save the file only if generation is done and URL is present
         data = result.get("data", {})
+        print(f"Processing PPT progress data: {data}")
         if data.get("pptStatus") == "done" and data.get("pptUrl"):
             ppt_url = data["pptUrl"]
+            print(f"PPT generation done, URL: {ppt_url}")
             
             # Query PPT task information
             ppt_task = db.ppt_tasks.find_one({"sid": sid, "created_by": current_user_id})
@@ -248,7 +250,7 @@ def ppt_progress():
                         {"$set": {"status": "done", "saved_material_id": material.get("material_id")}}
                     )
                     # Return the material json in the response for frontend use
-                    result["data"]["material"] = material
+                    result["data"]["material"] = material # this is a id
         return jsonify(result), 200
 
     except Exception as e:
@@ -348,7 +350,7 @@ def save_ppt_file_to_db(user_id: str, subject: str, topic: str, ppt_url: str, fi
 
             print(f"Material successfully posted via /db/material-add: {material_result}")
 
-            return material_result
+            return material_result 
         except Exception as e:
             raise Exception(f"Failed to save material via /db/material-add route: {str(e)}")
         
@@ -529,20 +531,45 @@ def test_ppt_progress():
             "progress": progress
         }
 
-        # If done, add mock material data
+        # If done, add mock material data and retrieve URL
         if status == "done":
-            mock_material = {
-                "material_id": f"material_{sid}",
-                "subject": task.get("subject"),
-                "topic": task.get("topic"),
-                "filename": f"{task.get('topic')}_generated_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pptx",
-                "uploaded_by": current_user_id,
-                "created_at": task.get("created_at").isoformat(),
-                "file_size": 2048576,
-                "file_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-            }
-            response_data["pptUrl"] = task.get("pptUrl")
-            response_data["material"] = mock_material
+            ppt_url = task.get("pptUrl")
+            
+            if ppt_url:
+                print(f"PPT generation done, URL: {ppt_url}")
+                
+                # Query PPT task information from database
+                subject = task.get("subject", "Unknown")
+                topic = task.get("topic", "Unknown")
+                
+                # Generate safe filename
+                safe_topic = "".join(c if c.isalnum() or c in '_-' else '_' for c in topic)
+                safe_topic = safe_topic[:50] if safe_topic else "untitled"
+                filename = f"{safe_topic}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pptx"
+                
+                print(f"PPT generation completed, attempting to save file: {filename}")
+                
+                subject_id = task.get("subject_id")
+                
+                # Save to GridFS and materials collection
+                material = save_ppt_file_to_db(current_user_id, subject, topic, ppt_url, filename, subject_id)
+                
+                if material:
+                    response_data["pptUrl"] = ppt_url
+                    response_data["material"] = material
+            else:
+                # Fallback to mock material if no URL retrieved
+                mock_material = {
+                    "material_id": f"material_{sid}",
+                    "subject": task.get("subject"),
+                    "topic": task.get("topic"),
+                    "filename": f"{task.get('topic')}_generated_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pptx",
+                    "uploaded_by": current_user_id,
+                    "created_at": task.get("created_at").isoformat(),
+                    "file_size": 2048576,
+                    "file_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                }
+                response_data["material"] = mock_material
 
         return jsonify({
             "code": 0,
@@ -567,3 +594,58 @@ def test_ppt_reset():
         }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@llm_bp.route('/test/ppt/download', methods=['GET'])
+@jwt_required()
+def test_ppt_download():
+    """Test endpoint to download PPT using real XF API flow"""
+    try:
+        sid = (request.args.get("sid") or "").strip()
+        if not sid:
+            return jsonify({"error": "sid is required"}), 400
+
+        current_user_id = get_jwt_identity()
+        print(f"Testing PPT download for sid: {sid}")
+
+        # Step 1: Call xf_get to check progress and get pptUrl
+        print(f"Step 1: Calling xf_get to retrieve pptUrl...")
+        result = xf_get("/api/ppt/v2/progress", params={"sid": sid})
+        print(f"XF progress result: {result}")
+
+        data = result.get("data", {})
+        ppt_url = data.get("pptUrl")
+        status = data.get("pptStatus")
+
+        if not ppt_url:
+            return jsonify({
+                "error": "PPT URL not available",
+                "status": status,
+                "message": "PPT generation may still be in progress"
+            }), 400
+
+        print(f"Step 2: Retrieved pptUrl: {ppt_url}")
+
+        # Step 3: Download the PPT file from the retrieved URL
+        print(f"Step 3: Downloading PPT file from URL...")
+        session = get_session()
+        response = session.get(ppt_url, stream=True, timeout=300)
+        response.raise_for_status()
+
+        file_size = len(response.content)
+        print(f"Step 4: Successfully downloaded {file_size} bytes")
+
+        # Return download response
+        return Response(
+            response.content,
+            mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            headers={"Content-Disposition": f"attachment; filename=test_ppt_{sid}.pptx"}
+        )
+
+    except requests.exceptions.HTTPError as e:
+        print(f"HTTP Error during download: {e}")
+        return jsonify({"error": f"HTTP Error: {str(e)}"}), 500
+    except Exception as e:
+        print(f"Error in test PPT download: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Error: {str(e)}"}), 500
