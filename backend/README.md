@@ -25,3 +25,68 @@ A RESTful API backend built with Flask that connects to a MongoDB database.
   ```
 3. Environment configuration
    remove .example from .env.example, and input the required values
+
+### Routes
+
+## admin.py
+   ```
+   BP /admin
+   ```
+
+## ai.py
+   ```
+   BP /api/ai
+   /ai-chat
+   ```
+
+## analytics.py
+   ```
+   BP /api/analytics
+   /students
+   /report
+   ```
+
+## auth.pyx
+   ```
+   BP /auth
+   /api/register
+   /api/login
+
+   #testing
+   /test-login
+   ```
+
+## db.py
+   ```
+   BP /db
+   # Materials
+   /material-add
+   /material
+   /material-delete
+   # PPT
+   /material/<file_id>/signed-url
+   /public/pptx/<token>
+   # User
+   /user-add
+   /user
+   # Subject
+   /subject-add
+   /subject
+   # Question
+   /question-add
+
+   ```
+
+## llm.py
+   ```
+   BP /api
+   /ppt/create
+   /ppt/progress
+
+   #testing
+   /llm/query
+   /test/xf-auth
+   /test/ppt/create
+   /test/ppt/progress
+   /test/ppt/reset
+   ```

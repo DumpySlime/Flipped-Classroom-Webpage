@@ -48,7 +48,7 @@ init_llm_db(db, fs)
 init_analytics_db(db) 
 
 # Register Blueprints
-app.register_blueprint(ai_bp)
+app.register_blueprint(ai_bp, url_prefix='/api/ai')
 app.register_blueprint(admin_bp, url_prefix='/admin')
 app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(db_bp, url_prefix='/db')

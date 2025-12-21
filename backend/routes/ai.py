@@ -5,7 +5,7 @@ from urllib3.util import Retry
 import re
 import json
 
-ai_bp = Blueprint('ai', __name__, url_prefix='/api')
+ai_bp = Blueprint('ai', __name__)
 
 OPENAI_API_KEY = None
 
