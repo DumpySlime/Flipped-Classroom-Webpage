@@ -331,6 +331,105 @@ button:hover {
 	border: 1px solid #e74c3c;
 }
 
+/* outer area (like big rectangle) */
+.slide-viewer {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
+
+/* middle rectangle showing slides */
+.slide-block {
+	position: relative;
+	width: 80%;
+	height: 60vh;
+	max-width: 1000px;
+	margin-bottom: 16px;
+}
+.slide-container {
+	width: 100%;
+	height: 100%;
+	border: 2px solid #004a9f;
+	box-sizing: border-box;
+	display: flex;
+	align-items: stretch;
+	justify-content: center;
+	background: #fff;
+}
+
+/* transparent click areas on left/right (red/orange zones) */
+.slide-click-zone {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 30%;        /* how wide the click zones are */
+	cursor: pointer;
+}
+
+.slide-click-zone.left {
+  	left: 0;
+}
+
+.slide-click-zone.right {
+  	right: 0;
+}
+
+/* optional visual feedback on hover */
+.slide-click-zone.left:hover {
+  	background: rgba(255, 0, 0, 0.05);
+}
+
+.slide-click-zone.right:hover {
+  	background: rgba(255, 165, 0, 0.05);
+}
+
+/* actual slide body in the center */
+.slide-content {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	padding: 24px;
+	box-sizing: border-box;
+	pointer-events: none; /* prevent blocking click zones */
+}
+
+.slide-content * {
+  	pointer-events: auto; /* allow interaction with inner content if needed */
+}
+
+/* progress bar below slide */
+.slide-progress-wrapper {
+	margin-top: 16px;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.slide-progress-bar {
+	width: 100%;
+	height: 8px;
+	background: #e0e0e0;
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.slide-progress-bar-fill {
+	height: 100%;
+	background: #3b82f6; /* blue */
+	width: 0;
+	transition: width 0.25s ease-out;
+}
+
+.slide-progress-text {
+	margin-top: 4px;
+	font-size: 14px;
+}
+
+
 @media (max-width: 768px) {
 	.dashboard-content {
 		padding: 10px;
