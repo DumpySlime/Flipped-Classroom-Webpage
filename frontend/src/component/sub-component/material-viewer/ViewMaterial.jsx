@@ -17,14 +17,8 @@ function ViewMaterial ({ material }) {
         let active = true;
 
         // Fetch material
-        axios.get(`/db/material`, {
+        axios.get(`/db/material?material_id=${material?.id}&subject_id=${material?.subject_id}&topic=${material?.topic}`, {
             signal: ac.signal,
-            params: {
-                material_id: material?.id,
-                subject_id: material?.subject_id,
-                topic: material?.topic,
-                // redefine /db/material and remove filename
-            }
         })
         .then(response => {
             /* returns an array of material slide info: 
@@ -54,17 +48,12 @@ function ViewMaterial ({ material }) {
             setCurrentSlideIndex(0);
         })
         .catch(e => {
-            if (active) setErr("Unable to Slide");
+            if (active) setErr("Unable to fetch slide");
         });
 
         // Fetch questions related to material
-        axios.get(`/db/questions`, {
-            signal: ac.signal,
-            params: {
-                material_id: material?.id,
-                subject_id: material?.subject_id,
-                topic: material?.topic
-            }
+        axios.get(`/db/question?material_id=${material?.id}`, {
+            signal: ac.signal
         })
         .then(response => {
             if (!active) return;
@@ -78,7 +67,7 @@ function ViewMaterial ({ material }) {
             active = false;
             ac.abort();
         }
-    }, [material]);
+    }, [material, questions]);
 
     if (err) return (
         <div>
@@ -91,6 +80,7 @@ function ViewMaterial ({ material }) {
     const slides = materialData.slides || [];
     const totalSlides = slides.length;
     const currentSlide = slides[currentSlideIndex];
+    const question_contents = questions.question_content;
 
     const handleNextSlide = () => {
         if (currentSlideIndex < totalSlides - 1) {
@@ -143,7 +133,26 @@ function ViewMaterial ({ material }) {
                 Slide {currentSlideIndex + 1} of {totalSlides}
             </div>
             <div className="question-block">
-
+                <h3>Exercise</h3>
+                {question_contents && question_contents.length > 0 ? (
+                    <ul>
+                        {question_contents.map((question, index) => (
+                            <div className="question-card" key={index}>
+                                {index + 1}. {question.questionText}
+                                {(question.questionType === 'multiple_choice' && question.options) ? (
+                                    <div>
+                                    A. {question.options[0]} <br/>
+                                    B. {question.options[1]} <br/>
+                                    C. {question.options[2]} <br/>
+                                    D. {question.options[3]} <br/>
+                                    </div>
+                                ) : null}
+                            </div>
+                        ))}
+                    </ul>
+                ) : (
+                    <p>Loading Question...</p>
+                )}
             </div>
         </div>
     );
