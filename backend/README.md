@@ -125,7 +125,7 @@ A RESTful API backend built with Flask that connects to a MongoDB database.
 
 ## llm.py
    ```
-   BP /api
+   BP /api/llm
    /ppt/create
       - form
          - subject
