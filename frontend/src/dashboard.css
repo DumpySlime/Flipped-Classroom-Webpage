@@ -158,10 +158,97 @@ button:hover {
 	background-color: #61dafb;
 }
 
+/* Container list */
 .materials-list {
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
+	margin-top: 16px;
+	border-radius: 8px;
+	border: 1px solid #e5e7eb;
+	background-color: #ffffff;
+}
+
+/* Each row */
+.material-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.material-row:last-child {
+  border-bottom: none;
+}
+
+.material-row:hover {
+  background-color: #f9fafb;
+}
+
+/* Left side: topic + meta */
+.material-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.material-topic {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.material-meta {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.material-date {
+  font-family: monospace;
+  font-size: 12px;
+}
+
+/* Right side: actions */
+.material-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Buttons kept simple */
+.button.primary {
+  background-color: #06b6d4;
+  color: white;
+}
+
+.button.subtle {
+  background-color: #e5f3ff;
+  color: #0369a1;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.button.danger {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Slightly rounder, no heavy shadows */
+.button {
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.button:hover {
+  filter: brightness(0.97);
+}
+
+/* Empty state */
+.materials-empty {
+  padding: 16px 20px;
+  font-size: 14px;
+  color: #6b7280;
 }
 
 .material-card {
@@ -710,3 +797,4 @@ button:hover {
 		width: 100%;
 	}
 }
+

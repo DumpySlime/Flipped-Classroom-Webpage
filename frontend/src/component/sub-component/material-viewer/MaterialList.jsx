@@ -89,52 +89,65 @@ function MaterialList(props) {
 
     return (
         <div className="materials-section">
-        <div className="section-header">
+            <div className="section-header">
             <h3>{props.subject.subject} Materials</h3>
-            {/* disable upload button if role = student */}
-            {
-                (props.userRole !== "student") ? (
-                    <>
-                    {/**<button className="button" onClick={() => setShowUpload(true)}>Upload Material</button> **/}
-                    <button className="button" onClick={() => setShowGenerate(true)}>Generate Material</button> 
-                    </>
-                ) : null
-            }
-        </div>
-        <div className="materials-list">
-            {
-                materials.map(m => (
-                    <div key={m.id} className="material-card" onClick={() => handleViewMaterial(m)}>
-                        <div className="material-info">
-                        <h4>{m.topic}</h4>
-                        {/**<p>{m.filename}</p>**/}
-                        </div>
-                        <div className="material-date">
+            {props.userRole !== 'student' && (
+                <button className="button primary" onClick={() => setShowGenerate(true)}>
+                Generate Material
+                </button>
+            )}
+            </div>
+
+            <div className="materials-list">
+            {materials.map((m) => (
+                <div 
+                key={m.id} 
+                className="material-row" 
+                onClick={() => handleViewMaterial(m)}
+                >
+                <div className="material-main">
+                    <div className="material-topic">{m.topic}</div>
+                    <div className="material-meta">
+                    <span className="material-date">
                         {m.created_at}
-                        </div>
-                        <div className="material-actions">
-                        {
-                            (props.userRole !== "student") ? (
-                                <>
-                                <button className="button" onClick={(e) => {
-                                    e.stopPropagation(); 
-                                    console.log("Deleting material id:", m.id);
-                                    deleteMaterial(m.id);
-                                }}>Delete</button>
-                                <button className="button" onClick={(e) => {
-                                    e.stopPropagation(); 
-                                    console.log("Editing material id:", m.id);
-                                    handleEditMaterial(m)
-                                }}>Edit</button>
-                                </>
-                                ) : null
-                        }
-                        </div>
+                    </span>
                     </div>
-                ))
-            }
-        </div>
+                </div>
+
+                {props.userRole !== 'student' && (
+                    <div className="material-actions">
+                    <button
+                        className="button subtle"
+                        onClick={(e) => {
+                        e.stopPropagation();
+                        console.log('Editing material id:', m.id);
+                        handleEditMaterial(m);
+                        }}
+                    >
+                        Edit
+                    </button>
+                    <button
+                        className="button danger subtle"
+                        onClick={(e) => {
+                        e.stopPropagation();
+                        console.log('Deleting material id:', m.id);
+                        deleteMaterial(m.id);
+                        }}
+                    >
+                        Delete
+                    </button>
+                    </div>
+                )}
+                </div>
+            ))}
+            {materials.length === 0 && (
+                <div className="materials-empty">
+                No materials yet.
+                </div>
+            )}
+            </div>
         </div>
     );
+
 }
 export default MaterialList;
