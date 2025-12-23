@@ -403,7 +403,6 @@ def get_subject():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
-# Question CRUD operations
 # Add Question
 @db_bp.route('/question-add', methods=['POST'])
 @jwt_required()
@@ -414,17 +413,32 @@ def add_question():
         topic = data.get("topic")
         created_by = data.get("user_id")
         question_content = data.get("question_content") or None
-        create_type = data.get("create_type", "undefined")  # 'upload' or 'generate'
-        material_id = data.get("material_id") or "69273672bf870f9934222d4b" # default material id for questions without material
+        create_type = data.get("create_type", "undefined")
+        material_id = data.get("material_id")
+
         if not subject_id:
             return jsonify({"error": "subject_id is required"}), 400
         if not topic:
             return jsonify({"error": "topic is required"}), 400
         if not question_content:
-            return jsonify({"error": "question_text is required"}), 400
+            return jsonify({"error": "question_content is required"}), 400
+
+        # Handle material_id - can be ObjectId or string
+        material_id_value = None
+        if material_id:
+            try:
+                # Check if it's a valid ObjectId format
+                if len(material_id) == 24 and all(c in '0123456789abcdefABCDEF' for c in material_id):
+                    material_id_value = ObjectId(material_id)
+                else:
+                    # For AI-generated materials with string IDs
+                    material_id_value = material_id
+            except:
+                material_id_value = material_id
+
         doc = {
             "subject_id": ObjectId(subject_id),
-            "material_id": ObjectId(material_id),
+            "material_id": material_id_value,
             "topic": topic,
             "question_content": question_content,
             "created_by": ObjectId(created_by),
@@ -432,14 +446,21 @@ def add_question():
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
         }
-        print ("Inserting question document:", doc)
+
+        print("Inserting question document:", doc)
         res = db.questions.insert_one(doc)
-        doc["_id"] = res.inserted_id
-        doc_serializable = {**doc, "_id": str(res.inserted_id)}
-        return jsonify({"questions": [doc_serializable]}), 201
+        
+        return jsonify({
+            "_id": str(res.inserted_id),
+            "message": "Question added successfully"
+        }), 201
+
     except Exception as e:
+        print(f"Error in add_question: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-    
+
 # Get Questions
 @db_bp.route('/question', methods=['GET'])
 @jwt_required()
@@ -447,9 +468,23 @@ def get_question():
     try:
         material_id = request.args.get('material_id')
         filt = {}
-        if (material_id):
-            filt['material_id'] = ObjectId(material_id)
+        
+        if material_id:
+            # Try to convert to ObjectId first, if it fails, use string
+            try:
+                # Check if it's a valid ObjectId format (24 hex chars)
+                if len(material_id) == 24 and all(c in '0123456789abcdefABCDEF' for c in material_id):
+                    filt['material_id'] = ObjectId(material_id)
+                else:
+                    # For AI-generated materials with string IDs like "material_1766495512_690dcb35"
+                    filt['material_id'] = material_id
+            except Exception as e:
+                print(f"material_id format error: {e}, using as string")
+                filt['material_id'] = material_id
+        
+        print(f"Querying questions with filter: {filt}")
         questions = list(db.questions.find(filt))
+        
         results = []
         for u in questions:
             results.append({
@@ -463,7 +498,12 @@ def get_question():
                 "created_at": u.get("created_at").isoformat(),
                 "updated_at": u.get("updated_at").isoformat()
             })
-        print("Question search results:", results)
+        
+        print(f"Question search results: Found {len(results)} questions")
         return jsonify({"questions": results}), 200
+        
     except Exception as e:
+        print(f"Error in get_question: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
