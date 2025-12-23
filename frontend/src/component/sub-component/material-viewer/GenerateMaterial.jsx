@@ -13,6 +13,9 @@ function GenerateMaterial({subject, username, onClose}) {
         subject: subject?.subject || '',
         subject_id: subject?.id || '',
         username: username || '',
+        mcq_count: 0,
+        short_question_count: 0,
+        generate_questions: false
     })
     const [error, setError] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);

@@ -410,22 +410,14 @@ def get_subject():
 def add_question():
     try:
         data = request.get_json()
-        subject_id = data.get("subject_id")
-        topic = data.get("topic")
         created_by = data.get("user_id")
         question_content = data.get("question_content") or None
         create_type = data.get("create_type", "undefined")  # 'upload' or 'generate'
         material_id = data.get("material_id") or "69273672bf870f9934222d4b" # default material id for questions without material
-        if not subject_id:
-            return jsonify({"error": "subject_id is required"}), 400
-        if not topic:
-            return jsonify({"error": "topic is required"}), 400
         if not question_content:
             return jsonify({"error": "question_text is required"}), 400
         doc = {
-            "subject_id": ObjectId(subject_id),
             "material_id": ObjectId(material_id),
-            "topic": topic,
             "question_content": question_content,
             "created_by": ObjectId(created_by),
             "create_type": create_type,

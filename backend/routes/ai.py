@@ -130,16 +130,14 @@ def generate_question():
     if not OPENAI_API_KEY:
         return jsonify({'error': 'OPENAI_API_KEY missing in .env'}), 400
     
-    subject_id = request.form.get('subject_id', None)
-    subject = request.form.get('subject')
     topic = request.form.get('topic')
     material_id = request.form.get('material_id', None)
 
-    if not subject or not topic or not subject_id or not material_id:
-        return jsonify({'error': 'subject, topic, subject_id and material_id are required'}), 400
+    if not material_id:
+        return jsonify({'error': 'material_id are required'}), 400
     
     uploaded_by = get_jwt_identity()
-    print(f"Generating questions for subject: {subject}, topic: {topic}")
+    print(f"Generating questions for material:{material_id} , topic: {topic}")
 
     content = None
     
@@ -163,7 +161,6 @@ def generate_question():
                             "points": 5
                         }}
                     ],
-                    "subject": "{{subject}}",
                     "topic": "{{topic}}"
                 }}
 
@@ -176,10 +173,9 @@ def generate_question():
         user_prompt = {
             "role": "user",
             "content": f'''
-                Generate 3 educational questions with detailed solutions on the topic: {topic} of the subject: {subject}.
+                Generate 3 educational questions with detailed solutions on the topic: {topic}.
                 
                 Requirements:
-                - Subject: {subject}
                 - Main topic: {topic}
                 - Difficulty level: easy
                 - Learning objectives: introduction to the topic
@@ -235,7 +231,7 @@ def generate_question():
             url = f"{base}/db/question-add"
 
             print(f"Preparing to post questions via /db/question-add route at {url}")
-            print(f"Subject ID: {subject_id}, Topic: {topic}, User ID: {uploaded_by}")
+            print(f"Topic: {topic}, User ID: {uploaded_by}")
         except Exception as e:
             raise Exception(f"Error preparing url: {str(e)}")
 
@@ -244,9 +240,8 @@ def generate_question():
         try:
             # Prepare file object
             data = {
-                "subject_id": str(subject_id) if subject_id else "",
-                "topic": topic,
                 "material_id": str(material_id) if material_id else "",
+                "topic": topic,
                 "user_id": uploaded_by,
                 "question_content": content_json,
                 "create_type": "generated"
