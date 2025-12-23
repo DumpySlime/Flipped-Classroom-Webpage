@@ -8,18 +8,18 @@ import json
 
 ai_bp = Blueprint('ai', __name__)
 
-OPENAI_API_KEY = None
-OPENAI_MODEL = None
-OPENAI_BASE_URL = None
+DEEPSEEK_API_KEY = None
+DEEPSEEK_MODEL = None
+DEEPSEEK_BASE_URL = None
 
 @ai_bp.record_once
 def on_load(state):
-    global OPENAI_API_KEY, OPENAI_MODEL, OPENAI_BASE_URL
+    global DEEPSEEK_API_KEY, DEEPSEEK_MODEL, DEEPSEEK_BASE_URL
     app = state.app
-    OPENAI_API_KEY = app.config.get("OPENAI_API_KEY")   
-    OPENAI_MODEL = app.config.get("OPENAI_MODEL")   
-    OPENAI_BASE_URL = app.config.get("OPENAI_BASE_URL")   
-    print(f"[OPENAI] API Key loaded: {'YES' if OPENAI_API_KEY else 'NO key in .env'}")
+    DEEPSEEK_API_KEY = app.config.get("DEEPSEEK_API_KEY")   
+    DEEPSEEK_MODEL = app.config.get("DEEPSEEK_MODEL")   
+    DEEPSEEK_BASE_URL = app.config.get("DEEPSEEK_BASE_URL")   
+    print(f"[DEEPSEEK] API Key loaded: {'YES' if DEEPSEEK_API_KEY else 'NO key in .env'}")
 
 BAD_KEYWORDS = [
     "answer", "solution"
@@ -71,8 +71,8 @@ def ai_chat():
             mimetype='text/event-stream'
         )
 
-    if not OPENAI_API_KEY:
-        return jsonify({'error': 'OPENAI_API_KEY missing in .env'}), 400
+    if not DEEPSEEK_API_KEY:
+        return jsonify({'error': 'DEEPSEEK_API_KEY missing in .env'}), 400
 
     def generate():
         try:
@@ -96,7 +96,7 @@ def ai_chat():
             with requests.post(
                 "https://api.deepseek.com/chat/completions",
                 json=payload,
-                headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+                headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
                 stream=True,
                 timeout=90
             ) as resp:
@@ -127,15 +127,19 @@ def ai_chat():
 @jwt_required()
 def generate_question():
 
-    if not OPENAI_API_KEY:
-        return jsonify({'error': 'OPENAI_API_KEY missing in .env'}), 400
-    
-    topic = request.form.get('topic')
-    material_id = request.form.get('material_id', None)
+    if not DEEPSEEK_API_KEY:
+        return jsonify({'error': 'DEEPSEEK_API_KEY missing in .env'}), 400
 
-    if not material_id:
-        return jsonify({'error': 'material_id are required'}), 400
-    
+    topic = request.form.get('topic')
+    material_id = request.form.get('material_id')
+
+    print(f"Content-Type: {request.content_type}")
+    print(f"Form fields: {dict(request.form)}")
+    print(f"material_id from form: '{request.form.get('material_id')}'")
+
+    if not material_id or not topic:
+        return jsonify({'error': 'material_id and topic are required'}), 400
+
     uploaded_by = get_jwt_identity()
     print(f"Generating questions for material:{material_id} , topic: {topic}")
 
@@ -191,7 +195,7 @@ def generate_question():
         }
 
         payload = {
-            "model": OPENAI_MODEL,
+            "model": DEEPSEEK_MODEL,
             "messages": [system_prompt, user_prompt], 
             "temperature": 1.3,
             "stream": False
@@ -200,7 +204,7 @@ def generate_question():
         with requests.post(
             "https://api.deepseek.com/chat/completions",
             json=payload,
-            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+            headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
             stream=False,
             timeout=90
         ) as resp:
@@ -241,7 +245,7 @@ def generate_question():
             # Prepare file object
             data = {
                 "material_id": str(material_id) if material_id else "",
-                "topic": topic,
+                # "topic": topic,
                 "user_id": uploaded_by,
                 "question_content": content_json,
                 "create_type": "generated"

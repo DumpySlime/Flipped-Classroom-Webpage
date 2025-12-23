@@ -14,7 +14,7 @@ function ViewQuestion ({ materialId }) {
         .then(response => {
             console.log("Questions fetched:", response.data);
             const fetchedQuestions = response.data.questions;
-            setQuestions(fetchedQuestions.question_content);
+            setQuestions(fetchedQuestions.question_content.questions);
             setTopic(fetchedQuestions.topic);
         })
         .catch(e => {

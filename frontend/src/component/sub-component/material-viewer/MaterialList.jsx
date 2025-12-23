@@ -18,10 +18,7 @@ function MaterialList(props) {
 
     function deleteMaterial(matId) {
         const ac = new AbortController();
-        axios.delete('/db/material-delete', {
-            params: {
-                material_id: matId
-            }, 
+        axios.delete('/db/material-delete?material_id=' + matId, {
             signal: ac.signal
         })
         .then((response) => {
@@ -98,7 +95,7 @@ function MaterialList(props) {
             {
                 (props.userRole !== "student") ? (
                     <>
-                    <button className="button" onClick={() => setShowUpload(true)}>Upload Material</button> 
+                    {/**<button className="button" onClick={() => setShowUpload(true)}>Upload Material</button> **/}
                     <button className="button" onClick={() => setShowGenerate(true)}>Generate Material</button> 
                     </>
                 ) : null
@@ -110,10 +107,10 @@ function MaterialList(props) {
                     <div key={m.id} className="material-card" onClick={() => handleViewMaterial(m)}>
                         <div className="material-info">
                         <h4>{m.topic}</h4>
-                        <p>{m.filename}</p>
+                        {/**<p>{m.filename}</p>**/}
                         </div>
                         <div className="material-date">
-                        {m.upload_date}
+                        {m.created_at}
                         </div>
                         <div className="material-actions">
                         {

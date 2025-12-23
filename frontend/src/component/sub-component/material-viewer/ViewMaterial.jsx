@@ -19,7 +19,10 @@ function ViewMaterial({ material, materialData }) {
 		if (materialData) {
 			console.log("Using AI-generated material data:", materialData);
 			
-			const slidesData = materialData.material?.slides || [];
+			const slidesData = Array.isArray(materialData.slides)
+				? materialData.slides
+				: materialData.slides?.slides || [];
+
 			const normalizedSlides = slidesData.map(slide => ({
 				...slide,
 				slidetype: slide.slideType || slide.slidetype,
@@ -59,13 +62,22 @@ function ViewMaterial({ material, materialData }) {
 		if (material) {
 			console.log("Fetching traditional material:", material);
 			
-			axios.get(`/db/material?material_id=${material?.id}&subject_id=${material?.subject_id}&topic=${material?.topic}`, {
+			axios.get(`/db/material?material_id=${material?.id}&subject_id=${material?.subject_id}&topic=${material?.topic}&uploaded_by=${material?.uploaded_by}`, {
 				signal: ac.signal,
 			})
 			.then(response => {
 				if (!active) return;
-				const slidesData = response.data?.slides || [];
-				setSlides(slidesData);
+				const slidesData = response.data.materials[0]?.slides || [];
+				console.log("Fetched slides data:", slidesData);
+				const slidesArray = Array.isArray(slidesData)
+					? slidesData
+					: slidesData?.slides || [];
+
+				const normalizedSlides = slidesArray.map(slide => ({
+					...slide,
+					slidetype: slide.slideType || slide.slidetype,
+				}));
+				setSlides(normalizedSlides);
 				setCurrentSlideIndex(0);
 			})
 			.catch(e => {

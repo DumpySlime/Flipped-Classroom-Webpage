@@ -93,25 +93,25 @@ Generate teaching slides in the following JSON format ONLY. Do not include any o
   "slides": [
     {{
       "subtitle": "introduction",
-      "content": "- Point 1\\n- Point 2\\n- Point 3",
+      "content": ["Point 1", "Point 2", "Point 3"],
       "slideType": "explanation",
       "page": 1
     }},
     {{
       "subtitle": "{topic}",
-      "content": "- Key concept 1\\n- Key concept 2\\n- Key concept 3",
+      "content": ["Key concept 1", "Key concept 2", "Key concept 3"],
       "slideType": "explanation",
       "page": 2
     }},
     {{
       "subtitle": "example",
-      "content": "Question: [example question]\\nAnswer: [answer]\\nExplanation: [step-by-step explanation]",
+      "content": ["Question: [example question]", "Answer: [answer]", "Explanation: [step-by-step explanation]"],
       "slideType": "example",
       "page": 3
     }},
     {{
       "subtitle": "conclusion",
-      "content": "- Summary point 1\\n- Summary point 2\\n- Practice suggestions",
+      "content": ["Summary point 1", "Summary point 2", "Practice suggestions"],
       "slideType": "explanation",
       "page": 4
     }}
@@ -181,25 +181,25 @@ def build_material_slides_fallback(subject: str, topic: str, instruction: str) -
     slides = [
         {
             "subtitle": "introduction",
-            "content": f"- Overview of {topic}\n- Why this topic is important in {subject}\n- Learning objectives for this lesson",
+            "content": [f"Overview of {topic}", f"Why this topic is important in {subject}", f"Learning objectives for this lesson"],
             "slideType": "explanation",
             "page": 1,
         },
         {
             "subtitle": topic or "main concept",
-            "content": "- Key definitions and terminology\n- Important properties and characteristics\n- Real-world applications and examples",
+            "content": ["Key definitions and terminology", "Important properties and characteristics", "Real-world applications and examples"],
             "slideType": "explanation",
             "page": 2,
         },
         {
             "subtitle": "example",
-            "content": f"Question: Practice problem related to {topic}\nAnswer: Solution to the problem\nExplanation: Step-by-step breakdown of the solution process",
+            "content": [f"Question: Practice problem related to {topic}", f"Answer: Solution to the problem", f"Explanation: Step-by-step breakdown of the solution process"],
             "slideType": "example",
             "page": 3,
         },
         {
             "subtitle": "conclusion",
-            "content": "- Summary of key concepts\n- Common mistakes to avoid\n- Practice exercises and further reading",
+            "content": ["Summary of key concepts", "Common mistakes to avoid", "Practice exercises and further reading"],
             "slideType": "explanation",
             "page": 4,
         },
@@ -236,52 +236,103 @@ def material_create():
         topic = (data.get("topic") or "").strip()
         instruction = (data.get("instruction") or data.get("description") or "").strip()
         subject_id = (data.get("subject_id") or "").strip()
-
+        
         if not subject or not topic:
             return jsonify({"error": "Subject and topic are required"}), 400
 
         print(f"Generating material for: Subject={subject}, Topic={topic}")
+        # Prepare to save material sets into /db/material-add
+
+        try:
+            base = request.host_url.rstrip('/')
+            auth_hdr = {}
+            auth = request.headers.get("Authorization")
+            if auth:
+                auth_hdr["Authorization"] = auth
+            
+            session = get_session()
+            url = f"{base}/db/material-add"
+
+            print(f"Preparing to post material via /db/material-add route at {url}")
+            print(f"Topic: {topic}")
+        except Exception as e:
+            raise Exception(f"Error preparing url: {str(e)}")
+        
+        # Initialize material object first
+        # Make the POST request through /db/material-add
+        try:
+            # Prepare file object
+            data = {
+                "subject_id": subject_id,
+                "topic": topic,
+                "slides": [],
+                "create_type": "generated",
+                "status": "generating",
+            }
+
+            resp = session.post(
+                url,
+                data=data,
+                headers=auth_hdr,
+                timeout=30
+            )
+            resp.raise_for_status()
+            material_result = resp.json()
+
+            print(f"Material successfully posted via /db/material-add: {material_result}")
+
+        except Exception as e:
+            raise Exception(f"Failed to save material via /db/material-add route: {str(e)}")
 
         # Try to call DeepSeek AI, fall back to template if API fails
         try:
             material_json = call_deepseek_api(subject, topic, instruction)
             print("Material generated successfully using DeepSeek AI")
+            print(f"Material JSON: {material_json}")
         except Exception as e:
             print(f"DeepSeek API failed, using fallback: {e}")
             material_json = build_material_slides_fallback(subject, topic, instruction)
 
-        # Generate a unique SID for this material
-        material_sid = f"material_{int(time.time())}_{current_user_id[:8]}"
+        """
+        For now we do synchronous generation - directly update the material record
+        since the user is waiting for the response.
+        """
 
-        # Optionally, save to database for future retrieval
-        if db is not None:
-            try:
-                material_doc = {
-                    "sid": material_sid,
-                    "subject": subject,
-                    "subject_id": subject_id,
-                    "topic": topic,
-                    "instruction": instruction,
-                    "content": material_json,
-                    "created_by": current_user_id,
-                    "created_at": datetime.utcnow(),
-                    "status": "done"
-                }
-                db.materials.insert_one(material_doc)
-                print(f"Material saved to database with sid: {material_sid}")
-            except Exception as db_error:
-                print(f"Warning: Failed to save material to database: {db_error}")
+        # Update the material in the database with the generated content
+        # Make the PUT request through /db/material-update
+        material_sid = material_result.get("material_id", "")
+        url = f"{base}/db/material-update?material_id={material_sid}"
+        try:
+            update_data = {
+                "slides": material_json,
+                "status": "completed",
+            }
+
+            resp = session.put(
+                url,
+                json=update_data,
+                headers=auth_hdr,
+                timeout=30
+            )
+            resp.raise_for_status()
+            updated_result = resp.json()
+
+            print(f"Material successfully updated via /db/material-update: {updated_result}")
+
+        except Exception as e:
+            raise Exception(f"Failed to update material via /db/material-update route: {str(e)}")
 
         response = {
             "code": 0,
             "message": "success",
             "data": {
                 "sid": material_sid,
-                "materialStatus": "done",
-                "material": material_json,
+                "status": "done",
+                "slides": material_json,
                 "subject_id": subject_id,
                 "subject": subject,
                 "topic": topic,
+                "created_at": material_result.get("created_at"),
             },
         }
 
@@ -291,7 +342,7 @@ def material_create():
         print(f"Error creating material JSON: {e}")
         return jsonify({"error": f"Internal Server Error: {str(e)}"}), 500
 
-
+'''
 @llm_bp.route('/material/progress', methods=['GET'])
 @jwt_required()
 def material_progress():
@@ -315,7 +366,7 @@ def material_progress():
                     "message": "success",
                     "data": {
                         "sid": sid,
-                        "materialStatus": material_doc.get("status", "done"),
+                        "status": material_doc.get("status", "done"),
                         "material": material_doc.get("content"),
                         "subject_id": material_doc.get("subject_id"),
                         "subject": material_doc.get("subject"),
@@ -329,7 +380,7 @@ def material_progress():
             "message": "success",
             "data": {
                 "sid": sid,
-                "materialStatus": "done",
+                "status": "done",
                 "material": None
             }
         }), 200
@@ -337,7 +388,7 @@ def material_progress():
     except Exception as e:
         print(f"Error querying material progress: {e}")
         return jsonify({"error": f"Error querying material progress: {str(e)}"}), 500
-
+'''
 
 # --- Test/Debug Endpoints ---
 

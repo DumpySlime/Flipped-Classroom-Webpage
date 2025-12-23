@@ -46,66 +46,71 @@ def getUserById(user_id):
 @jwt_required()
 def add_material():
     try:
-        if "file" not in request.files:
-            return {"error": "No file part in the request"}, 400
-        f = request.files.get('file')
+        #if "file" not in request.files:
+        #    return {"error": "No file part in the request"}, 400
+        #f = request.files.get('file')
         subject_id = request.form.get('subject_id')
         topic = request.form.get('topic')
-
+        slides = request.form.get('slides')
         create_type = request.form.get('create_type', 'undefined')  # 'upload' or 'generate'
+        status = request.form.get('status', 'generating')  # 'generating' or 'completed'
 
         try:
             user_id = ObjectId(request.form.get('user_id'))
         except Exception as e:
             print("No user_id in form, getting from token")
             user_id = getUserById(get_jwt_identity())['_id']  
-        if not f:
-            return {"error": "file is required"}, 400
+        #if not f:
+        #    return {"error": "file is required"}, 400
         if not subject_id:
             return {"error": "subject_id is required"}, 400
         if not topic:
             return {"error": "topic is required"}, 400
 
-        metadata = {
-            'subject_id': ObjectId(subject_id),
-            'topic': topic,
-            'uploaded_by': user_id,
-            'upload_date': datetime.now(),
-            'filename': f.filename
-        }
+        #metadata = {
+        #    'subject_id': ObjectId(subject_id),
+        #    'topic': topic,
+        #    'uploaded_by': user_id,
+        #    'upload_date': datetime.now(),
+        #    'filename': f.filename
+        #}
 
-        file_id = fs.put(
-            f.stream, 
-            filename=f.filename,
-            content_type=f.mimetype, 
-            metadata=metadata)
+        #file_id = fs.put(
+        #    f.stream, 
+        #    filename=f.filename,
+        #    content_type=f.mimetype, 
+        #    metadata=metadata)
         
-        gf = fs.get(file_id)
+        #gf = fs.get(file_id)
 
         mat = {
-            'file_id': ObjectId(file_id),
-            'filename': gf.filename,
+        #    'file_id': ObjectId(file_id),
+        #    'filename': gf.filename,
             'subject_id': ObjectId(subject_id),
             'topic': topic,
+            'slides': slides,
             'uploaded_by': user_id,
+            'status': status,
             'create_type': create_type,
-            'upload_date': gf.upload_date,
-            'size_bytes': gf.length,
-            'content_type': gf.content_type,
+            'created_at': datetime.now().isoformat(),
+        #    'size_bytes': gf.length,
+        #    'content_type': gf.content_type,
         }
         mat_id = db.materials.insert_one(mat).inserted_id
         if mat_id:
             return jsonify({
                 'result': 'Material uploaded successfully',
                 'material_id': str(mat_id),
-                "file_id": str(file_id),
-                "filename": gf.filename,
+                #    "file_id": str(file_id),
+                #    "filename": gf.filename,
                 "subject_id": subject_id,
                 "topic": topic,
+                "slides": slides,
                 "uploaded_by": str(user_id),
-                "upload_date": gf.upload_date.isoformat(),
-                "size_bytes": gf.length,
-                "content_type": gf.content_type
+                'status': status,
+                "upload_date": datetime.now().isoformat(),
+                #    "size_bytes": 0,
+                #    "content_type": gf.content_type
             }),201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -116,18 +121,18 @@ def add_material():
 def get_material():
     try:
         material_id = request.args.get('material_id')
-        filename = request.args.get('filename')
+        #filename = request.args.get('filename')
         subject_id = request.args.get('subject_id')
         topic = request.args.get('topic')
         uploaded_by = request.args.get('uploaded_by')
 
-        print(f'Query params: material_id={material_id}, filename={filename}, subject_id={subject_id}, topic={topic}, uploaded_by={uploaded_by}')
+        print(f'Query params: material_id={material_id}, subject_id={subject_id}, topic={topic}, uploaded_by={uploaded_by}')
         
         filt = {}
         if material_id:
             filt['_id'] = ObjectId(material_id)
-        if filename:
-            filt['filename'] = filename
+        #if filename:
+        #    filt['filename'] = filename
         if subject_id:
             filt['subject_id'] = ObjectId(subject_id)
         if topic:
@@ -142,20 +147,21 @@ def get_material():
         print(f'Found {len(mats)} materials')
 
         if not mats and not filt:
-            all_mats = list(db.materials.find({}).limit(5))
+            all_mats = list(db.materials.find({}))
             print(f'Sample materials in DB: {all_mats}')
 
         materials = []
         for m in mats:
             materials.append({
                 "id": str(m["_id"]),
-                "file_id": str(m["file_id"]),
-                "filename": m.get("filename"),
+                #"file_id": str(m["file_id"]),
+                #"filename": m.get("filename"),
                 "subject_id": str(m.get("subject_id")),
                 "topic": m.get("topic"),
+                "slides": m.get("slides"),
                 "uploaded_by": str(m.get("uploaded_by")),
-                "upload_date": m.get("upload_date").strftime("%Y/%m/%d") if m.get("upload_date") else None,
-                "content_type": m.get("content_type")
+                "created_at": m.get("created_at"),
+                # "content_type": m.get("content_type")
             })
         print(f'Materials of {subject_id}:', materials)
         if not materials:
@@ -164,7 +170,7 @@ def get_material():
     except Exception as e:
         return {"error": str(e)}, 500
 
-# Delete Material
+# Delete Material + Question
 @db_bp.route('/material-delete', methods=['DELETE'])
 @jwt_required()
 def delete_material():
@@ -179,13 +185,43 @@ def delete_material():
         if not mat:
             print(f"Material with id {material_id} not found")
             return {"error": "Material not found"}, 404
-        print(f"Deleting file with id {mat['file_id']}")
-        fs.delete(mat['file_id'])
+        #print(f"Deleting file with id {mat['file_id']}")
+        #fs.delete(mat['file_id'])
         db.materials.delete_one({'_id': ObjectId(material_id)})
+        db.questions.delete_many({'material_id': ObjectId(material_id)})
+        print(f"Material with id {material_id} and associated questions deleted successfully")
         return jsonify({"message": "Material deleted successfully"}), 200
     except Exception as e:
         return {"error": str(e)}, 500
     
+@db_bp.route('/material-update', methods=['PUT'])
+@jwt_required()
+def update_material():
+    try:
+        material_id = request.args.get('material_id')
+        if not material_id:
+            return {"error": "material_id is required"}, 400
+
+        data = request.form.to_dict() or request.get_json(silent=True) or {}
+        status = data.get("status", "generating")
+        slides = data.get("slides", "")
+
+        print(f"Updating material {material_id} with status: {status}, and slides: {slides}")
+
+        db.materials.update_one(
+            {"_id": ObjectId(material_id)},
+            {
+                "$set": {
+                    "status": status,
+                    "slides": slides
+                }
+            }
+        )
+
+        return jsonify({"message": "Material updated successfully"}), 200
+    except Exception as e:
+        return {"error": str(e)}, 500
+
 # process ppt
 # create a short-lived signed URL
 @db_bp.route('/material/<file_id>/signed-url', methods=['GET'])
@@ -259,8 +295,8 @@ def add_user():
         "firstName": data["firstName"],
         "lastName": data["lastName"],
         "role": data["role"],
-        "created_at": datetime.now(),
-        "updated_at": datetime.now(),
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat(),
     }
     db.users.insert_one(user_doc)
     return jsonify({"message": "User added successfully"}), 201
@@ -357,8 +393,8 @@ def add_subject():
             "teacher_ids": valid_teacher_ids,
             "student_ids": valid_student_ids,
             "created_by": ObjectId(get_jwt_identity()),
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat(),
         }
         res = db.subjects.insert_one(doc)
         doc["_id"] = res.inserted_id
@@ -435,8 +471,8 @@ def add_question():
             "question_content": question_content,
             "created_by": ObjectId(created_by),
             "create_type": create_type,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat(),
         }
 
         print("Inserting question document:", doc)
@@ -487,8 +523,8 @@ def get_question():
                 "question_content": u.get("question_content"),
                 "created_by": str(u["created_by"]),
                 "create_type": u.get("create_type"),
-                "created_at": u.get("created_at").isoformat(),
-                "updated_at": u.get("updated_at").isoformat()
+                "created_at": u.get("created_at"),
+                "updated_at": u.get("updated_at")
             })
         
         print(f"Question search results: Found {len(results)} questions")
