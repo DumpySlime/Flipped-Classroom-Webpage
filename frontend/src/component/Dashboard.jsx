@@ -4,7 +4,6 @@ import '../dashboard.css';
 
 import Overview from './sub-component/Overview';
 import AddUser from './sub-component/AddUser';
-import MaterialGenerator from './sub-component/material-generator/MaterialGenerator';
 import MaterialViewer from './sub-component/material-viewer/MaterialViewer';
 import AddSubject from './sub-component/AddSubject';
 import StudentAnalytics from './sub-component/StudentAnalytics';
