@@ -414,10 +414,6 @@ def add_question():
         create_type = data.get("create_type", "undefined")
         material_id = data.get("material_id")
 
-        if not subject_id:
-            return jsonify({"error": "subject_id is required"}), 400
-        if not topic:
-            return jsonify({"error": "topic is required"}), 400
         if not question_content:
             return jsonify({"error": "question_content is required"}), 400
 
@@ -435,9 +431,7 @@ def add_question():
                 material_id_value = material_id
 
         doc = {
-            "subject_id": ObjectId(subject_id),
             "material_id": material_id_value,
-            "topic": topic,
             "question_content": question_content,
             "created_by": ObjectId(created_by),
             "create_type": create_type,
