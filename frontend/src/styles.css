@@ -7,6 +7,122 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* slide template styles */
+.slide-explanation, .slide-example {
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 3px;
+    padding: 20px;
+    margin: 10px auto;
+    max-width: 800px;
+}
+
+.slide-explanation h1, .slide-example h1 {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #333;
+    text-align: center;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 10px;
+}
+
+.slide-explanation ul, .slide-example ol {
+    padding-left: 20px;
+    margin: 15px 0;
+}
+
+.slide-explanation li, .slide-example li {
+    font-size: 16px;
+    line-height: 1.4;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.slide-example p {
+    font-size: 16px;
+    line-height: 1.5;
+    color: #333;
+}
+
+.slide-explanation .slide-footer, .slide-example .slide-footer {
+    font-size: 14px;
+    color: #666;
+    text-align: right;
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #e0e0e0;
+}
+
+/* Slide Example Two-column Layout */
+.slide-example {
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+}
+
+/* Two-column body layout */
+.example-body {
+    display: flex;
+    gap: 24px;
+    flex: 1;
+    margin-bottom: 20px;
+}
+
+/* Left column - Question */
+.example-left {
+    flex: 1;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 3px;
+    border: 1px solid #e0e0e0;
+}
+
+.example-left h2 {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+/* Right column - Solution */
+.example-right {
+    flex: 1;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 3px;
+    border: 1px solid #e0e0e0;
+}
+
+.example-right h2 {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.example-right ul {
+    padding-left: 20px;
+    margin: 0;
+}
+
+.example-right li {
+    font-size: 16px;
+    line-height: 1.5;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+/* Page footer */
+.slide-footer {
+    font-size: 14px;
+    color: #666;
+    text-align: right;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid #e0e0e0;
+}
+
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
