@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import '../../../styles.css';
 import '../../../dashboard.css';
 import axios from 'axios'
@@ -50,6 +50,11 @@ function ViewMaterial ({ material }) {
         .catch(e => {
             if (active) setErr("Unable to fetch slide");
         });
+    }, [material]);
+
+    useEffect(() => {      
+        const ac = new AbortController();
+        let active = true;  
 
         // Fetch questions related to material
         axios.get(`/db/question?material_id=${material?.id}`, {
@@ -67,7 +72,7 @@ function ViewMaterial ({ material }) {
             active = false;
             ac.abort();
         }
-    }, [material, questions]);
+    }, [material]);
 
     if (err) return (
         <div>

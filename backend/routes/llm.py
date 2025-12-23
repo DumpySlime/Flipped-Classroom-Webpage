@@ -214,8 +214,10 @@ def ppt_progress():
         return jsonify({"error": "sid is required"}), 400
 
     current_user_id = get_jwt_identity()
-
+    
     try:
+        
+        '''
         result = xf_get("/api/ppt/v2/progress", params={"sid": sid})
         print(f"PPT progress result for sid {sid}: {result}")
         # Process and save the file only if generation is done and URL is present
@@ -251,8 +253,9 @@ def ppt_progress():
                     )
                     # Return the material json in the response for frontend use
                     result["data"]["material"] = material # this is a id
+        
         return jsonify(result), 200
-
+        '''
     except Exception as e:
         print(f"Error querying PPT progress: {e}")
         return jsonify({"error": f"Error querying PPT progress: {str(e)}"}), 500

@@ -66,6 +66,7 @@ function MaterialList(props) {
                 subject={props.subject}
                 username={props.userInfo.username}
                 onClose={() => setShowGenerate(false)}
+                userid={props.userInfo.id}
             />
         )
     }
@@ -110,7 +111,6 @@ function MaterialList(props) {
                     <div key={m.id} className="material-card" onClick={() => handleViewMaterial(m)}>
                         <div className="material-info">
                         <h4>{m.topic}</h4>
-                        <p>{m.filename}</p>
                         </div>
                         <div className="material-date">
                         {m.upload_date}

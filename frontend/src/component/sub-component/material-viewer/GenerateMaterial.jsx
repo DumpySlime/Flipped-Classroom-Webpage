@@ -5,7 +5,7 @@ import axios from 'axios';
 import ViewMaterial from './ViewMaterial';
 import ViewQuestion from './ViewQuestion';
 
-function GenerateMaterial({subject, username, onClose}) {
+function GenerateMaterial({subject, username, onClose, userid}) {
     const [topics, setTopics] = useState([])
     const [values, setValues] = useState({
         topic: '',
@@ -13,6 +13,9 @@ function GenerateMaterial({subject, username, onClose}) {
         subject: subject?.subject || '',
         subject_id: subject?.id || '',
         username: username || '',
+        mcq_count: 0,
+        short_answer_count: 0,
+        generate_questions: false,
     })
     const [error, setError] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -44,11 +47,11 @@ function GenerateMaterial({subject, username, onClose}) {
         })
         .then(function (response) {
             console.log(`User added successfully: ${response.data}`);
-            
-            const sid = response.data?.data?.sid;
+            // should return material id (sid) for polling
+            const sid = response.data?.sid;
 
             if (sid) {
-                console.log(`PPT task created with sid: ${sid}`);
+                console.log(`Material task created with sid: ${sid}`);
                 pollPptProgress(sid);
             }
 
@@ -58,6 +61,9 @@ function GenerateMaterial({subject, username, onClose}) {
                 subject: subject?.subject || '',
                 subject_id: subject?.id || '',
                 username: username || '',
+                mcq_count: 0,
+                short_question_count: 0,
+                generate_questions: false,
             })
             //if (onClose) onClose();
         })
@@ -85,24 +91,25 @@ function GenerateMaterial({subject, username, onClose}) {
                 return;
             }
 
+            // update 
             // use 38c772f66e04402882c520f0ec1fc5c7 for local testing to replace ${sid}
-            axios.get(`/api/llm/ppt/progress?sid=38c772f66e04402882c520f0ec1fc5c7`)
+            axios.get(`/db/material?material_id=${sid}&subject_id=${values.subject_id}&topic=${values.topic}&uploaded_by=${userid}`)
             .then( (response) => {
                 const data = response.data?.data || {};
                 const status = data.pptStatus
                 
-                console.log(`PPT progress: ${status} (attempt ${attempts + 1}/${maxAttempts})`);
+                console.log(`Material progress: ${status} (attempt ${attempts + 1}/${maxAttempts})`);
 
                 if (status === 'done') {
-                    console.log("PPT generation completed!");
+                    console.log("Material generation completed!");
                     console.log("Generated material:", data.material);
                     setError(null);
                     setGeneratedMaterialId(data.material);
                     generateQuestions();
                     //if (onClose) onClose();
                 } else if (status === 'failed') {
-                    setError('PPT generation failed. Please try again.');
-                    console.log("PPT generation failed.");
+                    setError('Material generation failed. Please try again.');
+                    console.log("Material generation failed.");
                     setIsGenerating(false);
                 } else {
                     attempts += 1;
