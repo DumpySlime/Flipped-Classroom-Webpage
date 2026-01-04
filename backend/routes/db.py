@@ -438,6 +438,35 @@ def get_subject():
         return jsonify({"subjects": results}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# Get topics by subject_id
+@db_bp.route('/topic', methods=["GET"])
+@jwt_required()
+def get_topic():
+    try:
+        subject_id = request.args.get("subject_id")
+        if not subject_id:
+            return jsonify({"success": False, "error": "subject_id query parameter required"}), 400
+        filt = {}
+        filt["subject_id"] = ObjectId(subject_id)
+        docs = list(db.topics.find(filt))
+        
+        topics = []
+        for d in docs:
+            topics.append({
+                "_id": str(d["_id"]),
+                "subject_id": str(d.get("subject_id")) if d.get("subject_id") is not None else None,
+                "topic": d.get("topic")
+            })
+            
+        return jsonify({
+            "success": True,
+            "subject_id": subject_id,
+            "topics": topics
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)})
+        
     
 # Add Question
 @db_bp.route('/question-add', methods=['POST'])
