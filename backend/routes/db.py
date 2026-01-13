@@ -564,3 +564,117 @@ def get_question():
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
+# Submit Student Answers
+@db_bp.route('/student-answers-submit', methods=['POST'])
+@jwt_required()
+def submit_student_answers():
+    try:
+        data = request.get_json()
+        student_id = data.get("student_id")
+        material_id = data.get("material_id")
+        answers = data.get("answers")  # Format: [{"question_id": "xxx", "user_answer": "xxx", "is_correct": true/false, "score": 10}]
+        total_score = data.get("total_score")
+        submission_time = data.get("submission_time", datetime.now().isoformat())
+
+        if not student_id:
+            return jsonify({"error": "student_id is required"}), 400
+        if not material_id:
+            return jsonify({"error": "material_id is required"}), 400
+        if not answers:
+            return jsonify({"error": "answers is required"}), 400
+
+        # Handle student_id and material_id - can be ObjectId or string
+        student_id_value = None
+        if student_id:
+            try:
+                if len(student_id) == 24 and all(c in '0123456789abcdefABCDEF' for c in student_id):
+                    student_id_value = ObjectId(student_id)
+                else:
+                    student_id_value = student_id
+            except:
+                student_id_value = student_id
+
+        material_id_value = None
+        if material_id:
+            try:
+                if len(material_id) == 24 and all(c in '0123456789abcdefABCDEF' for c in material_id):
+                    material_id_value = ObjectId(material_id)
+                else:
+                    material_id_value = material_id
+            except:
+                material_id_value = material_id
+
+        # Store answer record
+        submission = {
+            "student_id": student_id_value,
+            "material_id": material_id_value,
+            "answers": answers,
+            "total_score": total_score,
+            "submission_time": submission_time
+        }
+
+        print(f"Inserting student answers submission: {submission}")
+        res = db.student_answers.insert_one(submission)
+        
+        return jsonify({
+            "_id": str(res.inserted_id),
+            "message": "Student answers submitted successfully",
+            "submission": submission
+        }), 201
+
+    except Exception as e:
+        print(f"Error in submit_student_answers: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+# Get Student Answers
+@db_bp.route('/student-answers', methods=['GET'])
+@jwt_required()
+def get_student_answers():
+    try:
+        student_id = request.args.get('student_id')
+        material_id = request.args.get('material_id')
+        filt = {}
+        
+        if student_id:
+            try:
+                if len(student_id) == 24 and all(c in '0123456789abcdefABCDEF' for c in student_id):
+                    filt['student_id'] = ObjectId(student_id)
+                else:
+                    filt['student_id'] = student_id
+            except:
+                filt['student_id'] = student_id
+        
+        if material_id:
+            try:
+                if len(material_id) == 24 and all(c in '0123456789abcdefABCDEF' for c in material_id):
+                    filt['material_id'] = ObjectId(material_id)
+                else:
+                    filt['material_id'] = material_id
+            except:
+                filt['material_id'] = material_id
+        
+        print(f"Querying student answers with filter: {filt}")
+        submissions = list(db.student_answers.find(filt))
+        
+        results = []
+        for s in submissions:
+            results.append({
+                "id": str(s["_id"]),
+                "student_id": str(s.get("student_id")),
+                "material_id": str(s.get("material_id")),
+                "answers": s.get("answers"),
+                "total_score": s.get("total_score"),
+                "submission_time": s.get("submission_time")
+            })
+        
+        print(f"Student answers search results: Found {len(results)} submissions")
+        return jsonify({"submissions": results}), 200
+        
+    except Exception as e:
+        print(f"Error in get_student_answers: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
