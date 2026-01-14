@@ -533,7 +533,9 @@ function ViewMaterial({ material, materialData }) {
 											questionContent.forEach((question, qIndex) => {
 												const questionKey = `${index}-${qIndex}`;
 												const userAnswer = userAnswers[questionKey];
-												const isCorrect = question.questionType === 'multiple_choice' && userAnswer === question.correctAnswer;
+												const isCorrect = question.questionType === 'multiple_choice' 
+													? userAnswer === question.correctAnswer 
+													: userAnswer?.trim().toLowerCase() === question.correctAnswer?.trim().toLowerCase();
 												
 												// Collect answer data for backend storage
 												answers.push({
