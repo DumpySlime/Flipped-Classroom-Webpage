@@ -472,11 +472,16 @@ def get_topic():
 @db_bp.route("/subjectmembers", methods=["GET"])
 @jwt_required() 
 def get_subject_members():
-    current_user = get_jwt_identity()
-    user_role = get_jwt().get("role")
-        
+    user_id = get_jwt_identity()
+    
+    try:
+        user_doc = db.users.find_one({"_id": ObjectId(user_id)}, {"role": 1})
+        user_role = user_doc.get("role") if user_doc else None
+    except Exception:
+        user_role = None
+    
     subject_id_param = request.args.get("subject_id")
-    subject_ids_filter = {}
+    subject_ids_filter = None
 
     if subject_id_param:
         try:
@@ -485,10 +490,10 @@ def get_subject_members():
             subject_ids_filter = [subject_id_param]
     elif user_role == "teacher":
         try:
-            user_oid = ObjectId(current_user)
+            user_oid = ObjectId(user_id)
             teacher_query = {"user_id": user_oid, "role": "teacher"}
         except Exception:
-            teacher_query = {"user_id": current_user, "role": "teacher"}
+            teacher_query = {"user_id": user_id, "role": "teacher"}
         
         teacher_subjects_cursor = db.subjectMembers.find(teacher_query, {"subject_id": 1})
         subject_ids_filter = [doc["subject_id"] for doc in teacher_subjects_cursor]
@@ -497,40 +502,51 @@ def get_subject_members():
         subject_ids_filter = None    
 
     pipeline = []
+
+    # if we have a subject filter list (could be empty list), match subject_id in that list
     if subject_ids_filter is not None:
         pipeline.append({"$match": {"subject_id": {"$in": subject_ids_filter}}})
 
-    pipeline.extend([
-        {
-            "$lookup": {
-                "from": "users",
-                "localField": "user_id",
-                "foreignField": "_id",
-                "as": "user"
-            }
-        },
-        {"$unwind": {"path": "$user", "preserveNullAndEmptyArrays": True}},
-        {
-            "$lookup": {
-                "from": "subjects",
-                "localField": "subject_id",
-                "foreignField": "_id",
-                "as": "subject"
-            }
-        },
-        {"$unwind": {"path": "$subject", "preserveNullAndEmptyArrays": True}},
-        {
-            "$project": {
-                "_id": 1,
-                "subject_id": 1,
-                "subject": "$subject.subject",
-                "user_id": 1,
-                "firstName": "$user.firstName",
-                "lastName": "$user.lastName",
-                "role": {"$ifNull": ["$user.role", "$role"]}  # prefer user.role, fallback to subjectmembers.role
-            }
+    # IMPORTANT: if caller is teacher, restrict to subjectmembers.role == "student"
+    if user_role == "teacher":
+        pipeline.append({"$match": {"role": "student"}})
+    # if caller is admin, do not add this match — admin sees all roles
+
+    # lookup user info
+    pipeline.append({
+        "$lookup": {
+            "from": "users",
+            "localField": "user_id",
+            "foreignField": "_id",
+            "as": "user"
         }
-    ])
+    })
+    pipeline.append({"$unwind": {"path": "$user", "preserveNullAndEmptyArrays": True}})
+
+    # lookup subject info
+    pipeline.append({
+        "$lookup": {
+            "from": "subjects",
+            "localField": "subject_id",
+            "foreignField": "_id",
+            "as": "subject"
+        }
+    })
+    pipeline.append({"$unwind": {"path": "$subject", "preserveNullAndEmptyArrays": True}})
+
+    # project fields; role here is the subjectMembers.role (for teacher it will be 'student'),
+    # you can also include account-level role if you want: "accountRole": "$user.role"
+    pipeline.append({
+        "$project": {
+            "_id": 1,
+            "subject_id": 1,
+            "subject": "$subject.subject",
+            "user_id": 1,
+            "firstName": "$user.firstName",
+            "lastName": "$user.lastName",
+            "role": "$role"
+        }
+    })
 
     try:
         docs = list(db.subjectMembers.aggregate(pipeline))
