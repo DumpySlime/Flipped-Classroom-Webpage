@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, Response
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from bson.objectid import ObjectId
+from bson.errors import InvalidId
 from flask_bcrypt import Bcrypt
 import os
 from datetime import datetime
@@ -467,7 +468,88 @@ def get_topic():
     except Exception as e:
         return jsonify({"error": str(e)})
         
+# Get subject members
+@db_bp.route("/subjectmembers", methods=["GET"])
+@jwt_required() 
+def get_subject_members():
+    current_user = get_jwt_identity()
+    user_role = get_jwt().get("role")
+        
+    subject_id_param = request.args.get("subject_id")
+    subject_ids_filter = {}
+
+    if subject_id_param:
+        try:
+            subject_ids_filter = [ObjectId(subject_id_param)]
+        except (InvalidId, TypeError, ValueError):
+            subject_ids_filter = [subject_id_param]
+    elif user_role == "teacher":
+        try:
+            user_oid = ObjectId(current_user)
+            teacher_query = {"user_id": user_oid, "role": "teacher"}
+        except Exception:
+            teacher_query = {"user_id": current_user, "role": "teacher"}
+        
+        teacher_subjects_cursor = db.subjectMembers.find(teacher_query, {"subject_id": 1})
+        subject_ids_filter = [doc["subject_id"] for doc in teacher_subjects_cursor]
+    else:
+        # for other roles e.g.admin, then return all students
+        subject_ids_filter = None    
+
+    pipeline = []
+    if subject_ids_filter is not None:
+        pipeline.append({"$match": {"subject_id": {"$in": subject_ids_filter}}})
+
+    pipeline.extend([
+        {
+            "$lookup": {
+                "from": "users",
+                "localField": "user_id",
+                "foreignField": "_id",
+                "as": "user"
+            }
+        },
+        {"$unwind": {"path": "$user", "preserveNullAndEmptyArrays": True}},
+        {
+            "$lookup": {
+                "from": "subjects",
+                "localField": "subject_id",
+                "foreignField": "_id",
+                "as": "subject"
+            }
+        },
+        {"$unwind": {"path": "$subject", "preserveNullAndEmptyArrays": True}},
+        {
+            "$project": {
+                "_id": 1,
+                "subject_id": 1,
+                "subject": "$subject.subject",
+                "user_id": 1,
+                "firstName": "$user.firstName",
+                "lastName": "$user.lastName",
+                "role": {"$ifNull": ["$user.role", "$role"]}  # prefer user.role, fallback to subjectmembers.role
+            }
+        }
+    ])
+
+    try:
+        docs = list(db.subjectMembers.aggregate(pipeline))
+    except Exception as e:
+        return jsonify({"success": False, "error": "database error", "details": str(e)}), 500
     
+    result = []
+    for d in docs:
+        result.append({
+            "_id": str(d.get("_id")),
+            "subject_id": str(d.get("subject_id")),
+            "subject": d.get("subject"),
+            "user_id": str(d.get("user_id")),
+            "firstName": d.get("firstName"),
+            "lastName": d.get("lastName"),
+            "role": d.get("role")
+        })
+    return jsonify({"success": True, "subjectmembers": result}), 200           
+
 # Add Question
 @db_bp.route('/question-add', methods=['POST'])
 @jwt_required()
