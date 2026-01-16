@@ -251,3 +251,34 @@ button:hover {
   font-size: 14px;
   text-align: left;
 }
+
+/* SubjectMembers styles */
+.sm-container { display: block; gap: 16px; }
+.sm-subject-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.sm-subject-title { margin:0; font-size:20px; color:#1f2937; }
+.sm-subject-count { color:#6b7280; font-size:13px; }
+
+.sm-multi { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; }
+.sm-subject-card { background:#fff; border:1px solid #e6e9ee; border-radius:10px; padding:12px; box-shadow:0 1px 3px rgba(16,24,40,0.04); }
+.sm-subject-card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.sm-subject-title-small { font-weight:600; color:#111827; }
+.sm-subject-count-small { color:#6b7280; font-size:13px; }
+
+.sm-list { display:flex; flex-direction:column; gap:8px; }
+.sm-member-row { display:flex; align-items:center; justify-content:space-between; padding:8px; border-radius:8px; transition:background .12s ease, transform .08s ease; }
+.sm-member-row:hover { background:#f8fafc; transform:translateY(-2px); }
+
+.sm-left { display:flex; align-items:center; gap:10px; }
+.sm-avatar { width:40px; height:40px; border-radius:50%; background:#0ea5a4; color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; }
+.sm-name-block { display:flex; flex-direction:column; }
+.sm-name { font-weight:600; color:#0f172a; }
+.sm-subtext { font-size:12px; color:#6b7280; }
+
+.sm-right { display:flex; align-items:center; gap:8px; }
+.sm-role-badge { padding:6px 10px; border-radius:999px; font-size:12px; font-weight:600; text-transform:capitalize; }
+.sm-role-student { background:#eef2ff; color:#4338ca; }
+.sm-role-teacher { background:#ecfdf5; color:#065f46; }
+.sm-role-admin { background:#fff7ed; color:#92400e; }
+
+.sm-loading, .sm-empty, .sm-error { padding:12px; color:#374151; }
+.sm-no-members { color:#6b7280; font-size:13px; padding:8px 0; }
