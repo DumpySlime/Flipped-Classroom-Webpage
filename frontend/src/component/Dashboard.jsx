@@ -9,6 +9,7 @@ import AddSubject from './sub-component/AddSubject';
 import StudentAnalytics from './sub-component/StudentAnalytics';
 import Assignment from './sub-component/Assignment';
 import AIChatroom from './sub-component/chatroom/AIChatroom';
+import SubjectMembers from './sub-component/SubjectMembers';
 
 function Dashboard(props) {
 const [activeSection, setActiveSection] = useState('overview');
@@ -261,6 +262,7 @@ const allowedSectionsByRole = {
     materials: 'Materials',
     //assignments: 'Assignments',
     'student-analytics': 'Student Analytics',
+	'subject-members': 'Subject Members',
 	chatroom: 'AI Chatroom'
   },
   admin: {
@@ -270,18 +272,19 @@ const allowedSectionsByRole = {
     'student-analytics': 'Student Analytics',
     'add-subject': 'Add Subject',
     'add-user': 'Add User',
+	'subject-members': 'Subject Members',
 	chatroom: 'AI Chatroom'
   }
 };
 
 const renderContent = () => {
-
 	if (activeSection === 'overview') return <Overview activeSection={activeSection} totalStudents={totalStudents} mockMaterials={mockMaterials} mockGeneratedContent={mockGeneratedContent} mockGeneratedVideos={mockGeneratedVideos}/>;
 	if (activeSection === 'materials') return <MaterialViewer activeSection={activeSection} userInfo={props.userInfo} userRole={props.userRole} mockMaterials={mockMaterials}/>;
 	if (activeSection === 'student-analytics') return <StudentAnalytics activeSection={activeSection} mockStudentProgress={mockStudentProgress}/>;
 	//if (activeSection === 'assignments') return <Assignment activeSection={activeSection} mockAssignments={mockAssignments} mockStudentProgress={mockStudentProgress}/>;
 	if (activeSection === 'add-subject') return <AddSubject activeSection={activeSection} />;
 	if (activeSection === 'add-user') return <AddUser setActiveSection={setActiveSection} />;
+	if (activeSection === 'subject-members') return <SubjectMembers userInfo={props.userInfo} userRole={props.userRole} />;
 	if (activeSection === 'chatroom') return <AIChatroom />;
 	return <Overview activeSection={activeSection} totalStudents={totalStudents} mockMaterials={mockMaterials} mockGeneratedContent={mockGeneratedContent} mockGeneratedVideos={mockGeneratedVideos}/>;
 };
