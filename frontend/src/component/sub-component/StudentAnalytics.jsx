@@ -2,11 +2,6 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 // Placeholder Mock Data
-const mockData = [
-    { id: 'S001', name: "Alice Smith", progress: 85, avgQuizScore: 92, aiInteractions: 15, lastActivity: "2 hours ago", email: "alice@school.edu" },
-    { id: 'S002', name: "Bob Johnson", progress: 45, avgQuizScore: 68, aiInteractions: 4, lastActivity: "2 days ago", email: "bob@school.edu" },
-    { id: 'S003', name: "Charlie Brown", progress: 95, avgQuizScore: 98, aiInteractions: 25, lastActivity: "30 minutes ago", email: "charlie@school.edu" },
-];
 
 // Base URL for your Flask Backend (Assuming this is defined for API calls)
 const API_BASE_URL = 'http://localhost:5000'; 
@@ -117,7 +112,7 @@ const formatLastActivity = (dateString) => {
 };
 
 const StudentAnalytics = (props) => {
-    const [studentData, setStudentData] = useState(mockData); // Initialize with mockData
+    const [studentData, setStudentData] = useState([]); // Initialize with mockData
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [reportState, setReportState] = useState({
@@ -140,12 +135,10 @@ const StudentAnalytics = (props) => {
             if (response.data && response.data.length > 0) {
                 setStudentData(response.data);
             } else {
-                setStudentData(mockData); 
             }
         } catch (err) {
             console.error('Error fetching student list:', err);
             setError("Failed to load student data. Displaying mock data.");
-            setStudentData(mockData); // Fallback to mock data on error
         } finally {
             setIsLoading(false);
         }

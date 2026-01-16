@@ -1,73 +1,142 @@
-import { useState , useEffect } from 'react';
-import axios from 'axios';
+import { useState, useEffect } from 'react';
 import '../../styles.css';
 import '../../dashboard.css';
 
-const mockMaterials = [
-	{
-	id: 1,
-	title: 'Algebra Fundamentals',
-	type: 'Presentation',
-	uploadDate: '2023-11-01'
-	},
-	{
-	id: 2,
-	title: 'Probability Basics',
-	type: 'Video',
-	uploadDate: '2023-10-28'
-	},
-	{
-	id: 3,
-	title: 'Statistics Exercise',
-	type: 'Worksheet',
-	uploadDate: '2023-10-25'
-	}
-];
-
 function Overview(props) {
+  // Destructure props with default values
+  const {
+    materials = [],
+    subjects = [],
+    students = [],
+    studentProgress = [],
+    totalStudents = 0,
+    userRole = 'student',
+    activeSection
+  } = props;
 
-    useEffect(() => {
-        if (props.activeSection !== 'overview') return;
-        // Fetch data if needed
-    }, [props.activeSection]);
+  // Safe arrays in case props are undefined
+  const safeMaterials = Array.isArray(materials) ? materials : [];
+  const safeSubjects = Array.isArray(subjects) ? subjects : [];
+  const safeStudents = Array.isArray(students) ? students : [];
+  const safeProgress = Array.isArray(studentProgress) ? studentProgress : [];
 
-    return (
-        <div className="dashboard-section">
-        <h3>Welcome to Your Dashboard</h3>
-        <div className="stats-grid">
-            <div className="stat-card">
-            <h4>Total Students</h4>
-            <p>{props.totalStudents}</p>
-            </div>
-            <div className="stat-card">
-            <h4>Materials</h4>
-            <p>{props.mockMaterials.length}</p>
-            </div>
-            <div className="stat-card">
-            <h4>Generated Content</h4>
-            <p>{props.mockGeneratedContent.length + props.mockGeneratedVideos.length}</p>
-            </div>
+  // Sort materials by created_at in descending order (newest first)
+  const sortedMaterials = [...safeMaterials].sort((a, b) => {
+    const dateA = new Date(a.created_at || 0);
+    const dateB = new Date(b.created_at || 0);
+    return dateB - dateA; // Descending order (newest first)
+  });
+
+  useEffect(() => {
+    if (activeSection !== 'overview') return;
+    // Fetch data if needed
+  }, [activeSection]);
+
+  return (
+    <div className="dashboard-main">
+      <h2>Dashboard Overview</h2>
+      
+      {/* Stats Cards */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <h3>Total Students</h3>
+          <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '10px 0' }}>
+            {totalStudents || safeStudents.length}
+          </p>
         </div>
-        
+
+        <div className="stat-card">
+          <h3>Total Materials</h3>
+          <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '10px 0' }}>
+            {safeMaterials.length}
+          </p>
+        </div>
+
+        <div className="stat-card">
+          <h3>Total Subjects</h3>
+          <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '10px 0' }}>
+            {safeSubjects.length}
+          </p>
+        </div>
+      </div>
+
+      {/* Recent Materials - Using sorted materials */}
+      {sortedMaterials.length > 0 && (
         <div className="recent-activity">
-            <h4>Recent Activity</h4>
-            <div className="activity-list">
-            <div className="activity-item">
-                <span>Uploaded new presentation</span>
-                <span className="activity-time">2 hours ago</span>
-            </div>
-            <div className="activity-item">
-                <span>3 new students enrolled</span>
-                <span className="activity-time">Yesterday</span>
-            </div>
-            <div className="activity-item">
-                <span>12 students completed the quiz</span>
-                <span className="activity-time">2 days ago</span>
-            </div>
-            </div>
+          <h4>Recent Materials</h4>
+          <div className="activity-list">
+            {sortedMaterials.slice(0, 5).map((material) => (
+              <div key={material.id} className="activity-item">
+                <span>
+                  <strong>{material.topic}</strong>
+                  {material.subject && (
+                    <span style={{ 
+                      marginLeft: '8px', 
+                      fontSize: '12px', 
+                      color: '#666',
+                      background: '#e0e0e0',
+                      padding: '2px 8px',
+                      borderRadius: '4px'
+                    }}>
+                      {material.subject}
+                    </span>
+                  )}
+                </span>
+                <span className="activity-time">
+                  {material.created_at 
+                    ? new Date(material.created_at).toLocaleString() 
+                    : 'N/A'}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
+      )}
+
+      {/* Student Progress (Teacher only) */}
+      {userRole === 'teacher' && safeProgress.length > 0 && (
+        <div className="recent-activity">
+          <h4>Student Progress</h4>
+          <div className="activity-list">
+            {safeProgress.slice(0, 5).map((student) => (
+              <div key={student.id} className="activity-item">
+                <span>{student.name}</span>
+                <span style={{ 
+                  fontWeight: 'bold', 
+                  color: student.progress >= 70 ? '#27ae60' : '#e74c3c' 
+                }}>
+                  {student.progress}%
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-    );
+      )}
+
+      {/* Subjects List */}
+      {safeSubjects.length > 0 && (
+        <div className="recent-activity">
+          <h4>Your Subjects</h4>
+          <div className="courses-list">
+            {safeSubjects.map((subject) => (
+              <div key={subject.id} className="course-card">
+                <h3>{subject.subject}</h3>
+                <p>{subject.topics?.length || 0} topics</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {safeMaterials.length === 0 && safeSubjects.length === 0 && (
+        <div className="activity-list" style={{ textAlign: 'center', padding: '40px' }}>
+          <h3>📭 No Data Available</h3>
+          <p>Start by adding subjects and materials to get started!</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default Overview;

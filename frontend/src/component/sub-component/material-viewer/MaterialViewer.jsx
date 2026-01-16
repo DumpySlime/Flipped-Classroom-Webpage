@@ -1,104 +1,85 @@
 import { useState, useEffect } from 'react';
 import '../../../styles.css';
 import '../../../dashboard.css';
-import axios from 'axios';
 import MaterialList from './MaterialList';
 import SubjectList from './SubjectList';
 
 function MaterialViewer(props) {
-    const [userMaterials, setUserMaterials] = useState([]);
+    const [selectedSubject, setSelectedSubject] = useState(null);
+    const [userMaterials, setUserMaterials] = useState({});
     const [userSubjects, setUserSubjects] = useState([]);
 
+    // Use props data instead of fetching again
     useEffect(() => {
-        if (props.activeSection !== 'materials') return;
+        // Get subjects from props
+        const subjects = Array.isArray(props.subjects) ? props.subjects : [];
+        setUserSubjects(subjects);
         
-        const ac = new AbortController();
+        console.log('MaterialViewer userSubjects:', subjects);
         
-        let subjectParams = {};
-        let materialParams = {};
-
-        // set parameters for different roles
-        if (props.userRole === 'teacher') {
-            subjectParams = { "teacher_id": props.userInfo.id };
-            materialParams = { "uploaded_by": props.userInfo.id };
-        } else if (props.userRole === 'student') {
-            subjectParams = { "student_id": props.userInfo.id };
+        // Get materials from props
+        const materials = Array.isArray(props.materials) ? props.materials : [];
+        
+        // Organize materials by subject ID
+        if (props.selectedSubject && materials.length > 0) {
+            setUserMaterials({
+                [props.selectedSubject]: materials
+            });
         }
-
-        console.log(`/db/subject params: ${JSON.stringify(subjectParams)}`);
-        console.log(`/db/material params: ${JSON.stringify(materialParams)}`);
-
-        // fetch subjects
-        axios.get('/db/subject', {
-            params: subjectParams,
-            signal: ac.signal
-        })
-        .then((response) => {
-            const subjects = response.data.subjects || [];
-            setUserSubjects(subjects);
-            // fetch materials and divide them by subjects
-            Promise.all(subjects.map(s => {
-                console.log(`Fetching materials for subject: ${s.id} (${s.subject})`);
-                return axios.get('/db/material', {
-                    params: {
-                        ...materialParams,
-                        subject_id: s.id
-                    }, 
-                    signal: ac.signal
-                })
-                .then((response) => {
-                    console.log(`Materials response for subjectId ${s.id}:`, response.data);
-                    return {
-                        subjectId: s.id,
-                        materials: response.data.materials
-                    }
-                })
-                .catch((error) => {
-                    if (error.name != 'CanceledError') {
-                        console.error('Error in Promise: ', error);
-                    }
-                    return { subjectId: s.id, materials: [] };
-                })
-            }))
-            .then(results => {
-                console.log("MaterialViewer material response:", JSON.stringify(results,null,2))
-                const materialsObj = results.reduce((acc, cur) => 
-                    {
-                        acc[cur.subjectId] = cur.materials;
-                        return acc;
-                    }, {});
-                setUserMaterials(materialsObj);
-            })
-            .catch(error => {
-                if (error.name !== 'CanceledError') {
-                    console.error('Error fetching materials:', error);
-                }
-            })
-        })
-        .catch((error) => {
-            if (error.name !== 'CanceledError') {
-                console.error('Error fetching subjects:', error);
+        
+        // Set first subject as selected if none selected
+        if (!selectedSubject && subjects.length > 0) {
+            setSelectedSubject(subjects[0]);
+            if (props.onSubjectChange) {
+                props.onSubjectChange(subjects[0].id);
             }
-        });
+        }
+        
+        console.log('MaterialViewer userMaterials:', materials);
+    }, [props.subjects, props.materials, props.selectedSubject]);
 
-        return () => ac.abort();
-    }, [props.activeSection, props.userRole]);
+    const handleSubjectSelect = (subject) => {
+        setSelectedSubject(subject);
+        if (props.onSubjectChange) {
+            props.onSubjectChange(subject.id);
+        }
+    };
 
-    useEffect(() => {
-        console.log("MaterialViewer userSubjects: ", JSON.stringify(userSubjects, null, 2));
-        console.log("MaterialViewer userMaterials: ", JSON.stringify(userMaterials, null, 2));
-    }, [userSubjects, userMaterials])
+    // Get user info from localStorage if not in props
+    const userInfo = props.userInfo || {
+        id: localStorage.getItem('user_id'),
+        username: localStorage.getItem('user_username'),
+        firstname: localStorage.getItem('user_firstname'),
+        lastname: localStorage.getItem('user_lastname')
+    };
 
     return (
         <>
-        {userSubjects.length === 1 ? (
-            
-            <MaterialList {...props} subject={userSubjects[0]} materials={userMaterials[userSubjects[0]?.id] || [] } />
-        ) : (userSubjects.length > 1 ?            
-            <SubjectList {...props} subjects={userSubjects} materials={userMaterials} /> : <div>There is no subject assigned</div>    
-        )}
+            {userSubjects.length === 0 ? (
+                <div className="empty-state">
+                    <h3>No Subjects Assigned</h3>
+                    <p>You don't have any subjects assigned yet. Please contact your administrator.</p>
+                </div>
+            ) : userSubjects.length === 1 ? (
+                // If only one subject, show MaterialList directly
+                <MaterialList
+                    subject={userSubjects[0]}
+                    materials={userMaterials[userSubjects[0].id] || []}
+                    userRole={props.userRole}
+                    userInfo={userInfo}
+                />
+            ) : (
+                // If multiple subjects, show SubjectList
+                <SubjectList
+                    subjects={userSubjects}
+                    materials={userMaterials}
+                    userRole={props.userRole}
+                    userInfo={userInfo}
+                    onSubjectSelect={handleSubjectSelect}
+                />
+            )}
         </>
-    )
+    );
 }
 
 export default MaterialViewer;

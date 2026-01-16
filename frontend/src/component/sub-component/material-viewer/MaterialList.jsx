@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import '../../../styles.css';
 import '../../../dashboard.css';
-import axios from 'axios';
 
 import UploadMaterial from './UploadMaterial';
 import EditMaterial from './EditMaterial';
 import ViewMaterial from './ViewMaterial';
 import GenerateMaterial from './GenerateMaterial';
+import { materialAPI } from '../../../services/api';
 
 function MaterialList(props) {
     const [materials, setMaterials] = useState([]);    
@@ -16,20 +16,15 @@ function MaterialList(props) {
     const [showGenerate, setShowGenerate] = useState(false);
     const [selectedMaterial, setSelectedMaterial] = useState(null);
 
-    function deleteMaterial(matId) {
-        const ac = new AbortController();
-        axios.delete('/db/material-delete?material_id=' + matId, {
-            signal: ac.signal
-        })
-        .then((response) => {
+    async function deleteMaterial(matId) {
+        try {
+            await materialAPI.delete(matId);
             setMaterials(prevMaterials => prevMaterials.filter(material => material.id !== matId));
-            alert(response.data.message);
-        })
-        .catch(error => {
-            if (error.name !== 'CanceledError') {
-                console.error('Error delete materials:', error);
-            }
-        })
+            alert('Material deleted successfully');
+        } catch (error) {
+            console.error('Error deleting material:', error);
+            alert('Failed to delete material');
+        }
     }
 
     function handleViewMaterial(material) {
@@ -43,7 +38,10 @@ function MaterialList(props) {
     }
 
     useEffect(() => {
-        setMaterials(props.materials);
+        // Safety check for materials prop
+        const safeMaterials = Array.isArray(props.materials) ? props.materials : [];
+        console.log('MaterialList received materials:', safeMaterials);
+        setMaterials(safeMaterials);
     }, [props.materials, props.subject]);
 
     // If showing upload
@@ -61,10 +59,10 @@ function MaterialList(props) {
         return (
             <GenerateMaterial            
                 subject={props.subject}
-                username={props.userInfo.username}
+                username={props.userInfo?.username || 'user'}
                 onClose={() => setShowGenerate(false)}
             />
-        )
+        );
     }
 
     // If showing view
@@ -90,64 +88,67 @@ function MaterialList(props) {
     return (
         <div className="materials-section">
             <div className="section-header">
-            <h3>{props.subject.subject} Materials</h3>
-            {props.userRole !== 'student' && (
-                <button className="button primary" onClick={() => setShowGenerate(true)}>
-                Generate Material
-                </button>
-            )}
+                <h3>{props.subject?.subject || 'Materials'}</h3>
+                {props.userRole !== 'student' && (
+                    <button className="button primary" onClick={() => setShowGenerate(true)}>
+                        Generate Material
+                    </button>
+                )}
             </div>
 
             <div className="materials-list">
-            {materials.map((m) => (
-                <div 
-                key={m.id} 
-                className="material-row" 
-                onClick={() => handleViewMaterial(m)}
-                >
-                <div className="material-main">
-                    <div className="material-topic">{m.topic}</div>
-                    <div className="material-meta">
-                    <span className="material-date">
-                        {m.created_at}
-                    </span>
-                    </div>
-                </div>
+                {materials.length > 0 ? (
+                    materials.map((m) => (
+                        <div 
+                            key={m.id} 
+                            className="material-row" 
+                            onClick={() => handleViewMaterial(m)}
+                        >
+                            <div className="material-main">
+                                <div className="material-topic">{m.topic}</div>
+                                <div className="material-meta">
+                                    <span className="material-date">
+                                        {m.created_at 
+                                            ? new Date(m.created_at).toLocaleDateString() 
+                                            : 'N/A'}
+                                    </span>
+                                </div>
+                            </div>
 
-                {props.userRole !== 'student' && (
-                    <div className="material-actions">
-                    <button
-                        className="button subtle"
-                        onClick={(e) => {
-                        e.stopPropagation();
-                        console.log('Editing material id:', m.id);
-                        handleEditMaterial(m);
-                        }}
-                    >
-                        Edit
-                    </button>
-                    <button
-                        className="button danger subtle"
-                        onClick={(e) => {
-                        e.stopPropagation();
-                        console.log('Deleting material id:', m.id);
-                        deleteMaterial(m.id);
-                        }}
-                    >
-                        Delete
-                    </button>
+                            {props.userRole !== 'student' && (
+                                <div className="material-actions">
+                                    <button
+                                        className="button subtle"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            console.log('Editing material id:', m.id);
+                                            handleEditMaterial(m);
+                                        }}
+                                    >
+                                        Edit
+                                    </button>
+                                    <button
+                                        className="button danger subtle"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            console.log('Deleting material id:', m.id);
+                                            deleteMaterial(m.id);
+                                        }}
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    ))
+                ) : (
+                    <div className="materials-empty">
+                        No materials yet for this subject.
                     </div>
                 )}
-                </div>
-            ))}
-            {materials.length === 0 && (
-                <div className="materials-empty">
-                No materials yet.
-                </div>
-            )}
             </div>
         </div>
     );
-
 }
+
 export default MaterialList;
