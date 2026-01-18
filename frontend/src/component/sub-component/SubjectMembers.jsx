@@ -15,7 +15,7 @@ function RoleBadge({ role }) {
 function SubjectMembers(props) {
   const { userInfo, userRole } = props;
 
-  const [subjects, setSubjects] = useState([]); // array of subject objects (id, subject, ...)
+  const [subjects, setSubjects] = useState([]); // array of subject objects (id, subject)
   const [membersBySubject, setMembersBySubject] = useState({}); // { subjectId: [members] }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -25,7 +25,6 @@ function SubjectMembers(props) {
     setLoading(true);
     setError(null);
 
-    // helper to handle axios errors and cancellation
     const isCanceled = (err) => err?.name === 'CanceledError' || err?.message === 'canceled';
 
     if (userRole === 'admin') {
@@ -37,14 +36,19 @@ function SubjectMembers(props) {
           // build subjects list and membersBySubject map
           const subjectsMap = {};
           const grouped = {};
+
           subjectmembers.forEach(m => {
-            const sid = m.subject_id;
-            if (!subjectsMap[sid]) {
-              subjectsMap[sid] = { id: sid, subject: m.subject };
-            }
-            if (!grouped[sid]) grouped[sid] = [];
-            grouped[sid].push(m);
+            // m.subject_ids is an array, m.subjects is array of names
+            (m.subject_ids || []).forEach((sid, idx) => {
+              const subjName = (m.subjects && m.subjects[idx]) || 'Unknown';
+              if (!subjectsMap[sid]) {
+                subjectsMap[sid] = { id: sid, subject: subjName };
+              }
+              if (!grouped[sid]) grouped[sid] = [];
+              grouped[sid].push(m);
+            });
           });
+
           setSubjects(Object.values(subjectsMap));
           setMembersBySubject(grouped);
           setLoading(false);
@@ -67,25 +71,25 @@ function SubjectMembers(props) {
       .then(res => {
         const fetchedSubjects = res.data?.subjects || [];
         setSubjects(fetchedSubjects);
-
+        
         // For each subject, fetch its members
         return Promise.all(fetchedSubjects.map(s => {
-          console.log(`SubjectMembers: fetching members for subject ${s.id}`);
+          const sid = s.id || s._id;
           return axios.get('/db/subjectmembers', {
-            params: { subject_id: s.id },
+            params: { subject_id: sid },
             signal: ac.signal
           })
           .then(resp => {
             const members = resp.data?.subjectmembers || [];
-            // For teacher view, students list only
+            // For teacher view, students list only 
             const studentsOnly = members.filter(m => m.role === 'student');
-            return { subjectId: s.id, members: studentsOnly };
+            return { subjectId: sid, members: studentsOnly };
           })
           .catch(err => {
             if (!isCanceled(err)) {
               console.error(`Error fetching members for subject ${s.id}:`, err);
             }
-            return { subjectId: s.id, members: [] };
+            return { subjectId: sid, members: [] };
           });
         }));
       })
@@ -116,7 +120,6 @@ function SubjectMembers(props) {
     return () => ac.abort();
   }, [userInfo?.id, userRole]);
 
-  // Debug logging similar to your template
   useEffect(() => {
     console.log('SubjectMembers subjects:', JSON.stringify(subjects, null, 2));
     console.log('SubjectMembers membersBySubject:', JSON.stringify(membersBySubject, null, 2));

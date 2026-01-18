@@ -495,23 +495,24 @@ def get_subject_members():
         except Exception:
             teacher_query = {"user_id": user_id, "role": "teacher"}
         
-        teacher_subjects_cursor = db.subjectMembers.find(teacher_query, {"subject_id": 1})
-        subject_ids_filter = [doc["subject_id"] for doc in teacher_subjects_cursor]
+        teacher_subjects_cursor = db.subjectMembers.find(teacher_query, {"subject_ids": 1})
+        subject_ids_filter = [] 
+        for doc in teacher_subjects_cursor: 
+            subject_ids_filter.extend(doc.get("subject_ids", []))
     else:
         # for other roles e.g.admin, then return all students
         subject_ids_filter = None    
 
     pipeline = []
 
-    # if we have a subject filter list (could be empty list), match subject_id in that list
+    # if we have a subject filter list (could be empty list)
     if subject_ids_filter is not None:
-        pipeline.append({"$match": {"subject_id": {"$in": subject_ids_filter}}})
+        pipeline.append({"$match": {"subject_ids": {"$in": subject_ids_filter}}})
 
     # IMPORTANT: if caller is teacher, restrict to subjectmembers.role == "student"
     if user_role == "teacher":
         pipeline.append({"$match": {"role": "student"}})
-    # if caller is admin, do not add this match — admin sees all roles
-
+        
     # lookup user info
     pipeline.append({
         "$lookup": {
@@ -523,24 +524,23 @@ def get_subject_members():
     })
     pipeline.append({"$unwind": {"path": "$user", "preserveNullAndEmptyArrays": True}})
 
-    # lookup subject info
+    # lookup subjects (array join)
     pipeline.append({
         "$lookup": {
             "from": "subjects",
-            "localField": "subject_id",
+            "localField": "subject_ids",
             "foreignField": "_id",
-            "as": "subject"
+            "as": "subjects"
         }
     })
-    pipeline.append({"$unwind": {"path": "$subject", "preserveNullAndEmptyArrays": True}})
-
+    
     # project fields; role here is the subjectMembers.role (for teacher it will be 'student'),
     # you can also include account-level role if you want: "accountRole": "$user.role"
     pipeline.append({
         "$project": {
             "_id": 1,
-            "subject_id": 1,
-            "subject": "$subject.subject",
+            "subject_ids": 1,
+            "subjects": "$subjects.subject",
             "user_id": 1,
             "firstName": "$user.firstName",
             "lastName": "$user.lastName",
@@ -557,8 +557,8 @@ def get_subject_members():
     for d in docs:
         result.append({
             "_id": str(d.get("_id")),
-            "subject_id": str(d.get("subject_id")),
-            "subject": d.get("subject"),
+            "subject_ids": [str(sid) for sid in d.get("subject_ids", [])],
+            "subjects": d.get("subjects", []),
             "user_id": str(d.get("user_id")),
             "firstName": d.get("firstName"),
             "lastName": d.get("lastName"),
