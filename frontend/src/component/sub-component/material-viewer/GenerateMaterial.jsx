@@ -7,18 +7,76 @@ import ViewQuestion from './ViewQuestion';
 
 function GenerateMaterial({subject, username, onClose}) {
 	const [topics, setTopics] = useState([])
-	const [values, setValues] = useState({
+    const [loadingTopics, setLoadingTopics] = useState(false); // <-- defined
+    const [topicsError, setTopicsError] = useState(null); // <-- defined
+	
+    const [values, setValues] = useState({
 		topic: '',
 		description: '',
 		subject: subject?.subject || '',
 		subject_id: subject?.id || '',
 		//username: username || '',
 	})
+
 	const [error, setError] = useState(null);
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [generatedMaterial, setGeneratedMaterial] = useState(null);
 	const [hasCreatedQuestions, setHasCreatedQuestions] = useState(false);
 	const [generatedQuestionId, setGeneratedQuestionId] = useState(null);
+    
+    // Update subject fields and fetch topics
+    useEffect(() => {
+        const subjectId = subject?._id || subject?.id || '';
+        setValues(prev => ({
+        ...prev,
+        subject: subject?.subject || '',
+        subject_id: subjectId
+        }));
+
+        if (!subjectId) {
+        setTopics([]);
+        setTopicsError(null);
+        return;
+        }
+
+        let cancelled = false;
+        const fetchTopics = async () => {
+        setLoadingTopics(true);
+        setTopicsError(null);
+        try {
+        const res = await axios.get('/db/topic', {
+          params: { subject_id: subjectId },
+        });
+
+        const fetched = Array.isArray(res.data?.topics) ? res.data.topics : [];
+        if (!cancelled) {
+          setTopics(fetched);
+          // Clear selected topic if it's no longer valid
+          setValues(prev => {
+            const stillValid = fetched.some(t => t.topic === prev.topic);
+            return { ...prev, topic: stillValid ? prev.topic : '' };
+          });
+        }            
+        } catch (err) {
+            if (!cancelled) {
+            setTopics([]);
+            setTopicsError(err.message || 'Unable to load topics');
+            }
+        } finally {
+            if (!cancelled) setLoadingTopics(false);
+        }
+        };
+
+        fetchTopics();
+        return () => { cancelled = true; };
+    }, [subject]);
+
+    // if no subject id, clear topics
+    const subjectId = subject?._id || subject?.id;
+    if (!subjectId) {
+      setTopics([]);
+      return;
+    }
 
 	const handleChanges = (e) => {
 		setValues({...values, [e.target.name]: e.target.value })
@@ -64,53 +122,6 @@ function GenerateMaterial({subject, username, onClose}) {
 			setError("Failed to generate material. Please try again.");
 			setIsGenerating(false);
 		})
-	}
-
-	useEffect(() => {
-		// set subject name to current subject once detected
-		setTopics(subject.topics || ["undefined"]);
-		setValues(prev => ({...prev, subject: subject.subject}))
-	}, [subject])
-
-	// Function to poll the material generation progress
-	const pollMaterialProgress = (sid, submittedValues) => {
-		const maxAttempts = 60;
-		let attempts = 0;
-		const checkProgress = () => {
-			if (attempts >= maxAttempts) {
-				console.log("Material generation timed out. Please try again later.");
-				setIsGenerating(false);
-				return;
-			}
-
-			axios.get(`/api/llm/material/progress?sid=${sid}`)
-			.then( (response) => {
-				const data = response.data?.data || {};
-				const status = data.materialStatus
-				console.log(`Material progress: ${status} (attempt ${attempts + 1}/${maxAttempts})`);
-				if (status === 'done') {
-					console.log("Material generation completed!");
-					console.log("Generated material data:", data);
-					setError(null);
-					setGeneratedMaterial(data);
-					// Pass the submitted values to question generation
-					generateQuestions(data.sid, submittedValues);
-				} else if (status === 'failed') {
-					setError('Material generation failed. Please try again.');
-					console.log("Material generation failed.");
-					setIsGenerating(false);
-				} else {
-					attempts += 1;
-					setTimeout(checkProgress, 5000); // Poll every 5 seconds
-				}
-			})
-			.catch( (error) => {
-				console.log(`Error checking progress: ${error}`);
-				setError('Error checking generation progress.');
-				setIsGenerating(false);
-			})
-		}
-		checkProgress();
 	}
 
 	// function for question generation
@@ -182,14 +193,13 @@ function GenerateMaterial({subject, username, onClose}) {
 							name="topic" 
 							value={values.topic} 
 							onChange={handleChanges}
-							className="form-input"
-						>
-							<option value="">Select a topic</option>
-							{topics.map((topic, index) => (
-								<option key={index} value={topic}>
-									{topic}
-								</option>
-							))}
+							className="form-input">
+                            <option value="">Select a topic</option>
+                                {topics.map(t => (
+                                    <option key={t._id} value={t.topic}>
+                                {t.topic}
+                            </option>
+                            ))}
 						</select>
 					</div>
 
