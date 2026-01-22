@@ -5,7 +5,7 @@ import axios from 'axios';
 import SlideExplanation from './slide-template/SlideExplanation';
 import SlideExample from './slide-template/SlideExample';
 
-function ViewMaterial({ material, materialData }) {
+function ViewMaterial({ material, materialData, props}) {
 	const [slides, setSlides] = useState(null);
 	const [questions, setQuestions] = useState([]);
 	const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -559,7 +559,7 @@ function ViewMaterial({ material, materialData }) {
 										// Send answers to backend for storage
 										try {
 											
-											const currentStudentId = localStorage.getItem('student_id') || 'demo_student_id';
+											const currentStudentId = props?.userInfo?.id || localStorage.getItem('student_id');
 											
 											const response = await axios.post('/db/student-answers-submit', {
 												student_id: currentStudentId,

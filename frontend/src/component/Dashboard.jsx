@@ -365,6 +365,14 @@ function Dashboard(props) {
               📊 Overview
             </button>
           )}
+          {roleSections.includes && roleSections.includes('subject-members') && (
+            <button
+              className={activeSection === 'subject-members' ? 'active' : ''}
+              onClick={() => setActiveSection('subject-members')}
+            >
+              🧑‍🤝‍🧑 Subject Members
+            </button>
+          )}
           {roleSections.includes && roleSections.includes('materials') && (
             <button
               className={activeSection === 'materials' ? 'active' : ''}
@@ -411,14 +419,6 @@ function Dashboard(props) {
               onClick={() => setActiveSection('chatroom')}
             >
               💬 AI Chatroom
-            </button>
-          )}
-          {roleSections.includes && roleSections.includes('subject-members') && (
-            <button
-              className={activeSection === 'subject-members' ? 'active' : ''}
-              onClick={() => setActiveSection('subject-members')}
-            >
-              🧑‍🤝‍🧑 Subject Members
             </button>
           )}
         </nav>

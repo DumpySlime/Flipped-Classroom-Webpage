@@ -669,7 +669,13 @@ def get_question():
 def submit_student_answers():
     try:
         data = request.get_json()
-        student_id = data.get("student_id")
+        student_id = data.get("student_id") if isinstance(data, dict) else None 
+        if not student_id: 
+            try: 
+                student_id = get_jwt_identity() 
+                print("submit_student_answers: using JWT identity as student_id:", student_id) 
+            except Exception: 
+                student_id = None
         material_id = data.get("material_id")
         answers = data.get("answers")  # Format: [{"question_id": "xxx", "user_answer": "xxx", "is_correct": true/false, "score": 10}]
         total_score = data.get("total_score")
@@ -736,6 +742,13 @@ def get_student_answers():
         material_id = request.args.get('material_id')
         filt = {}
         
+        # If student_id not provided, use JWT identity (useful for frontend) 
+        if not student_id: 
+            try: 
+                student_id = get_jwt_identity() 
+                print("get_student_answers: using JWT identity as student_id:", student_id) 
+            except Exception: 
+                student_id = None
         if student_id:
             try:
                 if len(student_id) == 24 and all(c in '0123456789abcdefABCDEF' for c in student_id):
