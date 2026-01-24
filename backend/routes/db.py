@@ -715,7 +715,8 @@ def submit_student_answers():
             "material_id": material_id_value,
             "answers": answers,
             "total_score": total_score,
-            "submission_time": submission_time
+            "submission_time": submission_time,
+            "status": "submitted"
         }
 
         print(f"Inserting student answers submission: {submission}")
@@ -778,7 +779,8 @@ def get_student_answers():
                 "material_id": str(s.get("material_id")),
                 "answers": s.get("answers"),
                 "total_score": s.get("total_score"),
-                "submission_time": s.get("submission_time")
+                "submission_time": s.get("submission_time"),
+                "status": s.get("status")
             })
         
         print(f"Student answers search results: Found {len(results)} submissions")

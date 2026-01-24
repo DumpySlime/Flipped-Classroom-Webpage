@@ -70,7 +70,7 @@ function MaterialList(props) {
         return (
             <ViewMaterial 
                 material={selectedMaterial} 
-                props={props.userInfo}
+                userInfo={props.userInfo}
                 onClose={() => setShowView(false)}
             />
         );
