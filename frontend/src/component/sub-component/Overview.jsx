@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import '../../styles.css';
 import '../../dashboard.css';
+import MaterialList from './material-viewer/MaterialList';
 
 function Overview(props) {
   // Destructure props with default values
@@ -31,6 +32,27 @@ function Overview(props) {
     if (activeSection !== 'overview') return;
     // Fetch data if needed
   }, [activeSection]);
+
+  const [selectedSubject, setSelectedSubject] = useState(null);
+  const userInfo = props.userInfo;
+
+  // Direct user to selected subject Material List on click
+  function handleViewMaterialList(subject) {
+    setSelectedSubject(subject);
+  }
+
+  if (selectedSubject) {
+    const subjectMaterials = safeMaterials.filter(m => m.subject_id === selectedSubject.id) || [];
+    return (
+      <MaterialList
+        subject={selectedSubject}
+        materials={subjectMaterials}
+        userRole={userRole}
+        userInfo={userInfo}
+        onClose={() => setSelectedSubject(null)}
+      />
+    );
+  }
 
   return (
     <div className="dashboard-main">
@@ -119,7 +141,7 @@ function Overview(props) {
           <h4>Your Subjects</h4>
           <div className="courses-list">
             {safeSubjects.map((subject) => (
-              <div key={subject.id} className="course-card">
+              <div key={subject.id} className="course-card" onClick={() => handleViewMaterialList(subject)}>
                 <h3>{subject.subject}</h3>
                 <p>{subject.topics?.length || 0} topics</p>
               </div>

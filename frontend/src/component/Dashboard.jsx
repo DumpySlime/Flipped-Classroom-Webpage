@@ -42,9 +42,9 @@ function Dashboard(props) {
   // Define role-based sections
   useEffect(() => {
     const sections = {
-      teacher: ['overview', 'materials', 'assignments', 'analytics', 'subjects', 'subject-members', 'users', 'chatroom'],
-      student: ['overview', 'materials', 'assignments', 'analytics', 'chatroom'],
-      admin: ['overview', 'materials', 'assignments', 'analytics', 'subjects', 'users', 'chatroom', 'subject-members']
+      teacher: ['overview', 'materials', 'analytics', 'subject-members'],
+      student: ['overview', 'materials', 'chatroom'],
+      admin: ['overview', 'materials', 'analytics', 'subjects', 'users', 'chatroom', 'subject-members']
     };
     setRoleSections(sections[currentUserInfo.role] || sections.student);
   }, [currentUserInfo.role]);
@@ -243,18 +243,18 @@ function Dashboard(props) {
 		case 'materials':
 		return (
 			<MaterialViewer
-			subjects={subjects}
-			materials={materials}
-			selectedSubject={selectedSubject}
-			onSubjectChange={handleSubjectChange}
-			userRole={currentUserInfo.role}
-			userInfo={{
-				id: currentUserInfo.id,
-				username: localStorage.getItem('user_username'),
-				firstname: localStorage.getItem('user_firstname'),
-				lastname: localStorage.getItem('user_lastname')
-			}}
-			activeSection={activeSection}
+        subjects={subjects}
+        materials={materials}
+        selectedSubject={selectedSubject}
+        onSubjectChange={handleSubjectChange}
+        userRole={currentUserInfo.role}
+        userInfo={{
+          id: currentUserInfo.id,
+          username: localStorage.getItem('user_username'),
+          firstname: localStorage.getItem('user_firstname'),
+          lastname: localStorage.getItem('user_lastname')
+        }}
+        activeSection={activeSection}
 			/>
 		);
 
