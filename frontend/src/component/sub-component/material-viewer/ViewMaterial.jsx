@@ -14,7 +14,6 @@ function ViewMaterial({ material, materialData, userInfo}) {
 	const [userAnswers, setUserAnswers] = useState({});
 	const [submitted, setSubmitted] = useState(false);
 	const [score, setScore] = useState(0);
-	const [resetKey, setResetKey] = useState(0);
 	const [materialId, setMaterialId] = useState(null);
 	const [submitting, setSubmitting] = useState(false);
 	const [savedSubmissionTime, setSavedSubmissionTime] = useState(null);
@@ -410,7 +409,6 @@ function ViewMaterial({ material, materialData, userInfo}) {
 
 		{/* ========== QUESTIONS SECTION (SEPARATE) ========== */}
 		<div
-			key={resetKey}
 			style={{
 			backgroundColor: 'white',
 			borderRadius: '10px',
@@ -724,27 +722,6 @@ function ViewMaterial({ material, materialData, userInfo}) {
 					<p style={{ marginBottom: '20px', color: '#333' }}>
 					You got {score}% of the questions correct!
 					</p>
-
-					<button
-					style={{
-						padding: '10px 20px',
-						fontSize: '16px',
-						backgroundColor: '#2196F3',
-						color: 'white',
-						border: 'none',
-						borderRadius: '5px',
-						cursor: 'pointer'
-					}}
-					onClick={() => {
-						setSubmitted(false);
-						setUserAnswers({});
-						setScore(0);
-						// Update resetKey to force re-render where needed
-						setResetKey(prev => prev + 1);
-					}}
-					>
-					Try Again
-					</button>
 				</div>
 				)}
 			</div>
