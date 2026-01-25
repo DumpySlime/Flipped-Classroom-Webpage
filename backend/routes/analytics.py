@@ -1,186 +1,275 @@
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required
-from bson.objectid import ObjectId
-import os
-import json
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util import Retry
+# analytics.py - Student Analytics Backend
 
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from bson import ObjectId
+from datetime import datetime
+
+analytics_bp = Blueprint('analytics', __name__)
+
+# Global variables - initialized by app
 db = None
 
-def init_db(db_instance):
-    """Initializes the database connection for the analytics blueprint."""
+def init_analytics(database):
+    """Initialize the analytics blueprint with database connection"""
     global db
-    db = db_instance
-
-analytics_bp = Blueprint('analytics', __name__, url_prefix='/api/analytics')
-
-# --- LLM Utility Function (Self-Contained for Report Generation using DeepSeek API) ---
-def _generate_llm_report_content(prompt, model="deepseek-chat"):
-    """Makes a request to the DeepSeek API for content generation (OpenAI compatible format)."""
-    
-    # --- DEEPSEEK CONFIGURATION ---
-    # NOTE: You must set the DEEPSEEK_API_KEY environment variable for this to work.
-    DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY") 
-    # Use the standard OpenAI-compatible completions endpoint
-    API_URL = "https://api.deepseek.com/v1/chat/completions" 
-    
-    if not DEEPSEEK_API_KEY:
-        return "Error: DEEPSEEK_API_KEY environment variable not set."
-
-    system_prompt = "You are a helpful and positive educational assistant. Your task is to generate a concise, encouraging, and actionable student performance report based on the data provided. Respond ONLY with the report text."
-
-    # DeepSeek/OpenAI API Payload Structure
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.7,
-        "stream": False
-    }
-    
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {DEEPSEEK_API_KEY}'
-    }
-
-    # Simple exponential backoff retry mechanism
-    session = requests.Session()
-    retry = Retry(total=3, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504])
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount('http://', adapter)
-    session.mount('https://', adapter)
-
-    try:
-        response = session.post(API_URL, headers=headers, data=json.dumps(payload), timeout=30)
-        response.raise_for_status() 
-        result = response.json()
-        
-        # Extract the generated text from the standard completions response
-        text = result.get('choices', [{}])[0].get('message', {}).get('content')
-        return text if text else "LLM generated an empty response."
-
-    except requests.exceptions.RequestException as e:
-        print(f"DeepSeek API Error: {e}")
-        # Log the full error response for debugging, if available
-        try:
-            error_details = response.json().get('error', {}).get('message', 'No message provided.')
-        except:
-            error_details = "Check your API key and base URL."
-            
-        return f"Error communicating with AI service: {e}. Details: {error_details}"
+    db = database
+    print("[ANALYTICS] Analytics module initialized")
 
 
-# In analytics.py
-
-from datetime import datetime # Add this import at the top
-
-def serialise_doc(doc):
-    """Converts a MongoDB document to a serializable dictionary."""
-    if not doc:
-        return None
-        
-    # 1. Handle ObjectId -> String
-    if isinstance(doc.get('_id'), ObjectId):
-        doc['id'] = str(doc.pop('_id'))
-    else:
-        # If _id is already a string (e.g., "S001"), just rename it to id
-        doc['id'] = str(doc.pop('_id'))
-        
-    # 2. Handle Date Objects (Crucial for MongoDB dates)
-    # This prevents "Object of type datetime is not JSON serializable" errors
-    for key, value in doc.items():
-        if isinstance(value, datetime):
-            doc[key] = value.isoformat() # Convert date to string (ISO 8601)
-
-    return doc
-
-# Endpoint to fetch student analytics data (list view)
-@analytics_bp.route('/students', methods=['GET'])
+@analytics_bp.route('/api/analytics/students', methods=['GET'])
 @jwt_required()
 def get_student_analytics():
-    if db is None:
-        return jsonify({"error": "Database not initialized"}), 500
-
+    """
+    Aggregate student performance data from student_answers collection
+    Returns: List of students with their analytics metrics
+    """
     try:
-        # Attempt to fetch real data
-        students = list(db.students.find({}))
+        # Get total number of materials for progress calculation
+        total_materials_count = db.materials.count_documents({})
         
-        if not students:
-            print("INFO: 'students' collection is empty. Using mock data.")
-
-        # Serialize documents for JSON response
-        results = [serialise_doc(s.copy()) for s in students]
+        if total_materials_count == 0:
+            total_materials_count = 1  # Prevent division by zero
+        
+        # Aggregation pipeline to calculate analytics per student
+        pipeline = [
+            # Match only submitted answers
+            {
+                "$match": {
+                    "status": "submitted"
+                }
+            },
+            # Group by student_id to aggregate their performance
+            {
+                "$group": {
+                    "_id": "$student_id",
+                    "total_submissions": {"$sum": 1},
+                    "avg_score": {"$avg": "$total_score"},
+                    "last_activity": {"$max": "$submission_time"},
+                    "materials_attempted": {"$addToSet": "$material_id"}
+                }
+            },
+            # Lookup student details from students collection
+            {
+                "$lookup": {
+                    "from": "students",
+                    "localField": "_id",
+                    "foreignField": "_id",
+                    "as": "student_info"
+                }
+            },
+            {"$unwind": {"path": "$student_info", "preserveNullAndEmptyArrays": True}},
+            # Lookup user details (in case student info is in users collection)
+            {
+                "$lookup": {
+                    "from": "users",
+                    "localField": "_id",
+                    "foreignField": "_id",
+                    "as": "user_info"
+                }
+            },
+            {"$unwind": {"path": "$user_info", "preserveNullAndEmptyArrays": True}},
+            # Project final output with calculated fields
+            {
+                "$project": {
+                    "id": {"$toString": "$_id"},
+                    "name": {
+                        "$ifNull": [
+                            "$student_info.name",
+                            {"$ifNull": ["$user_info.username", "Unknown Student"]}
+                        ]
+                    },
+                    "progress": {
+                        "$round": [
+                            {
+                                "$multiply": [
+                                    {"$divide": [
+                                        {"$size": "$materials_attempted"},
+                                        total_materials_count
+                                    ]},
+                                    100
+                                ]
+                            },
+                            0
+                        ]
+                    },
+                    "avgQuizScore": {"$round": ["$avg_score", 0]},
+                    "lastActivity": "$last_activity",
+                    "totalSubmissions": "$total_submissions"
+                }
+            },
+            # Sort by last activity (most recent first)
+            {"$sort": {"lastActivity": -1}}
+        ]
+        
+        results = list(db.student_answers.aggregate(pipeline))
+        
+        # If no results, return empty array
+        if not results:
+            return jsonify([]), 200
+        
         return jsonify(results), 200
-
+        
     except Exception as e:
-        print(f"Error fetching student analytics: {e}")
-        return jsonify({"error": str(e)}), 500
+        print(f"Error in get_student_analytics: {str(e)}")
+        return jsonify({"error": "Failed to fetch student analytics", "details": str(e)}), 500
 
 
-# Endpoint to generate the AI report for a specific student
-@analytics_bp.route('/report', methods=['POST'])
+@analytics_bp.route('/api/analytics/report', methods=['POST'])
 @jwt_required()
 def generate_ai_report():
-    if db is None:
-        return jsonify({"error": "Database not initialized"}), 500
-
-    data = request.get_json()
-    student_id = data.get('student_id')
-
-    if not student_id:
-        return jsonify({"error": "Student ID is required."}), 400
-
-    student_data = None
-    
+    """
+    Generate AI-driven performance report for a specific student
+    Request body: { "student_id": "ObjectId_string" }
+    This endpoint delegates to ai.py for AI report generation
+    """
     try:
-        # 1. Try to find student in the Database first
-        mongo_id = None
+        data = request.get_json()
+        student_id_str = data.get('student_id')
         
-        # If it looks like a valid Mongo ObjectId, try converting it
-        if ObjectId.is_valid(student_id):
-            mongo_id = ObjectId(student_id)
-            student_data = db.students.find_one({"_id": mongo_id})
+        if not student_id_str:
+            return jsonify({"error": "student_id is required"}), 400
         
-        # If not found by ObjectId, try searching as a string (e.g., "S001")
-        if not student_data:
-            student_data = db.students.find_one({"_id": student_id})
-
-        # 2. Only check mock data if REAL data wasn't found
-        if not student_data:
-            print(f"Student {student_id} not found in DB.")
-
-    # ... rest of the function ...
-
-        # 3. Prepare data for the LLM
-        summary_data = {
-            "name": student_data.get('name', 'N/A'),
-            "progress": student_data.get('progress', 0),
-            "avgQuizScore": student_data.get('avgQuizScore', 0),
-            "aiInteractions": student_data.get('aiInteractions', 0),
-            "lastActivity": student_data.get('lastActivity', 'N/A'),
-        }
-
-        # 4. Construct the detailed prompt
-        prompt = (
-            f"Generate a concise, encouraging, and actionable performance report for the student: {summary_data['name']}."
-            f"The report should analyze their performance based on the following key metrics and provide one actionable recommendation for improvement. "
-            f"Metrics: Progress={summary_data['progress']}%, Average Quiz Score={summary_data['avgQuizScore']}%, AI Interaction Count={summary_data['aiInteractions']}."
-            f"Write the report in a single, professional paragraph."
-        )
+        # Convert string to ObjectId
+        try:
+            student_id = ObjectId(student_id_str)
+        except:
+            return jsonify({"error": "Invalid student_id format"}), 400
         
-        # 5. Call the local, simple LLM function
-        report_text = _generate_llm_report_content(prompt)
-
-        # 6. Check for LLM errors (like API key missing or internal error)
-        if report_text and not report_text.startswith("Error:"):
-            return jsonify({"report": report_text}), 200
-        else:
-            return jsonify({"error": f"LLM failed to generate content: {report_text}"}), 500
-
+        # Fetch student information
+        student = db.students.find_one({"_id": student_id})
+        if not student:
+            # Try users collection
+            student = db.users.find_one({"_id": student_id})
+        
+        if not student:
+            return jsonify({"error": "Student not found"}), 404
+        
+        student_name = student.get('name') or student.get('username', 'Student')
+        
+        # Fetch all submissions for this student
+        submissions = list(db.student_answers.find({
+            "student_id": student_id,
+            "status": "submitted"
+        }).sort("submission_time", -1))
+        
+        if not submissions:
+            return jsonify({
+                "report": f"## No Data Available\n\n{student_name} has not completed any quizzes or assignments yet. No performance data is available for analysis."
+            }), 200
+        
+        # Calculate detailed statistics
+        analytics_data = calculate_student_statistics(submissions, student_name)
+        
+        # Import ai_service from ai.py to generate report
+        from routes.ai import generate_performance_report
+        
+        # Call AI service to generate report
+        ai_report = generate_performance_report(analytics_data)
+        
+        return jsonify({"report": ai_report}), 200
+        
     except Exception as e:
-        print(f"Error in AI report generation: {e}")
-        return jsonify({"error": f"Failed to generate report: {str(e)}"}), 500
+        print(f"Error in generate_ai_report: {str(e)}")
+        return jsonify({"error": "Failed to generate report", "details": str(e)}), 500
+
+
+def calculate_student_statistics(submissions, student_name):
+    """
+    Calculate comprehensive statistics from student submissions
+    Returns dict with analytics data for AI report generation
+    """
+    total_submissions = len(submissions)
+    scores = [s.get('total_score', 0) for s in submissions]
+    avg_score = sum(scores) / len(scores) if scores else 0
+    max_score = max(scores) if scores else 0
+    min_score = min(scores) if scores else 0
+    
+    # Get unique materials attempted
+    materials_attempted = set(str(s.get('material_id')) for s in submissions)
+    total_materials = db.materials.count_documents({})
+    
+    # Calculate progress
+    progress_percentage = (len(materials_attempted) / total_materials * 100) if total_materials > 0 else 0
+    
+    # Get recent activity (last 5 submissions)
+    recent_submissions = submissions[:5]
+    recent_performance = [
+        {
+            "score": s.get('total_score', 0),
+            "date": s.get('submission_time', '').split('T')[0] if isinstance(s.get('submission_time'), str) else str(s.get('submission_time', ''))[:10],
+            "questions": len(s.get('answers', []))
+        }
+        for s in recent_submissions
+    ]
+    
+    # Calculate improvement trend
+    if len(scores) >= 2:
+        # Compare first half vs second half (recent is first in list due to sort order)
+        recent_half_avg = sum(scores[:len(scores)//2]) / len(scores[:len(scores)//2])
+        older_half_avg = sum(scores[len(scores)//2:]) / len(scores[len(scores)//2:])
+        
+        if recent_half_avg > older_half_avg + 5:
+            trend = "improving"
+        elif recent_half_avg < older_half_avg - 5:
+            trend = "declining"
+        else:
+            trend = "stable"
+    else:
+        trend = "insufficient data"
+    
+    return {
+        "student_name": student_name,
+        "total_submissions": total_submissions,
+        "avg_score": avg_score,
+        "max_score": max_score,
+        "min_score": min_score,
+        "progress_percentage": progress_percentage,
+        "materials_completed": len(materials_attempted),
+        "total_materials": total_materials,
+        "trend": trend,
+        "recent_performance": recent_performance
+    }
+
+
+@analytics_bp.route('/api/analytics/student/<student_id>', methods=['GET'])
+@jwt_required()
+def get_student_detail(student_id):
+    """
+    Get detailed analytics for a specific student
+    """
+    try:
+        student_obj_id = ObjectId(student_id)
+        
+        # Get all submissions
+        submissions = list(db.student_answers.find({
+            "student_id": student_obj_id
+        }).sort("submission_time", -1))
+        
+        # Get student info
+        student = db.students.find_one({"_id": student_obj_id}) or db.users.find_one({"_id": student_obj_id})
+        
+        if not student:
+            return jsonify({"error": "Student not found"}), 404
+        
+        return jsonify({
+            "student": {
+                "id": student_id,
+                "name": student.get('name') or student.get('username', 'Unknown')
+            },
+            "submissions": [
+                {
+                    "id": str(s.get('_id')),
+                    "material_id": str(s.get('material_id')),
+                    "score": s.get('total_score'),
+                    "answers_count": len(s.get('answers', [])),
+                    "submission_time": s.get('submission_time'),
+                    "status": s.get('status')
+                }
+                for s in submissions
+            ]
+        }), 200
+        
+    except Exception as e:
+        print(f"Error in get_student_detail: {str(e)}")
+        return jsonify({"error": "Failed to fetch student details", "details": str(e)}), 500

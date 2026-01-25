@@ -272,3 +272,202 @@ def generate_question():
             error_msg = "DeepSeek 餘額不足！充值 $1 USD！"
         return jsonify({'error': error_msg, 'details': str(e)}), 500
     
+
+# Add these functions to your existing ai.py file
+# AI report generation for student analytics - English only
+
+def generate_performance_report(analytics_data):
+    """
+    Generate AI-driven performance report using DeepSeek
+    Called by analytics.py to create student performance reports
+    
+    Args:
+        analytics_data: dict containing student statistics
+    
+    Returns:
+        str: Markdown formatted performance report
+    """
+    if not DEEPSEEK_API_KEY:
+        return generate_fallback_report(analytics_data)
+    
+    student_name = analytics_data['student_name']
+    total_submissions = analytics_data['total_submissions']
+    avg_score = analytics_data['avg_score']
+    max_score = analytics_data['max_score']
+    min_score = analytics_data['min_score']
+    progress_percentage = analytics_data['progress_percentage']
+    materials_completed = analytics_data['materials_completed']
+    total_materials = analytics_data['total_materials']
+    trend = analytics_data['trend']
+    recent_performance = analytics_data['recent_performance']
+    
+    # Prepare prompt for DeepSeek AI
+    user_prompt = f"""Generate a comprehensive academic performance report for student: {student_name}
+
+**Performance Data:**
+- Total Submissions: {total_submissions}
+- Average Score: {avg_score:.1f}%
+- Highest Score: {max_score}%
+- Lowest Score: {min_score}%
+- Course Progress: {progress_percentage:.1f}% ({materials_completed}/{total_materials} materials completed)
+- Performance Trend: {trend}
+
+**Recent Activity (Latest {len(recent_performance)} submissions):**
+{chr(10).join([f"Score: {p['score']}%, Questions Answered: {p['questions']}, Date: {p['date']}" for p in recent_performance])}
+
+**Report Requirements:**
+Please provide a detailed analysis including:
+
+1. **Performance Summary** - Brief overview of overall academic performance
+2. **Strengths** - What the student excels at
+3. **Areas for Improvement** - Specific weaknesses to address
+4. **Actionable Recommendations** - 3-5 concrete steps for improvement
+
+Format using markdown with ## headers. Be encouraging but honest. Focus on actionable insights."""
+
+    try:
+        system_msg = {
+            "role": "system",
+            "content": (
+                "You are an experienced educational analyst and academic advisor. "
+                "Provide constructive, encouraging, and actionable feedback to help students improve. "
+                "Format your response in markdown with clear sections."
+            )
+        }
+        
+        payload = {
+            "model": DEEPSEEK_MODEL,
+            "messages": [system_msg, {"role": "user", "content": user_prompt}],
+            "temperature": 0.7,
+            "stream": False
+        }
+        
+        response = requests.post(
+            "https://api.deepseek.com/chat/completions",
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            timeout=90
+        )
+        
+        response.raise_for_status()
+        result = response.json()
+        ai_report = result['choices'][0]['message']['content'].strip()
+        
+        print(f"[ANALYTICS] DeepSeek AI report generated successfully for {student_name}")
+        return ai_report
+        
+    except Exception as ai_error:
+        print(f"[ANALYTICS] DeepSeek API error: {str(ai_error)}")
+        return generate_fallback_report(analytics_data)
+
+
+def generate_fallback_report(analytics_data):
+    """
+    Generate a template-based report when AI is unavailable
+    
+    Args:
+        analytics_data: dict containing student statistics
+    
+    Returns:
+        str: Markdown formatted performance report in English
+    """
+    student_name = analytics_data['student_name']
+    avg_score = analytics_data['avg_score']
+    max_score = analytics_data['max_score']
+    total_submissions = analytics_data['total_submissions']
+    progress_percentage = analytics_data['progress_percentage']
+    materials_completed = analytics_data['materials_completed']
+    total_materials = analytics_data['total_materials']
+    trend = analytics_data['trend']
+    
+    # Determine performance level
+    if avg_score >= 80:
+        performance_level = "Excellent"
+        encouragement = "Keep up the excellent work!"
+    elif avg_score >= 70:
+        performance_level = "Good"
+        encouragement = "Continue your efforts!"
+    elif avg_score >= 60:
+        performance_level = "Satisfactory"
+        encouragement = "Focus on improvement areas!"
+    else:
+        performance_level = "Needs Improvement"
+        encouragement = "Let's work together to improve!"
+    
+    report = f"""## Performance Summary
+
+{student_name} has completed {total_submissions} submission(s) with an average score of {avg_score:.1f}%, showing **{performance_level}** performance.
+
+Course Progress: {materials_completed}/{total_materials} materials completed ({progress_percentage:.1f}%)
+
+Performance Trend: {trend}
+
+---
+
+## Strengths
+
+- Achieved highest score of {max_score}%, demonstrating strong learning potential
+- {"Maintaining steady progress" if progress_percentage >= 50 else "Started engaging with course materials"}
+- Consistent participation with {total_submissions} completed submission(s)
+
+---
+
+## Areas for Improvement
+
+"""
+    
+    # Add specific improvement areas based on performance
+    if avg_score < 70:
+        report += """- Average score needs improvement - focus on understanding fundamental concepts
+- Review materials where performance was below expectations
+"""
+    
+    if progress_percentage < 50:
+        report += """- Course progress is behind - consider dedicating more time to studies
+- Aim to complete remaining materials systematically
+"""
+    
+    if trend == "declining":
+        report += """- Declining trend detected - adjust study strategies promptly
+- Identify recent challenges and address them proactively
+"""
+    
+    if not (avg_score < 70 or progress_percentage < 50 or trend == "declining"):
+        report += """- Maintain consistency across all materials
+- Challenge yourself with more advanced topics
+"""
+    
+    report += f"""
+---
+
+## Actionable Recommendations
+
+1. **Review Mistakes**
+   - Revisit quizzes with lower scores to understand errors
+   - Take notes on commonly missed concepts
+
+2. **Create a Study Plan**
+   - Dedicate consistent daily study time
+   - Set specific goals for each study session
+
+3. **{"Strengthen Fundamentals" if avg_score < 70 else "Challenge Yourself"}**
+   - {"Start with basic concepts and build gradually" if avg_score < 70 else "Explore advanced materials to expand knowledge"}
+   - {"Focus on mastering core topics before moving forward" if avg_score < 70 else "Apply learned concepts to real-world problems"}
+
+4. **Seek Support**
+   - Ask teachers or peers for help when needed
+   - Participate actively in class discussions
+
+5. **Stay Motivated**
+   - {encouragement}
+   - Track your progress regularly
+
+---
+
+**Conclusion**: {"Continue on this path - you're doing well!" if avg_score >= 70 else "Every effort brings progress. Keep pushing forward!"}
+"""
+    
+    return report
