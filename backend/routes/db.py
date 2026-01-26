@@ -616,6 +616,40 @@ def add_question():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
+# Update Question
+@db_bp.route('/question-update', methods=['PUT'])
+@jwt_required()
+def update_question():
+    try:
+        question_id = request.args.get('question_id')
+        if not question_id:
+            return jsonify({"error": "question_id is required"}), 400
+
+        data = request.get_json()
+        question_content = data.get("question_content")
+
+        if not question_content:
+            return jsonify({"error": "question_content is required"}), 400
+
+        print(f"Updating question {question_id} with content: {question_content}")
+
+        db.questions.update_one(
+            {"_id": ObjectId(question_id)},
+            {
+                "$set": {
+                    "question_content": question_content,
+                    "updated_at": datetime.now().isoformat()
+                }
+            }
+        )
+
+        return jsonify({"message": "Question updated successfully"}), 200
+    except Exception as e:
+        print(f"Error in update_question: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
 # Get Questions
 @db_bp.route('/question', methods=['GET'])
 @jwt_required()
