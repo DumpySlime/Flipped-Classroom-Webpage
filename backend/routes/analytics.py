@@ -158,8 +158,8 @@ def generate_ai_report():
                 "report": f"## No Data Available\n\n{student_name} has not completed any quizzes or assignments yet. No performance data is available for analysis."
             }), 200
         
-        # Calculate detailed statistics
-        analytics_data = calculate_student_statistics(submissions, student_name)
+        # Calculate detailed statistics with question analysis
+        analytics_data = calculate_student_statistics_with_questions(submissions, student_name)
         
         # Import ai_service from ai.py to generate report
         from routes.ai import generate_performance_report
@@ -174,9 +174,10 @@ def generate_ai_report():
         return jsonify({"error": "Failed to generate report", "details": str(e)}), 500
 
 
-def calculate_student_statistics(submissions, student_name):
+def calculate_student_statistics_with_questions(submissions, student_name):
     """
     Calculate comprehensive statistics from student submissions
+    Includes analysis of incorrect questions
     Returns dict with analytics data for AI report generation
     """
     total_submissions = len(submissions)
@@ -192,12 +193,54 @@ def calculate_student_statistics(submissions, student_name):
     # Calculate progress
     progress_percentage = (len(materials_attempted) / total_materials * 100) if total_materials > 0 else 0
     
+    # Analyze incorrect answers with question details
+    incorrect_questions = []
+    correct_count = 0
+    total_questions = 0
+    
+    for submission in submissions:
+        answers = submission.get('answers', [])
+        material_id = submission.get('material_id')
+        
+        for answer in answers:
+            total_questions += 1
+            is_correct = answer.get('is_correct', False)
+            
+            if is_correct:
+                correct_count += 1
+            else:
+                # Fetch question details from questions collection
+                question_id = answer.get('question_id', '')
+                question_doc = db.questions.find_one({"material_id": material_id})
+                
+                if question_doc:
+                    question_content = question_doc.get('question_content', {})
+                    questions_list = question_content.get('questions', [])
+                    
+                    # Parse question_id to find the specific question
+                    # Format: "material_id-index1-index2"
+                    parts = question_id.split('-')
+                    if len(parts) >= 3:
+                        try:
+                            q_index = int(parts[-1])
+                            if q_index < len(questions_list):
+                                question_data = questions_list[q_index]
+                                incorrect_questions.append({
+                                    "question_text": question_data.get('questionText', 'N/A'),
+                                    "question_type": question_data.get('questionType', 'N/A'),
+                                    "correct_answer": question_data.get('correctAnswer', 'N/A'),
+                                    "user_answer": answer.get('user_answer', 'N/A'),
+                                    "explanation": question_data.get('explanation', 'N/A')
+                                })
+                        except (ValueError, IndexError):
+                            pass
+    
     # Get recent activity (last 5 submissions)
     recent_submissions = submissions[:5]
     recent_performance = [
         {
             "score": s.get('total_score', 0),
-            "date": s.get('submission_time', '').split('T')[0] if isinstance(s.get('submission_time'), str) else str(s.get('submission_time', ''))[:10],
+            "date": s.get('submission_time', ''),
             "questions": len(s.get('answers', []))
         }
         for s in recent_submissions
@@ -205,7 +248,6 @@ def calculate_student_statistics(submissions, student_name):
     
     # Calculate improvement trend
     if len(scores) >= 2:
-        # Compare first half vs second half (recent is first in list due to sort order)
         recent_half_avg = sum(scores[:len(scores)//2]) / len(scores[:len(scores)//2])
         older_half_avg = sum(scores[len(scores)//2:]) / len(scores[len(scores)//2:])
         
@@ -218,6 +260,9 @@ def calculate_student_statistics(submissions, student_name):
     else:
         trend = "insufficient data"
     
+    # Calculate accuracy
+    accuracy = (correct_count / total_questions * 100) if total_questions > 0 else 0
+    
     return {
         "student_name": student_name,
         "total_submissions": total_submissions,
@@ -228,7 +273,12 @@ def calculate_student_statistics(submissions, student_name):
         "materials_completed": len(materials_attempted),
         "total_materials": total_materials,
         "trend": trend,
-        "recent_performance": recent_performance
+        "recent_performance": recent_performance,
+        "total_questions": total_questions,
+        "correct_count": correct_count,
+        "incorrect_count": total_questions - correct_count,
+        "accuracy": accuracy,
+        "incorrect_questions": incorrect_questions[:10]  # Limit to 10 most recent mistakes
     }
 
 

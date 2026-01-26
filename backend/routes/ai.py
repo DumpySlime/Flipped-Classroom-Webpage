@@ -471,3 +471,218 @@ Performance Trend: {trend}
 """
     
     return report
+
+
+# Updated AI report generation with question analysis
+
+
+# Updated AI report generation - Teacher-focused, concise format
+
+def generate_performance_report(analytics_data):
+    """
+    Generate AI-driven performance report using DeepSeek
+    Teacher-focused format with key metrics only
+    
+    Args:
+        analytics_data: dict containing student statistics and question analysis
+    
+    Returns:
+        str: Markdown formatted performance report
+    """
+    if not DEEPSEEK_API_KEY:
+        return generate_fallback_report(analytics_data)
+    
+    student_name = analytics_data['student_name']
+    total_submissions = analytics_data['total_submissions']
+    avg_score = analytics_data['avg_score']
+    max_score = analytics_data['max_score']
+    min_score = analytics_data['min_score']
+    progress_percentage = analytics_data['progress_percentage']
+    materials_completed = analytics_data['materials_completed']
+    total_materials = analytics_data['total_materials']
+    trend = analytics_data['trend']
+    recent_performance = analytics_data['recent_performance']
+    total_questions = analytics_data.get('total_questions', 0)
+    correct_count = analytics_data.get('correct_count', 0)
+    incorrect_count = analytics_data.get('incorrect_count', 0)
+    accuracy = analytics_data.get('accuracy', 0)
+    incorrect_questions = analytics_data.get('incorrect_questions', [])
+    
+    # Format incorrect questions for AI analysis
+    incorrect_questions_text = ""
+    if incorrect_questions:
+        incorrect_questions_text = "\n**Incorrect Questions Sample:**\n"
+        for i, q in enumerate(incorrect_questions[:5], 1):
+            incorrect_questions_text += f"\n{i}. {q['question_text']}\n"
+            incorrect_questions_text += f"   Student answered: {q['user_answer']} | Correct: {q['correct_answer']}\n"
+    
+    # Prepare prompt for DeepSeek AI
+    user_prompt = f"""Generate a concise teacher-focused performance analysis for student: {student_name}
+
+**Metrics:**
+- Submissions: {total_submissions} | Avg Score: {avg_score:.1f}% | Range: {min_score}-{max_score}%
+- Progress: {progress_percentage:.1f}% ({materials_completed}/{total_materials} materials)
+- Accuracy: {accuracy:.1f}% ({correct_count}/{total_questions} correct)
+- Trend: {trend}
+
+{incorrect_questions_text}
+
+**Format Requirements:**
+Keep it brief and factual. Use these sections only:
+
+## Strengths
+List 2-3 specific strengths based on data
+
+## Areas for Improvement
+List 2-3 specific weaknesses or knowledge gaps based on incorrect answers
+
+## Most Common Errors
+Identify the main patterns in mistakes (topics/concepts they struggle with)
+
+No encouragement, conclusions, or recommendations. Keep it objective and data-focused."""
+
+    try:
+        system_msg = {
+            "role": "system",
+            "content": (
+                "You are an educational data analyst providing objective performance reports for teachers. "
+                "Be concise, factual, and focus only on observable patterns in the data. "
+                "No motivational language or student-directed advice."
+            )
+        }
+        
+        payload = {
+            "model": DEEPSEEK_MODEL,
+            "messages": [system_msg, {"role": "user", "content": user_prompt}],
+            "temperature": 0.5,
+            "stream": False
+        }
+        
+        response = requests.post(
+            "https://api.deepseek.com/chat/completions",
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            timeout=90
+        )
+        
+        response.raise_for_status()
+        result = response.json()
+        ai_report = result['choices'][0]['message']['content'].strip()
+        
+        print(f"[ANALYTICS] DeepSeek AI report generated successfully for {student_name}")
+        return ai_report
+        
+    except Exception as ai_error:
+        print(f"[ANALYTICS] DeepSeek API error: {str(ai_error)}")
+        return generate_fallback_report(analytics_data)
+
+
+def generate_fallback_report(analytics_data):
+    """
+    Generate a template-based report when AI is unavailable
+    Teacher-focused, concise format
+    
+    Args:
+        analytics_data: dict containing student statistics
+    
+    Returns:
+        str: Markdown formatted performance report
+    """
+    student_name = analytics_data['student_name']
+    avg_score = analytics_data['avg_score']
+    max_score = analytics_data['max_score']
+    min_score = analytics_data['min_score']
+    total_submissions = analytics_data['total_submissions']
+    progress_percentage = analytics_data['progress_percentage']
+    materials_completed = analytics_data['materials_completed']
+    total_materials = analytics_data['total_materials']
+    trend = analytics_data['trend']
+    accuracy = analytics_data.get('accuracy', 0)
+    incorrect_count = analytics_data.get('incorrect_count', 0)
+    total_questions = analytics_data.get('total_questions', 0)
+    incorrect_questions = analytics_data.get('incorrect_questions', [])
+    
+    report = f"""## Strengths
+
+"""
+    
+    # Identify strengths
+    strengths = []
+    if avg_score >= 80:
+        strengths.append(f"High average score of {avg_score:.1f}%")
+    if max_score >= 90:
+        strengths.append(f"Capable of high performance (max score: {max_score}%)")
+    if progress_percentage >= 70:
+        strengths.append(f"Strong engagement with {materials_completed}/{total_materials} materials completed")
+    if accuracy >= 75:
+        strengths.append(f"Good accuracy rate of {accuracy:.1f}%")
+    if trend == "improving":
+        strengths.append("Performance trend is improving over time")
+    if total_submissions >= 5:
+        strengths.append(f"Consistent participation with {total_submissions} submissions")
+    
+    if not strengths:
+        strengths.append("Shows willingness to participate")
+        if max_score > avg_score + 10:
+            strengths.append("Demonstrates potential for higher performance")
+    
+    for strength in strengths[:3]:
+        report += f"- {strength}\n"
+    
+    report += "\n---\n\n## Areas for Improvement\n\n"
+    
+    # Identify weaknesses
+    weaknesses = []
+    if avg_score < 70:
+        weaknesses.append(f"Below-target average score ({avg_score:.1f}%)")
+    if accuracy < 70:
+        weaknesses.append(f"Low accuracy rate ({accuracy:.1f}%) - {incorrect_count}/{total_questions} incorrect")
+    if progress_percentage < 50:
+        weaknesses.append(f"Behind on course progress ({progress_percentage:.1f}%)")
+    if trend == "declining":
+        weaknesses.append("Performance declining in recent submissions")
+    if max_score - min_score > 40:
+        weaknesses.append(f"Inconsistent performance (range: {min_score}-{max_score}%)")
+    if total_submissions < 3:
+        weaknesses.append("Limited submission data for accurate assessment")
+    
+    if not weaknesses:
+        weaknesses.append("Could improve consistency across all materials")
+        if avg_score < 90:
+            weaknesses.append("Room for score improvement in future assessments")
+    
+    for weakness in weaknesses[:3]:
+        report += f"- {weakness}\n"
+    
+    report += "\n---\n\n## Most Common Errors\n\n"
+    
+    # Analyze common mistakes
+    if incorrect_questions and len(incorrect_questions) >= 2:
+        # Group by question type or topic if possible
+        question_types = {}
+        for q in incorrect_questions:
+            q_type = q.get('question_type', 'Unknown')
+            question_types[q_type] = question_types.get(q_type, 0) + 1
+        
+        if question_types:
+            report += f"**Error distribution by type:**\n"
+            for q_type, count in sorted(question_types.items(), key=lambda x: x[1], reverse=True):
+                report += f"- {q_type}: {count} error(s)\n"
+            report += "\n"
+        
+        report += f"**Sample incorrect questions:**\n"
+        for i, q in enumerate(incorrect_questions[:3], 1):
+            question_preview = q['question_text'][:80] + "..." if len(q['question_text']) > 80 else q['question_text']
+            report += f"{i}. {question_preview}\n"
+            report += f"   - Answered: {q['user_answer']} | Correct: {q['correct_answer']}\n"
+    elif incorrect_count > 0:
+        report += f"- {incorrect_count} incorrect answer(s) recorded\n"
+        report += f"- Overall accuracy needs improvement ({accuracy:.1f}%)\n"
+    else:
+        report += "- No significant error patterns detected\n"
+        report += "- All submitted answers were correct\n"
+    
+    return report

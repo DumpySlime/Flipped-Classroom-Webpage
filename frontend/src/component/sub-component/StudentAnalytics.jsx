@@ -83,20 +83,27 @@ const renderMarkdown = (markdown) => {
 };
 
 const formatLastActivity = (dateString) => {
-  if (!dateString || (!dateString.includes('T') && !dateString.includes('-'))) {
+  if (!dateString) return 'Never';
+
+  try {
+    const date = new Date(dateString);
+    
+    // Format as: Jan 26, 2026, 10:30 PM
+    const options = {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    };
+    
+    return date.toLocaleString('en-US', options);
+  } catch (error) {
     return dateString;
   }
-
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffInSeconds = Math.floor((now - date) / 1000);
-
-  if (isNaN(diffInSeconds)) return dateString;
-  if (diffInSeconds < 60) return 'Just now';
-  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} mins ago`;
-  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-  return `${Math.floor(diffInSeconds / 86400)} days ago`;
 };
+
 
 const StudentAnalytics = (props) => {
   const [studentData, setStudentData] = useState([]);
@@ -216,9 +223,6 @@ const StudentAnalytics = (props) => {
                   <th scope="col" className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                     Avg. Score
                   </th>
-                  <th scope="col" className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                    AI Interactions
-                  </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                     Last Activity
                   </th>
@@ -245,9 +249,6 @@ const StudentAnalytics = (props) => {
                       </td>
                       <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {student.avgQuizScore}%
-                      </td>
-                      <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {student.aiInteractions}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatLastActivity(student.lastActivity)}
