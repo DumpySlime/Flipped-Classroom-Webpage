@@ -13,6 +13,7 @@ function AddUser(props) {
         role: ''
     })
 
+<<<<<<< Updated upstream
     const handleChanges = (e) => {
         setValues({...values, [e.target.name]: e.target.value })
     }
@@ -30,6 +31,52 @@ function AddUser(props) {
                 lastName: '',
                 role: ''
             })
+=======
+  const handleChanges = (e) => {
+    setValues({ ...values, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    
+    console.log('Form submitted with values:', values);
+
+    if (!values.role) {
+      setError('Please select a role');
+      return;
+    }
+
+    const token = localStorage.getItem('access_token');
+
+    axios.post('http://localhost:5000/db/user-add', {
+      username: values.username,
+      password: values.password,
+      firstName: values.firstName,
+      lastName: values.lastName,
+      role: values.role
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    })
+      .then(function (response) {
+        console.log('User added successfully:', response.data);
+        setSuccess(`User "${values.username}" added successfully as ${values.role}!`);
+        
+        setValues({
+          username: '',
+          password: '',
+          firstName: '',
+          lastName: '',
+          role: ''
+        });
+        
+        if (props.setActiveSection && typeof props.setActiveSection === 'function') {
+          setTimeout(() => {
+>>>>>>> Stashed changes
             props.setActiveSection('overview');
         })
         .catch(function (error) {
