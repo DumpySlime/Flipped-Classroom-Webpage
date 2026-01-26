@@ -495,7 +495,7 @@ def get_subject_members():
         except Exception:
             teacher_query = {"user_id": user_id, "role": "teacher"}
         
-        teacher_subjects_cursor = db.subjectMembers.find(teacher_query, {"subject_ids": 1})
+        teacher_subjects_cursor = db.subject_members.find(teacher_query, {"subject_ids": 1})
         subject_ids_filter = [] 
         for doc in teacher_subjects_cursor: 
             subject_ids_filter.extend(doc.get("subject_ids", []))
@@ -549,7 +549,7 @@ def get_subject_members():
     })
 
     try:
-        docs = list(db.subjectMembers.aggregate(pipeline))
+        docs = list(db.subject_members.aggregate(pipeline))
     except Exception as e:
         return jsonify({"success": False, "error": "database error", "details": str(e)}), 500
     
