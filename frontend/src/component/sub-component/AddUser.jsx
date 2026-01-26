@@ -48,57 +48,6 @@ function AddUser(props) {
         'Authorization': `Bearer ${token}`
       }
     })
-
-    const handleChanges = (e) => {
-        setValues({...values, [e.target.name]: e.target.value })
-    }
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        console.log('Form submitted with values:', values);
-        axios.post('/db/user-add', values)
-        .then(function (response) {
-            console.log(`User added successfully: ${response.data}`);
-            setValues({
-                username: '',
-                password: '',
-                firstName: '',
-                lastName: '',
-                role: ''
-            })
-            props.setActiveSection('overview');
-  const handleChanges = (e) => {
-    setValues({ ...values, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    
-    console.log('Form submitted with values:', values);
-
-    if (!values.role) {
-      setError('Please select a role');
-      return;
-    }
-
-    const token = localStorage.getItem('access_token');
-
-    axios.post('http://localhost:5000/db/user-add', {
-      username: values.username,
-      password: values.password,
-      firstName: values.firstName,
-      lastName: values.lastName,
-      role: values.role
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    })
-=======
->>>>>>> Analytics
       .then(function (response) {
         console.log('User added successfully:', response.data);
         setSuccess(`User "${values.username}" added successfully as ${values.role}!`);
@@ -110,18 +59,6 @@ function AddUser(props) {
           firstName: '',
           lastName: '',
           role: ''
-<<<<<<< HEAD
-        });
-        
-        if (props.setActiveSection && typeof props.setActiveSection === 'function') {
-          setTimeout(() => {
->>>>>>> Stashed changes
-            props.setActiveSection('overview');
-        })
-        .catch(function (error) {
-            console.log(`Error adding user: ${error}`);
-=======
->>>>>>> Analytics
         });
         
         // Only call setActiveSection if it exists

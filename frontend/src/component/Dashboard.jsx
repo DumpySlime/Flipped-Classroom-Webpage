@@ -10,7 +10,6 @@ import Assignment from './sub-component/Assignment';
 import AIChatroom from './sub-component/chatroom/AIChatroom';
 import SubjectMembers from './sub-component/SubjectMembers';
 
-// Import API services
 import { 
   materialAPI, 
   subjectAPI, 
@@ -24,7 +23,6 @@ function Dashboard(props) {
   const [roleSections, setRoleSections] = useState({});
   const [currentUserInfo, setCurrentUserInfo] = useState({});
   
-  // Real data states
   const [materials, setMaterials] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [students, setStudents] = useState([]);
@@ -34,12 +32,10 @@ function Dashboard(props) {
   const [error, setError] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState(null);
 
-  // Load initial dashboard data
   useEffect(() => {
     loadDashboardData();
   }, [props.userId, props.userRole]);
 
-  // Define role-based sections
   useEffect(() => {
     const sections = {
       teacher: ['overview', 'materials', 'analytics', 'subject-members'],
@@ -54,7 +50,6 @@ function Dashboard(props) {
       setLoading(true);
       setError(null);
       
-      // Get user info
       const userId = props.userId || localStorage.getItem('user_id');
       const userRole = props.userRole || localStorage.getItem('user_role');
       
