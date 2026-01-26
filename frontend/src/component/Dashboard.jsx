@@ -70,8 +70,8 @@ function Dashboard(props) {
         setMaterials(materialsData);
       }
       
-      // Teacher-specific data
-      if (userRole === 'teacher') {
+      // Teacher&Admin-specific data
+      if (userRole === 'teacher' || userRole === 'admin') {
         const studentsData = await userAPI.getAll('student');
         setStudents(studentsData);
         

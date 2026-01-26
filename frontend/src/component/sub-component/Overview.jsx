@@ -12,7 +12,6 @@ function Overview(props) {
     studentProgress = [],
     totalStudents = 0,
     userRole = 'student',
-    activeSection
   } = props;
 
   // Safe arrays in case props are undefined
@@ -27,11 +26,6 @@ function Overview(props) {
     const dateB = new Date(b.created_at || 0);
     return dateB - dateA; // Descending order (newest first)
   });
-
-  useEffect(() => {
-    if (activeSection !== 'overview') return;
-    // Fetch data if needed
-  }, [activeSection]);
 
   const [selectedSubject, setSelectedSubject] = useState(null);
   const userInfo = props.userInfo;
@@ -60,12 +54,14 @@ function Overview(props) {
       
       {/* Stats Cards */}
       <div className="stats-grid">
-        <div className="stat-card">
-          <h3>Total Students</h3>
-          <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '10px 0' }}>
-            {totalStudents || safeStudents.length}
-          </p>
-        </div>
+        {userRole !== 'student' && (
+          <div className="stat-card">
+            <h3>Total Students</h3>
+            <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '10px 0' }}>
+              {totalStudents || safeStudents.length}
+            </p>
+          </div>
+        )}
 
         <div className="stat-card">
           <h3>Total Materials</h3>
