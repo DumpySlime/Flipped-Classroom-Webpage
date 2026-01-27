@@ -688,7 +688,8 @@ def get_question():
                 "updated_at": u.get("updated_at")
             })
         
-        print(f"Question search results: Found {len(results)} questions")
+        print(f"Question search results: Found {len(results)} items with {len(results[0]['question_content'])} questions")
+        print(f"Questions: {results}")
         return jsonify({"questions": results}), 200
         
     except Exception as e:

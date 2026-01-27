@@ -266,7 +266,9 @@ function ViewMaterial({ material, materialData, userInfo}) {
 			borderRadius: '10px',
 			boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
 			marginBottom: '30px',
-			overflow: 'hidden'
+			overflow: 'hidden',
+			width: '1200px',
+			height: '750px'
 		}}>
 			{/* Navigation Controls */}
 			<div style={{
@@ -319,7 +321,7 @@ function ViewMaterial({ material, materialData, userInfo}) {
 			{/* Slide Content */}
 			<div style={{
 			position: 'relative',
-			minHeight: '400px',
+			height: '560px',
 			backgroundColor: 'white'
 			}}>
 			{/* Left click zone */}
@@ -337,7 +339,7 @@ function ViewMaterial({ material, materialData, userInfo}) {
 			></div>
 
 			{/* Slide content */}
-			<div style={{ padding: '40px 60px' }}>
+			<div style={{ padding: '40px 60px'}}>
 				{renderSlide()}
 			</div>
 
@@ -445,7 +447,7 @@ function ViewMaterial({ material, materialData, userInfo}) {
 				color: '#4CAF50',
 				fontSize: '16px'
 				}}>
-				✓ {questions.length} question(s) available
+				✓ {(questions?.[0]?.question_content?.questions?.length ?? 0)} question(s) available
 				</p>
 
 				{questions.map((q, index) => {
