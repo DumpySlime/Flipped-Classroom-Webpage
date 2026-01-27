@@ -32,6 +32,7 @@ function EditMaterial({ material, onClose }) {
             const normalizedSlides = slidesArray.map(slide => ({
                 ...slide,
                 slidetype: slide.slideType || slide.slidetype,
+                content: Array.isArray(slide.content) ? slide.content : (slide.content ? [slide.content] : [])
             }));
             setSlides(normalizedSlides);
             setCurrentSlideIndex(0);
@@ -57,6 +58,44 @@ function EditMaterial({ material, onClose }) {
             };
             return newSlides;
         });
+    };
+
+    const handlePointChange = (slideIndex, pointIndex, value) => {
+        setSlides(prev => prev.map((slide, sIndex) => {
+            if (sIndex !== slideIndex) return slide;
+            return {
+                ...slide,
+                content: slide.content.map((point, pIndex) => {
+                    if (pIndex !== pointIndex) return point;
+                    return value;
+                })
+            };
+        }));
+    };
+
+    const handleAddPoint = (slideIndex) => {
+        setSlides(prev => prev.map((slide, sIndex) => {
+            if (sIndex !== slideIndex) return slide;
+            return {
+                ...slide,
+                content: [...slide.content, '']
+            };
+        }));
+    };
+
+    const handleRemovePoint = (slideIndex, pointIndex) => {
+        setSlides(prev => prev.map((slide, sIndex) => {
+            if (sIndex !== slideIndex) return slide;
+            const content = slide.content || [];
+            if (content.length <= 1) {
+                alert('Cannot remove the last point');
+                return slide;
+            }
+            return {
+                ...slide,
+                content: content.filter((_, pIndex) => pIndex !== pointIndex)
+            };
+        }));
     };
 
     const handleQuestionChange = (qIndex, qSubIndex, field, value) => {
@@ -255,9 +294,9 @@ function EditMaterial({ material, onClose }) {
     const renderEditableSlide = () => {
         if (!currentSlide) return null;
 
-        const contentArray = Array.isArray(currentSlide.content) ? currentSlide.content : [currentSlide.content];
+        const contentArray = currentSlide.content || [];
         const question = contentArray[0] || '';
-        const solutionSteps = contentArray.slice(1).join('\n');
+        const solutionSteps = contentArray.slice(1);
 
         return (
             <div style={{ padding: '20px' }}>
@@ -290,56 +329,130 @@ function EditMaterial({ material, onClose }) {
                                     const newContent = [e.target.value, ...contentArray.slice(1)];
                                     handleSlideChange('content', newContent);
                                 }}
+                                onInput={(e) => {
+                                    e.target.style.height = 'auto';
+                                    e.target.style.height = e.target.scrollHeight + 'px';
+                                }}
                                 style={{
                                     width: '100%',
                                     padding: '10px',
                                     border: '1px solid #ddd',
                                     borderRadius: '5px',
-                                    minHeight: '80px',
-                                    resize: 'vertical'
+                                    minHeight: '40px',
+                                    overflow: 'hidden',
+                                    resize: 'none'
                                 }}
                             />
                         </div>
 
                         <div style={{ marginBottom: '15px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                Solution:
-                            </label>
-                            <textarea
-                                value={solutionSteps}
-                                onChange={(e) => {
-                                    const newContent = [contentArray[0], ...e.target.value.split('\n')];
-                                    handleSlideChange('content', newContent);
-                                }}
-                                style={{
-                                    width: '100%',
-                                    padding: '10px',
-                                    border: '1px solid #ddd',
-                                    borderRadius: '5px',
-                                    minHeight: '200px',
-                                    resize: 'vertical'
-                                }}
-                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', margin: 0 }}>
+                                    Solution Steps:
+                                </label>
+                                <button
+                                    type="button"
+                                    className="button primary"
+                                    onClick={() => handleAddPoint(currentSlideIndex)}
+                                    style={{ padding: '5px 10px', fontSize: '14px' }}
+                                >
+                                    + Add Point
+                                </button>
+                            </div>
+                            {solutionSteps.map((step, stepIndex) => (
+                                <div key={stepIndex} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'flex-start' }}>
+                                    <textarea
+                                        value={step}
+                                        onChange={(e) => {
+                                            const newContent = [contentArray[0], ...contentArray.slice(1, stepIndex + 1), e.target.value, ...contentArray.slice(stepIndex + 2)];
+                                            handleSlideChange('content', newContent);
+                                        }}
+                                        onInput={(e) => {
+                                            e.target.style.height = 'auto';
+                                            e.target.style.height = e.target.scrollHeight + 'px';
+                                        }}
+                                        style={{
+                                            flex: 1,
+                                            padding: '8px',
+                                            border: '1px solid #ddd',
+                                            borderRadius: '5px',
+                                            minHeight: '40px',
+                                            overflow: 'hidden',
+                                            resize: 'none'
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="button danger subtle"
+                                        onClick={() => handleRemovePoint(currentSlideIndex, stepIndex + 1)}
+                                        style={{ padding: '5px 10px', fontSize: '12px' }}
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            ))}
+                            {solutionSteps.length === 0 && (
+                                <div style={{ padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '5px', textAlign: 'center' }}>
+                                    No solution steps yet. Click "+ Add Point" to add one.
+                                </div>
+                            )}
                         </div>
                     </>
                 ) : (
-                    <div style={{ marginBottom: '15px' }}>
-                        <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                            Content:
-                        </label>
-                        <textarea
-                            value={currentSlide.content || ''}
-                            onChange={(e) => handleSlideChange('content', e.target.value)}
-                            style={{
-                                width: '100%',
-                                padding: '10px',
-                                border: '1px solid #ddd',
-                                borderRadius: '5px',
-                                minHeight: '200px',
-                                resize: 'vertical'
-                            }}
-                        />
-                    </div>
+                    <>
+                        <div style={{ marginBottom: '15px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', margin: 0 }}>
+                                    Content Points:
+                                </label>
+                                <button
+                                    type="button"
+                                    className="button primary"
+                                    onClick={() => handleAddPoint(currentSlideIndex)}
+                                    style={{ padding: '5px 10px', fontSize: '14px' }}
+                                >
+                                    + Add Point
+                                </button>
+                            </div>
+                            {contentArray.map((point, pointIndex) => (
+                                <div key={pointIndex} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'flex-start' }}>
+                                    <textarea
+                                        value={point}
+                                        onChange={(e) => {
+                                            const newContent = [...contentArray.slice(0, pointIndex), e.target.value, ...contentArray.slice(pointIndex + 1)];
+                                            handleSlideChange('content', newContent);
+                                        }}
+                                        onInput={(e) => {
+                                            e.target.style.height = 'auto';
+                                            e.target.style.height = e.target.scrollHeight + 'px';
+                                        }}
+                                        style={{
+                                            flex: 1,
+                                            padding: '8px',
+                                            border: '1px solid #ddd',
+                                            borderRadius: '5px',
+                                            minHeight: '40px',
+                                            overflow: 'hidden',
+                                            resize: 'none'
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="button danger subtle"
+                                        onClick={() => handleRemovePoint(currentSlideIndex, pointIndex)}
+                                        style={{ padding: '5px 10px', fontSize: '12px' }}
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            ))}
+                            {contentArray.length === 0 && (
+                                <div style={{ padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '5px', textAlign: 'center' }}>
+                                    No content points yet. Click "+ Add Point" to add one.
+                                </div>
+                            )}
+                        </div>
+                    </>
                 )}
             </div>
         );
@@ -555,49 +668,20 @@ function EditMaterial({ material, onClose }) {
                 <div style={{
                     position: 'relative',
                     minHeight: '400px',
-                    backgroundColor: 'white'
+                    backgroundColor: 'white',
+                    overflow: 'auto'
                 }}>
-                    <div
-                        onClick={handlePrevSlide}
-                        style={{
-                            position: 'absolute',
-                            left: 0,
-                            top: 0,
-                            bottom: 0,
-                            width: '15%',
-                            cursor: currentSlideIndex > 0 ? 'pointer' : 'default',
-                            zIndex: 10
-                        }}
-                    ></div>
-
                     <div style={{ padding: '40px 60px' }}>
                         {editMode ? renderEditableSlide() : renderSlide()}
                     </div>
 
                     <div
-                        onClick={handleNextSlide}
                         style={{
                             position: 'absolute',
-                            right: 0,
-                            top: 0,
                             bottom: 0,
-                            width: '15%',
-                            cursor: currentSlideIndex < totalSlides - 1 ? 'pointer' : 'default',
-                            zIndex: 10
-                        }}
-                    ></div>
-                </div>
-
-                <div style={{
-                    width: '100%',
-                    height: '8px',
-                    backgroundColor: '#e0e0e0',
-                    overflow: 'hidden'
-                }}>
-                    <div
-                        style={{
-                            width: `${progressPercentage}%`,
-                            height: '100%',
+                            left: 0,
+                            width: '100%',
+                            height: '4px',
                             backgroundColor: '#4CAF50',
                             transition: 'width 0.3s ease'
                         }}
@@ -735,13 +819,18 @@ function EditMaterial({ material, onClose }) {
                                                         <textarea
                                                             value={question.questionText || ''}
                                                             onChange={(e) => handleQuestionChange(index, qIndex, 'questionText', e.target.value)}
+                                                            onInput={(e) => {
+                                                                e.target.style.height = 'auto';
+                                                                e.target.style.height = e.target.scrollHeight + 'px';
+                                                            }}
                                                             style={{
                                                                 width: '100%',
                                                                 padding: '10px',
                                                                 border: '1px solid #ddd',
                                                                 borderRadius: '5px',
-                                                                minHeight: '80px',
-                                                                resize: 'vertical'
+                                                                minHeight: '40px',
+                                                                overflow: 'hidden',
+                                                                resize: 'none'
                                                             }}
                                                         />
                                                     </div>
@@ -751,7 +840,7 @@ function EditMaterial({ material, onClose }) {
                                                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
                                                                 Options:
                                                                 <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#666', marginLeft: '10px' }}>
-                                                                    (Select the radio button on the left to set the correct answer)
+                                                                    (Select radio button on the left to set as correct answer)
                                                                 </span>
                                                             </label>
                                                             {(question.options || []).map((option, optIndex) => (
@@ -759,24 +848,30 @@ function EditMaterial({ material, onClose }) {
                                                                     display: 'flex',
                                                                     gap: '10px',
                                                                     marginBottom: '10px',
-                                                                    alignItems: 'center'
+                                                                    alignItems: 'flex-start'
                                                                 }}>
                                                                     <input
                                                                         type="radio"
                                                                         name={`correct-${index}-${qIndex}`}
                                                                         checked={question.correctAnswer === optIndex}
                                                                         onChange={() => handleQuestionChange(index, qIndex, 'correctAnswer', optIndex)}
-                                                                        style={{ cursor: 'pointer' }}
+                                                                        style={{ cursor: 'pointer', marginTop: '10px' }}
                                                                     />
-                                                                    <input
-                                                                        type="text"
+                                                                    <textarea
                                                                         value={option}
                                                                         onChange={(e) => handleOptionChange(index, qIndex, optIndex, e.target.value)}
+                                                                        onInput={(e) => {
+                                                                            e.target.style.height = 'auto';
+                                                                            e.target.style.height = e.target.scrollHeight + 'px';
+                                                                        }}
                                                                         style={{
                                                                             flex: 1,
                                                                             padding: '8px',
                                                                             border: '1px solid #ddd',
-                                                                            borderRadius: '5px'
+                                                                            borderRadius: '5px',
+                                                                            minHeight: '40px',
+                                                                            overflow: 'hidden',
+                                                                            resize: 'none'
                                                                         }}
                                                                     />
                                                                     <button
@@ -808,13 +903,18 @@ function EditMaterial({ material, onClose }) {
                                                             <textarea
                                                                 value={question.correctAnswer || ''}
                                                                 onChange={(e) => handleQuestionChange(index, qIndex, 'correctAnswer', e.target.value)}
+                                                                onInput={(e) => {
+                                                                    e.target.style.height = 'auto';
+                                                                    e.target.style.height = e.target.scrollHeight + 'px';
+                                                                }}
                                                                 style={{
                                                                     width: '100%',
                                                                     padding: '10px',
                                                                     border: '1px solid #ddd',
                                                                     borderRadius: '5px',
-                                                                    minHeight: '80px',
-                                                                    resize: 'vertical'
+                                                                    minHeight: '40px',
+                                                                    overflow: 'hidden',
+                                                                    resize: 'none'
                                                                 }}
                                                             />
                                                         </div>
@@ -827,13 +927,18 @@ function EditMaterial({ material, onClose }) {
                                                         <textarea
                                                             value={question.explanation || ''}
                                                             onChange={(e) => handleQuestionChange(index, qIndex, 'explanation', e.target.value)}
+                                                            onInput={(e) => {
+                                                                e.target.style.height = 'auto';
+                                                                e.target.style.height = e.target.scrollHeight + 'px';
+                                                            }}
                                                             style={{
                                                                 width: '100%',
                                                                 padding: '10px',
                                                                 border: '1px solid #ddd',
                                                                 borderRadius: '5px',
-                                                                minHeight: '80px',
-                                                                resize: 'vertical'
+                                                                minHeight: '40px',
+                                                                overflow: 'hidden',
+                                                                resize: 'none'
                                                             }}
                                                         />
                                                     </div>
@@ -842,15 +947,21 @@ function EditMaterial({ material, onClose }) {
                                                         <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
                                                             Learning Objective:
                                                         </label>
-                                                        <input
-                                                            type="text"
+                                                        <textarea
                                                             value={question.learningObjective || ''}
                                                             onChange={(e) => handleQuestionChange(index, qIndex, 'learningObjective', e.target.value)}
+                                                            onInput={(e) => {
+                                                                e.target.style.height = 'auto';
+                                                                e.target.style.height = e.target.scrollHeight + 'px';
+                                                            }}
                                                             style={{
                                                                 width: '100%',
                                                                 padding: '10px',
                                                                 border: '1px solid #ddd',
-                                                                borderRadius: '5px'
+                                                                borderRadius: '5px',
+                                                                minHeight: '40px',
+                                                                overflow: 'hidden',
+                                                                resize: 'none'
                                                             }}
                                                         />
                                                     </div>
