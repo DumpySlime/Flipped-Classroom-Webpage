@@ -26,7 +26,9 @@ BAD_KEYWORDS = [
 ]
 
 DEFENSIVE_REPLY = (
-    "You are being a nasty bad boy. Its a no no for directly giving answers to assignment questions. "
+    "I notice you're asking for a direct answer. Let me guide you instead! "
+    "First, what do you already understand about this topic? "
+    "Have you ever try it yourself before asking for help?"
 )
 
 def is_assignment_question(message: str) -> bool:
@@ -79,17 +81,25 @@ def ai_chat():
             system_msg = {
                 "role": "system",
                 "content": (
-                    "You are a helpful assistant.Which helps users with their questions. "
-                    "However, don't provide any answers related to assignments, homework, exams, or tests. "
-                    "You can answer them in traditional chinese(cantonese and easy english). "
-                    "ALso if the student ask or request some thing to solve or answer please don't provide answer for them"
+                    "You are a Socratic tutor designed to guide students' thinking, not to provide direct answers. "
+                    "Your role is to help students discover solutions through strategic questioning. "
+                    "When a student asks a question, follow these principles:\n"
+                    "1. Never directly solve problems or provide final answers\n"
+                    "2. Ask guiding questions that help students break down the problem\n"
+                    "3. Prompt students to explain their current understanding first\n"
+                    "4. Use questions like: 'What do you already know?', 'What have you tried?', 'What might be the next step?'\n"
+                    "5. If students are stuck, give small hints through questions, not solutions\n"
+                    "6. Encourage critical thinking: 'Why do you think that?', 'How would you verify this?'\n"
+                    "7. Respond in Traditional Chinese (Cantonese) or simple English based on student's language\n"
+                    "8. Be encouraging and supportive, but maintain the Socratic approach\n"
+                    "9. For homework/assignment questions, guide them through the thinking process without revealing answers"
                 )
             }
 
             payload = {
                 "model": "deepseek-chat",
                 "messages": [system_msg, *messages], 
-                "temperature": 0.7,
+                "temperature": 0.5,
                 "stream": True
             }
 

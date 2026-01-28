@@ -14,7 +14,7 @@ const AIChatroom = () => {
   });
 
   const [messages, setMessages] = useState([
-    { role: 'ai', text: '**你好！** 我係你嘅學習助手！', model: 'deepseek' }
+    { role: 'ai', text: '**Hi！** What can I help you today ?', model: 'deepseek' }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,7 +41,7 @@ const AIChatroom = () => {
   const handleClear = () => {
     if (isStreaming) handleStop();
     setMessages([
-      { role: 'ai', text: '**你好！** 我係你嘅學習助手！', model: 'deepseek' }
+      { role: 'ai', text: '**Hi！** What can i help you today ?', model: 'deepseek' }
     ]);
     setInput('');
     setStreamingMessage('');
@@ -134,7 +134,7 @@ const AIChatroom = () => {
       } else {
         setMessages(prev => [...prev, { 
           role: 'ai', 
-          text: `**連線錯誤**\n\n\`\`\`\n${error.message}\n\`\`\`\n\n請檢查 Backend 有冇啟動`, 
+          text: `**Connection Error**\n\n\`\`\`\n${error.message}\n\`\`\`\n\nPlease check if the Backend is running`, 
           model: 'error' 
         }]);
       }
@@ -152,18 +152,18 @@ const AIChatroom = () => {
         <div className="chat-header">
           <div className="header-left">
             <button className="clear-btn" onClick={handleClear}>
-              清除
+              Clear
             </button>
           </div>
 
-          <h3 style={{ color: '#FFD700', margin: 0 }}>小鼠工具</h3>
+          <h3 style={{ color: '#FFD700', margin: 0 }}>chatroom</h3>
 
           <div className="header-right">
             <button className="dark-mode-btn" onClick={toggleDarkMode}>
               {isDarkMode ? 'Light Mode' : 'Dark Mode'}
             </button>
             <button className="reader-mode-btn" onClick={() => setReaderMode(true)}>
-              閱讀模式
+              Read Mode
             </button>
           </div>
         </div>
@@ -231,7 +231,7 @@ const AIChatroom = () => {
                 <span></span><span></span><span></span>
               </div>
               <button className="stop-btn" onClick={handleStop}>
-                停止
+                Stop
               </button>
             </div>
           </div>
@@ -245,12 +245,12 @@ const AIChatroom = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
-            placeholder="輸入訊息..."
+            placeholder="Enter message..."
             rows="3"
             disabled={loading}
           />
           <button onClick={handleSend} disabled={loading || !input.trim()}>
-            {loading ? '思考中...' : '發送'}
+            {loading ? 'Thinking...' : 'Send'}
           </button>
         </div>
       </div>
