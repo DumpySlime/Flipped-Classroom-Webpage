@@ -38,7 +38,7 @@ function Dashboard(props) {
 
   useEffect(() => {
     const sections = {
-      teacher: ['overview', 'materials', 'analytics', 'subject-members'],
+      teacher: ['overview', 'materials', 'analytics'],
       student: ['overview', 'materials', 'chatroom'],
       admin: ['overview', 'materials', 'analytics', 'subjects', 'users', 'chatroom', 'subject-members']
     };
