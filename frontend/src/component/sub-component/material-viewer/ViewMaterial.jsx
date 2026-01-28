@@ -311,7 +311,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
                 <button 
                 onClick={handleBackToMaterials}
                 className="back-button"
-                aria-label="Back to subjects list"
+                aria-label="Back to material list"
                 >
                 ← Back to Materials
                 </button>

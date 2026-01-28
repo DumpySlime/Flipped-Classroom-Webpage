@@ -5,7 +5,7 @@ import axios from 'axios';
 import ViewMaterial from './ViewMaterial';
 import ViewQuestion from './ViewQuestion';
 
-function GenerateMaterial({subject, username, onClose}) {
+function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 	const [topics, setTopics] = useState([])
     const [loadingTopics, setLoadingTopics] = useState(false); // <-- defined
     const [topicsError, setTopicsError] = useState(null); // <-- defined
@@ -15,7 +15,6 @@ function GenerateMaterial({subject, username, onClose}) {
 		description: '',
 		subject: subject?.subject || '',
 		subject_id: subject?.id || '',
-		//username: username || '',
 	})
 
 	const [error, setError] = useState(null);
@@ -24,6 +23,30 @@ function GenerateMaterial({subject, username, onClose}) {
 	const [hasCreatedQuestions, setHasCreatedQuestions] = useState(false);
 	const [generatedQuestionId, setGeneratedQuestionId] = useState(null);
     
+    const [showView, setShowView] = useState(false);
+
+	function handleViewMaterial() {
+        setShowView(true);
+    }
+
+	function handleBackToMaterials() {
+		setTopics([]);
+		setLoadingTopics(false);
+		setTopicsError(null);
+		setValues({
+			topic: '',
+			description: '',
+			subject: subject?.subject || '',
+			subject_id: subject?.id || '',
+		});
+		setIsGenerating(false);
+		setHasCreatedQuestions(false);
+		setGeneratedQuestionId(null);
+		setGeneratedMaterial(null);
+
+		onClose();
+	}
+
     // Update subject fields and fetch topics
     useEffect(() => {
         const subjectId = subject?._id || subject?.id || '';
@@ -166,8 +189,32 @@ function GenerateMaterial({subject, username, onClose}) {
 		);
 	}
 
+    // If showing view
+    if (showView) {
+        return (
+            <ViewMaterial 
+                materialData={generatedMaterial} 
+                userInfo={userInfo}
+                userRole={userRole}
+                onClose={() => {
+					setShowView(false);
+					handleBackToMaterials();
+				}}
+            />
+        );
+    }
+
 	return (
 		<div className="container">
+			<div className="back-navigation">
+                <button 
+                onClick={handleBackToMaterials}
+                className="back-button"
+                aria-label="Back to subjects list"
+                >
+                ← Back to Materials
+                </button>
+			</div>
 			{!generatedMaterial ? (
 				<form onSubmit={handleSubmit} className="form-container">
 					<h2>Generate Material</h2>
@@ -230,7 +277,7 @@ function GenerateMaterial({subject, username, onClose}) {
 				</div>
 			) : (
 				<div className="result-container">
-					{generatedMaterial && <ViewMaterial materialData={generatedMaterial} />}
+					{handleViewMaterial()}
 				</div>
 			)}
 		</div>

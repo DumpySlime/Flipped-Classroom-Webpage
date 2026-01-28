@@ -71,7 +71,8 @@ function MaterialList(props) {
         return (
             <GenerateMaterial            
                 subject={props.subject}
-                username={props.userInfo?.username || 'user'}
+                userInfo={props.userInfo}
+                userRole={props.userRole}
                 onClose={() => setShowGenerate(false)}
             />
         );
