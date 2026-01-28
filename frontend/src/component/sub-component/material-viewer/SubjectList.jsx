@@ -24,17 +24,6 @@ function SubjectList({ subjects, materials, userRole, userInfo, activeSection, .
   if (selectedSubject) {
     return (
       <div className="subject-detail-view">
-        {subjects.length > 1 && (
-          <div className="back-navigation">
-            <button 
-              onClick={() => setSelectedSubject(null)}
-              className="back-button"
-              aria-label="Back to subjects list"
-            >
-              ← Back to Subjects
-            </button>
-          </div>
-        )}
         <MaterialList 
           {...props}
           subject={selectedSubject}
@@ -42,6 +31,8 @@ function SubjectList({ subjects, materials, userRole, userInfo, activeSection, .
           userRole={userRole}
           userInfo={userInfo}
           activeSection={activeSection}
+          subjectLength={subjects.length}
+          onBackToSubjectList={() => setSelectedSubject(null)}
         />
       </div>
     );

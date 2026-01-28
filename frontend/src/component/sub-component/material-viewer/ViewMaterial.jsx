@@ -5,7 +5,9 @@ import axios from 'axios';
 import SlideExplanation from './slide-template/SlideExplanation';
 import SlideExample from './slide-template/SlideExample';
 
-function ViewMaterial({ material, materialData, userInfo, userRole}) {
+import EditMaterial from './EditMaterial';
+
+function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 	const [slides, setSlides] = useState(null);
 	const [questions, setQuestions] = useState([]);
 	const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -17,6 +19,32 @@ function ViewMaterial({ material, materialData, userInfo, userRole}) {
 	const [materialId, setMaterialId] = useState(null);
 	const [submitting, setSubmitting] = useState(false);
 	const [savedSubmissionTime, setSavedSubmissionTime] = useState(null);
+	
+    const [showEdit, setShowEdit] = useState(false);
+	const [selectedMaterial, setSelectedMaterial] = useState(null);
+
+	// back navigation
+	function handleBackToMaterials() {
+        // Reset all state before navigating back
+        setSlides(null);
+        setQuestions([]);
+        setCurrentSlideIndex(0);
+        setErr(null);
+        setLoadingQuestions(true);
+        setUserAnswers({});
+        setSubmitted(false);
+        setScore(0);
+        setMaterialId(null);
+        setSavedSubmissionTime(null);
+        
+        // Call the onClose callback to return to MaterialList
+        onClose();
+    }
+
+    function handleEditMaterial(materialToEdit) {
+        setSelectedMaterial(materialToEdit);
+        setShowEdit(true);
+    } 
 
 	// load saved submission (single submission expected)
 	const loadStudentSubmission = async (studentId, materialIdParam, questionsList) => {
@@ -223,6 +251,20 @@ function ViewMaterial({ material, materialData, userInfo, userRole}) {
 			setSubmitted(true);
 		}
 	}, [loadingQuestions, questions, materialId, userInfo?.id, userRole]);
+	
+	// If showing edit
+    if (showEdit && selectedMaterial) {
+        return (
+            <EditMaterial 
+                material={selectedMaterial} 
+                onClose={() => {
+					setShowEdit(false);
+					setSelectedMaterial(null);
+				}}
+            />
+        );
+    }   
+	
 	if (err) return (
 		<div style={{ padding: '20px', color: 'red' }}>
 		<p>{err}</p>
@@ -265,6 +307,24 @@ function ViewMaterial({ material, materialData, userInfo, userRole}) {
 
 	return (
 		<div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+			<div className="back-navigation" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <button 
+                onClick={handleBackToMaterials}
+                className="back-button"
+                aria-label="Back to subjects list"
+                >
+                ← Back to Materials
+                </button>
+				{userRole !== 'student' && (
+                    <button 
+                    onClick={() => handleEditMaterial(material)}
+                    className="button primary"
+                    aria-label="Edit current material"
+                    >
+                    ✏️ Edit Material
+                    </button>
+                )}
+            </div>
 		{/* ========== SLIDES SECTION ========== */}
 		<div style={{
 			backgroundColor: 'white',

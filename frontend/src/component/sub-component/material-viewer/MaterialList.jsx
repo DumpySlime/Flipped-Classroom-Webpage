@@ -37,6 +37,18 @@ function MaterialList(props) {
         setShowEdit(true);
     }
 
+    // back navigation
+    function handleBackToSubjects() {
+        setMaterials([]);
+        setSelectedMaterial(null);
+        setShowUpload(false);
+        setShowEdit(false);
+        setShowView(false);
+        setShowGenerate(false);
+        
+        props.onBackToSubjectList();
+    }
+
     useEffect(() => {
         // Safety check for materials prop
         const safeMaterials = Array.isArray(props.materials) ? props.materials : [];
@@ -85,10 +97,21 @@ function MaterialList(props) {
                 onClose={() => setShowEdit(false)}
             />
         );
-    }
+    }    
 
     return (
         <div className="materials-section">
+            {props.subjectLength > 1 && (
+            <div className="back-navigation">
+                <button 
+                onClick={handleBackToSubjects}
+                className="back-button"
+                aria-label="Back to subjects list"
+                >
+                ← Back to Subjects
+                </button>
+            </div>
+            )}
             <div className="section-header">
                 <h3>{props.subject?.subject || 'Materials'}</h3>
                 {props.userRole !== 'student' && (
