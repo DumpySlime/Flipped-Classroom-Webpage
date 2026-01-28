@@ -111,26 +111,6 @@ function Overview(props) {
         </div>
       )}
 
-      {/* Student Progress (Teacher only) */}
-      {userRole === 'teacher' && safeProgress.length > 0 && (
-        <div className="recent-activity">
-          <h4>Student Progress</h4>
-          <div className="activity-list">
-            {safeProgress.slice(0, 5).map((student) => (
-              <div key={student.id} className="activity-item">
-                <span>{student.name}</span>
-                <span style={{ 
-                  fontWeight: 'bold', 
-                  color: student.progress >= 70 ? '#27ae60' : '#e74c3c' 
-                }}>
-                  {student.progress}%
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Subjects List */}
       {safeSubjects.length > 0 && (
         <div className="recent-activity">
