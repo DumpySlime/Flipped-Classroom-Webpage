@@ -210,6 +210,15 @@ code {
   border-radius: 3px;
 }
 
+.form-textarea {
+  width: 99%;
+  height: 100px;
+  padding: 8px;
+  font-size: 16px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+}
+
 button {
   background-color: #61dafb;
   color: #282c34;
