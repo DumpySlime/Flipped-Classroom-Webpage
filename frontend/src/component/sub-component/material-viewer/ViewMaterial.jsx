@@ -5,7 +5,7 @@ import axios from 'axios';
 import SlideExplanation from './slide-template/SlideExplanation';
 import SlideExample from './slide-template/SlideExample';
 
-function ViewMaterial({ material, materialData, userInfo}) {
+function ViewMaterial({ material, materialData, userInfo, userRole}) {
 	const [slides, setSlides] = useState(null);
 	const [questions, setQuestions] = useState([]);
 	const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -213,11 +213,16 @@ function ViewMaterial({ material, materialData, userInfo}) {
 	useEffect(() => {
 		const currentStudentId = userInfo?.id || localStorage.getItem('student_id');
 		if (!loadingQuestions && questions.length > 0 && materialId && currentStudentId) {
-		loadStudentSubmission(currentStudentId, materialId, questions);
+			loadStudentSubmission(currentStudentId, materialId, questions);
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [loadingQuestions, questions, materialId, userInfo?.id]);
 
+		// load answer directly if user is not a student	
+		console.log('Current user role:', userRole);
+		if (userRole && userRole !== 'student') {
+			setSubmitted(true);
+		}
+	}, [loadingQuestions, questions, materialId, userInfo?.id, userRole]);
 	if (err) return (
 		<div style={{ padding: '20px', color: 'red' }}>
 		<p>{err}</p>
@@ -472,7 +477,7 @@ function ViewMaterial({ material, materialData, userInfo}) {
 						color: '#333'
 						}}>
 						Question {qIndex + 1}: {question.questionText}
-						{submitted && (
+						{submitted && userRole === 'student' && (
 							<span style={{
 							marginLeft: '10px',
 							fontSize: '14px',
@@ -594,7 +599,7 @@ function ViewMaterial({ material, materialData, userInfo}) {
 						</div>
 						)}
 
-						{!submitted && question.learningObjective && (
+						{(!submitted || userRole !== 'student') && question.learningObjective && (
 						<div style={{
 							marginTop: '15px',
 							padding: '10px',
@@ -611,7 +616,7 @@ function ViewMaterial({ material, materialData, userInfo}) {
 				});
 				})}
 
-				{!submitted && (
+				{!submitted && userRole === 'student' && (
 				<div style={{
 					textAlign: 'center',
 					marginTop: '30px',
@@ -708,7 +713,7 @@ function ViewMaterial({ material, materialData, userInfo}) {
 				</div>
 				)}
 
-				{submitted && (
+				{submitted && userRole === 'student' && (
 				<div style={{
 					textAlign: 'center',
 					marginTop: '30px',
