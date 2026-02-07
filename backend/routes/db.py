@@ -411,32 +411,64 @@ def get_subject():
     try:
         id = request.args.get('id')
         subject = request.args.get('subject')
-        teacher_id = request.args.get('teacher_id')
-        student_id = request.args.get('student_id')
-        filt = {}
+        
+        # Base filter for subjects collection
+        subj_filt = {}
         if (id):
-            filt['_id'] = ObjectId(id)
+            subj_filt['_id'] = ObjectId(id)
         if (subject):
-            filt['subject'] = subject
-        if (teacher_id):
-            filt['teacher_ids'] = ObjectId(teacher_id)
-        if (student_id):
-            filt['student_ids'] = ObjectId(student_id)
-        subjects = list(db.subjects.find(filt))
+            subj_filt['subject'] = subject
+            
+        # Get current user from JWT 
+        current_user_id = get_jwt_identity()
+        
+        # Find subject_ids assigned to this user 
+        member_doc = db.subject_members.find_one({"user_id": ObjectId(current_user_id)}) 
+        subject_ids = member_doc.get("subject_ids", []) if member_doc else [] 
+        
+        # If teacher/student has assigned subjects, restrict filter 
+        if subject_ids: 
+            subj_filt['_id'] = {"$in": subject_ids}
+
+        subjects = list(db.subjects.find(subj_filt))
         results = []
-        for u in subjects:
+        
+        for s in subjects:
+            sid = s.get('_id') 
+            
+            # Fetch topics linked to this subject 
+            topics_cursor = db.topics.find({"subject_id": sid}) 
+            topics = [t.get("topic") for t in topics_cursor] 
+            
+            # Fetch all subject_members that include this subject id 
+            members_cursor = db.subject_members.find({"subject_ids": sid}) 
+            teacher_ids = [] 
+            student_ids = [] 
+            
+            for m in members_cursor: 
+                uid = m.get("user_id") 
+                role = m.get("role") 
+                
+                uid_str = str(uid)
+                
+                if role == "teacher": 
+                    teacher_ids.append(uid_str) 
+                elif role == "student": 
+                    student_ids.append(uid_str)   
+                             
             results.append({
-                "id": str(u["_id"]),
-                "subject": u.get("subject"),
-                "topics": u.get("topics"),
-                "teacher_ids": [str(tid) for tid in u.get("teacher_ids", [])],
-                "student_ids": [str(tid) for tid in u.get("student_ids", [])],
-                "created_by": str(u["created_by"]),
-                "created_at": u.get("created_at").isoformat(),
-                "updated_at": u.get("updated_at").isoformat()
+                "id": str(s["_id"]),
+                "subject": s.get("subject"),
+                "topics": s.get("topics"),
+                "teacher_ids": [str(tid) for tid in s.get("teacher_ids", [])],
+                "student_ids": [str(tid) for tid in s.get("student_ids", [])],
+                "created_by": str(s["created_by"]),
+                "created_at": s.get("created_at").isoformat(),
+                "updated_at": s.get("updated_at").isoformat()
             })
         print("Subject search results:", results)
         return jsonify({"subjects": results}), 200
+    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
