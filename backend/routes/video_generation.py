@@ -1,0 +1,444 @@
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required
+from bson import ObjectId
+from datetime import datetime
+
+import requests
+import subprocess
+import tempfile
+import os
+import shutil
+import re
+import sys
+
+
+video_gen_bp = Blueprint("video_generation", __name__)
+
+db = None
+DEEPSEEK_API_KEY = None
+DEEPSEEK_MODEL = None
+DEEPSEEK_BASE_URL = None
+
+
+def init_video_generation(database, app):
+    """Initialize video generation module with DB and app config."""
+    global db, DEEPSEEK_API_KEY, DEEPSEEK_MODEL, DEEPSEEK_BASE_URL
+    db = database
+    DEEPSEEK_API_KEY = app.config.get("DEEPSEEK_API_KEY")
+    DEEPSEEK_MODEL = app.config.get("DEEPSEEK_MODEL")
+    DEEPSEEK_BASE_URL = app.config.get("DEEPSEEK_BASE_URL")
+
+    print("[VIDEO_GEN] Video generation module initialized")
+    print(f"[VIDEO_GEN] DeepSeek model: {DEEPSEEK_MODEL}")
+
+
+# ---------- Helpers for slide extraction ----------
+
+
+def extract_title(slide_content: str) -> str:
+    """Get a reasonable title from slide text."""
+    for line in slide_content.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        # Markdown-style heading
+        if line.startswith("#"):
+            return line.lstrip("#").strip()
+        # Otherwise first short line
+        if len(line) < 80:
+            return line
+    return "Untitled Slide"
+
+
+def extract_slides(content: str):
+    """Split material content into slides."""
+    if not content:
+        return []
+
+    # Priorities: '---' as slide separator, else triple newline, else single slide
+    if "---" in content:
+        parts = content.split("---")
+    elif "\n\n\n" in content:
+        parts = content.split("\n\n\n")
+    else:
+        parts = [content]
+
+    slides = []
+    for i, part in enumerate(parts):
+        part = part.strip()
+        if not part:
+            continue
+        slides.append(
+            {
+                "slide_number": i + 1,
+                "title": extract_title(part),
+                "content": part,
+            }
+        )
+    return slides
+
+
+# ---------- 1) Prepare: get material + slides ----------
+
+
+@video_gen_bp.route("/api/generate-video/prepare", methods=["POST"])
+@jwt_required()
+def prepare_video_generation():
+    """Extract slide content and prepare for Manim generation."""
+    try:
+        if db is None:
+            return jsonify({"error": "Database not initialized"}), 500
+
+        data = request.get_json() or {}
+        material_id_str = data.get("material_id")
+
+        if not material_id_str:
+            return jsonify({"error": "material_id is required"}), 400
+
+        try:
+            material_obj_id = ObjectId(material_id_str)
+        except Exception:
+            return jsonify({"error": "Invalid material_id format"}), 400
+
+        material = db.materials.find_one({"_id": material_obj_id})
+        if not material:
+            return jsonify({"error": "Material not found"}), 404
+
+        raw_slides = material.get("slides", [])
+        if not raw_slides:
+            return jsonify({"error": "No slides found in this material"}), 400
+
+        topic = material.get("topic") or material.get("title") or "Educational Topic"
+
+        slides = []
+        for idx, s in enumerate(raw_slides, start=1):
+            # Case 1: slide is an object like in your snippet
+            if isinstance(s, dict):
+                subtitle = s.get("subtitle", f"Slide {idx}")
+                contents = s.get("content", [])
+                if isinstance(contents, list):
+                    content_text = "\n".join(str(c) for c in contents)
+                else:
+                    content_text = str(contents)
+                page = s.get("page", idx)
+            # Case 2: slide is already a plain string
+            else:
+                subtitle = f"Slide {idx}"
+                content_text = str(s)
+                page = idx
+
+            slides.append({
+                "slide_number": page,
+                "title": subtitle,
+                "content": content_text,
+            })
+
+        return jsonify(
+            {
+                "material_id": material_id_str,
+                "topic": topic,
+                "slides": slides,
+                "total_slides": len(slides),
+            }
+        ), 200
+
+    except Exception as e:
+        print("[VIDEO_GEN] Error in prepare_video_generation:", str(e))
+        return jsonify(
+            {"error": "Failed to prepare video generation", "details": str(e)}
+        ), 500
+
+
+
+MANIM_STORYBOARD_SYSTEM_PROMPT = """You are an expert educational animator specializing in creating Manim storyboards.
+
+Given slide content, generate a detailed scene-by-scene storyboard for a Manim animation.
+
+For each scene, describe:
+1. Visual elements (text, shapes, equations, diagrams)
+2. Animation types (Write, FadeIn, Transform, etc.)
+3. Timing and transitions
+4. Camera movements (if needed)
+5. Colors and styling
+
+Output format:
+
+Scene 1: [Title]
+Duration: [X seconds]
+Visual:
+- [element description]
+Animations:
+- [animation description with order + timing]
+
+Scene 2: ...
+
+Keep descriptions clear, concise, and implementable in Manim.
+Do NOT output any code, only natural language storyboard.
+""".strip()
+
+
+def create_storyboard_prompt(slides, topic: str) -> str:
+    slide_text = "\n\n".join(
+        f"Slide {s['slide_number']}: {s['title']}\n{s['content']}" for s in slides
+    )
+    return f"""
+Create a Manim animation storyboard for an educational video on "{topic}".
+
+Slides:
+{slide_text}
+
+Follow the requested storyboard format (Scene 1, Scene 2, ...).
+""".strip()
+
+
+@video_gen_bp.route("/api/generate-video/storyboard", methods=["POST"])
+@jwt_required()
+def generate_manim_storyboard():
+    """Generate storyboard using DeepSeek."""
+    try:
+        if not DEEPSEEK_API_KEY or not DEEPSEEK_MODEL or not DEEPSEEK_BASE_URL:
+            return jsonify({"error": "DeepSeek is not configured"}), 500
+
+        data = request.get_json() or {}
+        slides = data.get("slides") or []
+        topic = data.get("topic", "Educational Topic")
+
+        if not slides:
+            return jsonify({"error": "slides array is required"}), 400
+
+        user_prompt = create_storyboard_prompt(slides, topic)
+
+        resp = requests.post(
+            f"{DEEPSEEK_BASE_URL}/chat/completions",
+            json={
+                "model": DEEPSEEK_MODEL,
+                "messages": [
+                    {"role": "system", "content": MANIM_STORYBOARD_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "temperature": 0.7,
+            },
+            headers={
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            timeout=90,
+        )
+        resp.raise_for_status()
+        data_json = resp.json()
+        storyboard = data_json["choices"][0]["message"]["content"].strip()
+
+        return jsonify({"topic": topic, "storyboard": storyboard}), 200
+
+    except Exception as e:
+        print("[VIDEO_GEN] Error generating storyboard:", str(e))
+        return jsonify({"error": "Failed to generate storyboard", "details": str(e)}), 500
+
+
+# ---------- 3) Manim code generation ----------
+
+
+MANIM_CODE_SYSTEM_PROMPT = """You are an expert Manim programmer.
+
+Given a textual storyboard, generate a COMPLETE, RUNNABLE Manim script.
+
+Requirements:
+- Use: `from manim import *`
+- Define exactly ONE scene class named `EducationalVideo(Scene)`
+- Implement `def construct(self):` with all animations
+- Use standard Manim objects (Text, MathTex, VGroup, etc.)
+- Use animations like Write, FadeIn, FadeOut, Transform, Create
+- Add short comments explaining key blocks
+- Do NOT access external files
+- Code must be valid Python 3.11
+
+Output ONLY a Python code block:
+
+```python
+from manim import *
+
+class EducationalVideo(Scene):
+    def construct(self):
+        ...
+```
+""".strip()
+
+
+def create_code_generation_prompt(storyboard: str, topic: str) -> str:
+    return f"""
+Topic: {topic}
+
+Storyboard:
+{storyboard}
+
+Generate the Manim code following the requirements.
+""".strip()
+
+
+def extract_code_block(text: str) -> str:
+    """Extract python code from ```python ... ``` or return raw text."""
+    m = re.search(r"```python(.*?)```", text, re.DOTALL | re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+    m = re.search(r"```(.*?)```", text, re.DOTALL)
+    if m:
+        return m.group(1).strip()
+    return text.strip()
+
+
+@video_gen_bp.route("/api/generate-video/code", methods=["POST"])
+@jwt_required()
+def generate_manim_code():
+    """Generate executable Manim code from storyboard."""
+    try:
+        if not DEEPSEEK_API_KEY or not DEEPSEEK_MODEL or not DEEPSEEK_BASE_URL:
+            return jsonify({"error": "DeepSeek is not configured"}), 500
+
+        data = request.get_json() or {}
+        storyboard = data.get("storyboard", "")
+        topic = data.get("topic", "Educational Video")
+
+        if not storyboard:
+            return jsonify({"error": "storyboard is required"}), 400
+
+        user_prompt = create_code_generation_prompt(storyboard, topic)
+
+        resp = requests.post(
+            f"{DEEPSEEK_BASE_URL}/chat/completions",
+            json={
+                "model": DEEPSEEK_MODEL,
+                "messages": [
+                    {"role": "system", "content": MANIM_CODE_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "temperature": 0.5,
+            },
+            headers={
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            timeout=120,
+        )
+        resp.raise_for_status()
+        data_json = resp.json()
+        raw = data_json["choices"][0]["message"]["content"]
+        manim_code = extract_code_block(raw)
+
+        return jsonify({"topic": topic, "manim_code": manim_code}), 200
+
+    except Exception as e:
+        print("[VIDEO_GEN] Error generating Manim code:", str(e))
+        return jsonify({"error": "Failed to generate Manim code", "details": str(e)}), 500
+
+
+# ---------- 4) Render Manim video ----------
+
+
+def _find_video_file(root_dir: str) -> str | None:
+    for root, _, files in os.walk(root_dir):
+        for f in files:
+            if f.endswith(".mp4"):
+                return os.path.join(root, f)
+    return None
+
+
+def _save_video_to_static(video_path: str, material_id_str: str) -> str:
+    out_dir = os.path.join("static", "generated_videos")
+    os.makedirs(out_dir, exist_ok=True)
+    dest = os.path.join(out_dir, f"video_{material_id_str}.mp4")
+    shutil.copy(video_path, dest)
+    return f"/static/generated_videos/video_{material_id_str}.mp4"
+
+
+@video_gen_bp.route("/api/generate-video/render", methods=["POST"])
+@jwt_required()
+def render_manim_video():
+    """Render Manim code into video and store URL on material."""
+    try:
+        if db is None:
+            return jsonify({"error": "Database not initialized"}), 500
+
+        data = request.get_json() or {}
+        manim_code = data.get("manim_code", "")
+        material_id_str = data.get("material_id")
+        quality = data.get("quality", "medium")
+
+        if not manim_code:
+            return jsonify({"error": "manim_code is required"}), 400
+        if not material_id_str:
+            return jsonify({"error": "material_id is required"}), 400
+
+        try:
+            material_obj_id = ObjectId(material_id_str)
+        except Exception:
+            return jsonify({"error": "Invalid material_id format"}), 400
+
+        # Write temp script
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write(manim_code)
+            script_path = f.name
+
+        quality_flag = {"low": "-ql", "medium": "-qm", "high": "-qh"}.get(quality, "-qm")
+        out_dir = tempfile.mkdtemp()
+
+        try:
+            print(f"[VIDEO_GEN] Rendering Manim video for {material_id_str}...")
+
+            proc = subprocess.run(
+                [
+                    sys.executable, 
+                    "-m",
+                    "manim",
+                    quality_flag,
+                    script_path,
+                    "EducationalVideo",
+                    "-o",
+                    f"video_{material_id_str}",
+                ],
+                cwd=out_dir,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="ignore",
+                timeout=300,
+            )
+
+            if proc.returncode != 0:
+                # Save stderr to a file for debugging
+                error_log_path = os.path.join(out_dir, "manim_stderr.txt")
+                with open(error_log_path, "w", encoding="utf-8", errors="ignore") as log_f:
+                    log_f.write(proc.stderr or "")
+
+                return jsonify({
+                    "error": "Manim rendering failed",
+                    "details": f"See manim_stderr.txt in {out_dir}"
+                }), 500
+
+            video_path = _find_video_file(out_dir)
+            if not video_path:
+                return jsonify({"error": "Rendered video not found"}), 500
+
+            video_url = _save_video_to_static(video_path, material_id_str)
+
+            db.materials.update_one(
+                {"_id": material_obj_id},
+                {"$set": {"video_url": video_url, "video_generated_at": datetime.utcnow()}},
+            )
+
+            return jsonify({"success": True, "video_url": video_url, "message": "Video generated"}), 200
+
+        finally:
+            if os.path.exists(script_path):
+                os.unlink(script_path)
+
+    except subprocess.TimeoutExpired:
+        return jsonify({"error": "Video rendering timed out"}), 408
+    except Exception as e:
+        msg = str(e)
+        try:
+            msg.encode("cp950")
+        except UnicodeEncodeError:
+            msg = msg.encode("cp950", errors="ignore").decode("cp950", errors="ignore")
+        print("[VIDEO_GEN] Error in render_manim_video:", msg)
+        return jsonify({"error": "Failed to render video", "details": msg}), 500
+
