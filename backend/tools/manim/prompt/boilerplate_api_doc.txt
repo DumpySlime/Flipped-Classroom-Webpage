@@ -1,0 +1,38 @@
+# CScene Boilerplate API
+
+## Scene setup
+- self.setup_scene(title: str, subtitle: str = None) → VGroup
+- self.pause(t: float = 0.5) → None
+
+## Geometry (static)
+- self.segment(A: np.ndarray, B: np.ndarray, color=None, dashed: bool = False) → Line
+- self.polygon(*points: np.ndarray, color=None) → Polygon
+- self.circle_from_center_radius(center: np.ndarray, r: float, color=None) → Circle
+- self.right_angle_mark(A: np.ndarray, O: np.ndarray, B: np.ndarray) → Polygon
+- self.angle_mark(A: np.ndarray, O: np.ndarray, B: np.ndarray, label: str = None) → VGroup
+
+## Labels
+- self.label_point(dot: Dot, name: str, direction=UR) → Text
+- self.label_line(line: Line, text: str, offset=UP) → Text
+
+## Coordinate geometry
+- self.make_plane(x_range=[-6,6,1], y_range=[-4,4,1]) → NumberPlane
+- self.plot_point(plane, x: float, y: float, color=None) → Dot
+
+## Dynamic (drag-a-point)
+- self.tracker(x0: float) → ValueTracker
+- self.dynamic_line(get_A: Callable, get_B: Callable, color=None) → Line
+- self.dynamic_angle(get_A, get_O, get_B, color=YELLOW) → Angle
+
+## Standard Manim animations
+- self.play(animation, run_time=1.0)
+- Create(mobject)
+- FadeIn(mobject)
+- FadeOut(mobject)
+- Transform(mobject_from, mobject_to)
+- Indicate(mobject)
+- Circumscribe(mobject, color=YELLOW)
+- mobject.animate.set_opacity(0.3)
+
+## Colors
+- RED, BLUE, GREEN, YELLOW, WHITE, GRAY
