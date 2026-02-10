@@ -4,7 +4,7 @@ import '../../../dashboard.css';
 import axios from 'axios';
 import SlideExplanation from './slide-template/SlideExplanation';
 import SlideExample from './slide-template/SlideExample';
-
+import VideoGenerator from "./VideoGenerator";
 import EditMaterial from './EditMaterial';
 
 function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
@@ -514,6 +514,14 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 				}}>
 				✓ {(questions?.[0]?.question_content?.questions?.length ?? 0)} question(s) available
 				</p>
+
+			{userRole === "teacher" && (
+			<VideoGenerator
+				materialId={materialId}
+				onVideoGenerated={() => {
+				}}
+			/>
+			)}
 
 				{questions.map((q, index) => {
 				const questionContent = q.question_content?.questions || [];
