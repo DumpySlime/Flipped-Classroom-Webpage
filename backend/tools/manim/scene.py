@@ -437,3 +437,540 @@ class CScene(Scene):
         final.next_to(last, DOWN, buff=0.4, aligned_edge=LEFT)
         self.play(Write(final))
         return VGroup(prob, lines, final)
+
+    # ==================================
+    # TRIGONOMETRY HIGH-LEVEL TEMPLATES
+    # ==================================
+
+    ## Basic Trigonometric Ratios
+
+    def animate_right_triangle_ratios(
+        self,
+        focus_angle: str = "A",
+        highlight_sequence: list[str] = ["hyp", "opp", "adj"],
+        show_ratio_equations: bool = False,
+    ) -> None:
+        """
+        Label and highlight sides of right triangle relative to an angle.
+        Demonstrates opposite, adjacent, and hypotenuse concept.
+        
+        Args:
+            focus_angle: Which angle to focus on ("A" or "B")
+            highlight_sequence: Order to highlight sides
+            show_ratio_equations: Whether to show sin/cos/tan equations
+        """
+        # 0-1s: Show triangle with right angle
+        A = np.array([-2, -1, 0])
+        B = np.array([2, -1, 0])
+        C = np.array([-2, 2, 0])
+        
+        triangle = self.polygon(A, B, C, color=WHITE, fill_opacity=0.1)
+        right_mark = self.right_angle_mark(B, A, C)
+        self.pause(0.5)
+        
+        # Mark focus angle
+        if focus_angle == "A":
+            angle_mark = self.angle_mark(B, A, C, color=YELLOW, label=focus_angle)
+            sides = {
+                "hyp": (B, C, RED, UR),
+                "opp": (B, C, BLUE, RIGHT),
+                "adj": (A, B, GREEN, DOWN),
+            }
+        else:  # angle B
+            angle_mark = self.angle_mark(A, B, C, color=YELLOW, label=focus_angle)
+            sides = {
+                "hyp": (B, C, RED, UR),
+                "opp": (A, C, BLUE, LEFT),
+                "adj": (A, B, GREEN, DOWN),
+            }
+        
+        self.pause(1)
+        
+        # 1-7s: Highlight each side
+        lines = {}
+        for side_name in highlight_sequence:
+            P1, P2, color, label_dir = sides[side_name]
+            line = self.segment(P1, P2, color=color, stroke_width=6)
+            self.label_line(line, side_name, offset=label_dir)
+            lines[side_name] = line
+            self.play(Indicate(line, scale_factor=1.15))
+            self.pause(1.2)
+        
+        # 7-10s: Show ratio equations if requested
+        if show_ratio_equations:
+            eq = self.mtex(
+                rf"\sin {focus_angle} = \frac{{\text{{opp}}}}{{\text{{hyp}}}}",
+                scale=0.8
+            )
+            eq.to_edge(DOWN, buff=0.5)
+            self.play(Write(eq))
+            self.pause(1.5)
+        else:
+            self.play(triangle.animate.set_opacity(0.3))
+            self.pause(2)
+
+
+    def animate_trig_ratio_values(
+        self,
+        angle_degrees: float = 30,
+        ratios: list[str] = ["sin", "cos", "tan"],
+    ) -> None:
+        """
+        Show numerical values of sin/cos/tan for a specific angle.
+        Good for special angles (30°, 45°, 60°).
+        
+        Args:
+            angle_degrees: The angle to demonstrate
+            ratios: Which ratios to show
+        """
+        # 0-2s: Show right triangle with specified angle
+        A = np.array([-2.5, -1, 0])
+        B = np.array([2.5, -1, 0])
+        
+        # Calculate C based on angle
+        angle_rad = angle_degrees * DEGREES
+        height = 5 * np.tan(angle_rad)
+        C = np.array([-2.5, -1 + height, 0])
+        
+        triangle = self.polygon(A, B, C, color=WHITE)
+        self.right_angle_mark(B, A, C)
+        angle_mark = self.angle_mark(B, A, C, color=YELLOW, label=f"{angle_degrees}°")
+        self.pause(1.5)
+        
+        # 2-9s: Show each ratio with value
+        import math
+        values = {
+            "sin": math.sin(angle_rad),
+            "cos": math.cos(angle_rad),
+            "tan": math.tan(angle_rad),
+        }
+        
+        equations = VGroup()
+        for i, ratio in enumerate(ratios):
+            val = values[ratio]
+            # Format nicely for special angles
+            if angle_degrees == 30:
+                val_str = r"\frac{1}{2}" if ratio == "sin" else (
+                    r"\frac{\sqrt{3}}{2}" if ratio == "cos" else r"\frac{1}{\sqrt{3}}"
+                )
+            elif angle_degrees == 45:
+                val_str = r"\frac{\sqrt{2}}{2}" if ratio != "tan" else "1"
+            elif angle_degrees == 60:
+                val_str = r"\frac{\sqrt{3}}{2}" if ratio == "sin" else (
+                    r"\frac{1}{2}" if ratio == "cos" else r"\sqrt{3}"
+                )
+            else:
+                val_str = f"{val:.3f}"
+            
+            eq = self.mtex(rf"\{ratio} {angle_degrees}° = {val_str}", scale=0.8)
+            equations.add(eq)
+        
+        equations.arrange(DOWN, aligned_edge=LEFT, buff=0.3)
+        equations.to_edge(RIGHT, buff=0.8)
+        
+        for eq in equations:
+            self.play(Write(eq))
+            self.pause(1.5)
+
+
+    ## Trigonometric Graphs
+
+    def animate_sine_wave_properties(
+        self,
+        show_amplitude: bool = True,
+        show_period: bool = True,
+    ) -> None:
+        """
+        Show sine wave with key properties marked (max/min, period, zeros).
+        
+        Args:
+            show_amplitude: Whether to mark amplitude
+            show_period: Whether to mark period
+        """
+        # 0-2s: Draw axes and sine curve
+        axes = Axes(
+            x_range=[0, 2*PI, PI/2],
+            y_range=[-1.5, 1.5, 0.5],
+            x_length=9,
+            y_length=4,
+            tips=False,
+        ).shift(DOWN*0.5)
+        
+        sine_curve = axes.plot(lambda x: np.sin(x), color=BLUE, stroke_width=4)
+        
+        self.play(Create(axes))
+        self.play(Create(sine_curve))
+        self.pause(0.5)
+        
+        # 2-5s: Mark maximum and minimum
+        max_dot = Dot(axes.c2p(PI/2, 1), color=YELLOW)
+        min_dot = Dot(axes.c2p(3*PI/2, -1), color=YELLOW)
+        
+        self.play(FadeIn(max_dot), FadeIn(min_dot))
+        
+        if show_amplitude:
+            max_label = self.mtex("1", scale=0.7).next_to(max_dot, UR, buff=0.1)
+            min_label = self.mtex("-1", scale=0.7).next_to(min_dot, DR, buff=0.1)
+            self.play(Write(max_label), Write(min_label))
+        
+        self.pause(1.5)
+        
+        # 5-8s: Show period
+        if show_period:
+            period_brace = BraceBetweenPoints(
+                axes.c2p(0, -1.5),
+                axes.c2p(2*PI, -1.5),
+                direction=DOWN,
+            )
+            period_label = self.mtex("2\pi", scale=0.8).next_to(period_brace, DOWN)
+            
+            self.play(GrowFromCenter(period_brace))
+            self.play(Write(period_label))
+        
+        self.pause(2)
+
+
+    ## Area, Sine Rule, Cosine Rule
+
+    def animate_triangle_area_formula(
+        self,
+        side_a: float = 4,
+        side_b: float = 3,
+        angle_C_degrees: float = 60,
+    ) -> None:
+        """
+        Demonstrate area = ½ab sin C formula with visual height.
+        
+        Args:
+            side_a, side_b: Two sides of triangle
+            angle_C_degrees: Included angle between sides
+        """
+        # 0-2s: Show triangle
+        A = np.array([-side_b/2, 0, 0])
+        angle_rad = angle_C_degrees * DEGREES
+        B = np.array([side_b/2, 0, 0])
+        C_x = A[0] + side_a * np.cos(angle_rad)
+        C_y = side_a * np.sin(angle_rad)
+        C = np.array([C_x, C_y, 0])
+        
+        triangle = self.polygon(A, B, C, color=WHITE, fill_opacity=0.15)
+        
+        # Label sides
+        self.label_line(Line(A, C), "b", offset=LEFT)
+        self.label_line(Line(A, B), "a", offset=DOWN)
+        
+        # Mark angle
+        self.angle_mark(B, A, C, color=YELLOW, label="C")
+        self.pause(1.5)
+        
+        # 2-5s: Drop perpendicular height
+        h_point = np.array([C_x, 0, 0])
+        height_line = self.segment(C, h_point, color=RED, dashed=True)
+        self.label_line(height_line, "h", offset=RIGHT)
+        
+        self.right_angle_mark(C, h_point, B)
+        self.pause(1.5)
+        
+        # 5-8s: Show h = b sin C
+        eq1 = self.show_equation_step(None, r"h = b \sin C")
+        self.pause(1)
+        
+        # 8-10s: Show area formula
+        eq2 = self.show_equation_step(
+            eq1,
+            r"\text{Area} = \frac{1}{2} a b \sin C"
+        )
+        self.pause(2)
+
+
+    def animate_sine_rule(
+        self,
+        triangle_angles: tuple[float, float, float] = (30, 60, 90),
+    ) -> None:
+        """
+        Demonstrate sine rule: a/sin A = b/sin B = c/sin C.
+        
+        Args:
+            triangle_angles: Three angles in degrees (A, B, C)
+        """
+        # 0-2s: Show triangle with labels
+        A_deg, B_deg, C_deg = triangle_angles
+        
+        # Use sine rule to construct triangle
+        a = 4.0  # side opposite angle A
+        A_rad = A_deg * DEGREES
+        B_rad = B_deg * DEGREES
+        
+        b = a * np.sin(B_rad) / np.sin(A_rad)
+        
+        # Place triangle
+        P1 = np.array([-2, -1, 0])
+        P2 = np.array([2, -1, 0])
+        P3 = np.array([P1[0] + b * np.cos(A_rad), P1[1] + b * np.sin(A_rad), 0])
+        
+        triangle = self.polygon(P1, P2, P3, color=WHITE)
+        
+        # Label vertices
+        self.label_point(Dot(P1), "A", direction=LEFT)
+        self.label_point(Dot(P2), "B", direction=RIGHT)
+        self.label_point(Dot(P3), "C", direction=UP)
+        
+        # Label sides (opposite angles)
+        self.label_line(Line(P2, P3), "a", offset=UR)
+        self.label_line(Line(P1, P3), "b", offset=LEFT)
+        
+        self.pause(1.5)
+        
+        # 2-6s: Show sine rule equation
+        eq = self.show_equation_step(
+            None,
+            rf"\frac{{a}}{{\sin {A_deg}°}} = \frac{{b}}{{\sin {B_deg}°}}"
+        )
+        self.pause(2)
+        
+        # 6-10s: Highlight the ratio relationship
+        self.play(Circumscribe(eq, color=YELLOW))
+        self.pause(2)
+
+
+    def animate_cosine_rule(
+        self,
+        side_a: float = 5,
+        side_b: float = 4,
+        angle_C_degrees: float = 60,
+    ) -> None:
+        """
+        Demonstrate cosine rule: c² = a² + b² - 2ab cos C.
+        
+        Args:
+            side_a, side_b: Two known sides
+            angle_C_degrees: Included angle
+        """
+        # 0-2s: Show triangle
+        import math
+        angle_rad = angle_C_degrees * DEGREES
+        
+        P1 = np.array([-2, -1, 0])
+        P2 = np.array([2, -1, 0])
+        P3 = np.array([
+            P1[0] + side_b * np.cos(angle_rad),
+            P1[1] + side_b * np.sin(angle_rad),
+            0
+        ])
+        
+        triangle = self.polygon(P1, P2, P3, color=WHITE)
+        
+        # Label
+        self.label_line(Line(P1, P2), f"{side_a}", offset=DOWN)
+        self.label_line(Line(P1, P3), f"{side_b}", offset=LEFT)
+        self.angle_mark(P2, P1, P3, color=YELLOW, label=f"{angle_C_degrees}°")
+        
+        # Unknown side c
+        c_line = self.segment(P2, P3, color=RED, stroke_width=6)
+        self.label_line(c_line, "c", offset=UR)
+        
+        self.pause(1.5)
+        
+        # 2-5s: Show formula
+        eq1 = self.show_equation_step(
+            None,
+            rf"c^2 = {side_a}^2 + {side_b}^2 - 2({side_a})({side_b})\cos {angle_C_degrees}°"
+        )
+        self.pause(2)
+        
+        # 5-8s: Calculate
+        c_squared = side_a**2 + side_b**2 - 2*side_a*side_b*math.cos(angle_rad)
+        c = math.sqrt(c_squared)
+        
+        eq2 = self.show_equation_step(
+            eq1,
+            rf"c = {c:.2f}"
+        )
+        
+        # 8-10s: Highlight result on diagram
+        self.play(Indicate(c_line, scale_factor=1.2, color=YELLOW))
+        self.pause(2)
+
+
+    ## 3D Trigonometry
+
+    def animate_3d_angle_between_lines(
+        self,
+        show_projection: bool = True,
+    ) -> None:
+        """
+        Demonstrate finding angle between two lines in 3D space.
+        Uses projection method.
+        
+        Args:
+            show_projection: Whether to show projection onto base plane
+        """
+        # 0-2s: Show 3D box with two lines
+        # Create simple 3D rectangular prism
+        # (Simplified 2D representation of 3D)
+        
+        # Base rectangle
+        A = np.array([-2, -1, 0])
+        B = np.array([2, -1, 0])
+        C = np.array([2, 1, 0])
+        D = np.array([-2, 1, 0])
+        
+        # Top vertices (shifted up and right to show 3D)
+        E = A + np.array([0.5, 1.5, 0])
+        F = B + np.array([0.5, 1.5, 0])
+        G = C + np.array([0.5, 1.5, 0])
+        H = D + np.array([0.5, 1.5, 0])
+        
+        # Draw edges
+        base = self.polygon(A, B, C, D, color=GRAY)
+        
+        # Vertical edges
+        self.segment(A, E, color=GRAY)
+        self.segment(B, F, color=GRAY)
+        self.segment(C, G, color=GRAY)
+        self.segment(D, H, color=GRAY)
+        
+        # Top edges (some dashed for hidden)
+        self.segment(E, F, color=GRAY)
+        self.segment(F, G, color=GRAY)
+        self.segment(G, H, color=GRAY, dashed=True)
+        self.segment(H, E, color=GRAY, dashed=True)
+        
+        self.pause(1)
+        
+        # 2-5s: Highlight two lines of interest
+        line1 = self.segment(A, G, color=BLUE, stroke_width=5)
+        line2 = self.segment(B, H, color=RED, stroke_width=5)
+        
+        self.pause(1.5)
+        
+        # 5-8s: Show projection (if enabled)
+        if show_projection:
+            # Project onto base plane
+            proj1 = self.segment(A, C, color=BLUE, stroke_width=3, dashed=True)
+            proj2 = self.segment(B, D, color=RED, stroke_width=3, dashed=True)
+            
+            # Show angle between projections
+            # Find intersection point
+            M = ORIGIN  # simplified: diagonals intersect at center
+            angle = self.angle_mark(C, M, D, color=YELLOW)
+            
+            self.pause(2)
+        
+        # 8-10s: Show equation
+        eq = self.mtex(r"\cos \theta = \text{(use cosine rule)}", scale=0.8)
+        eq.to_edge(DOWN)
+        self.play(Write(eq))
+        self.pause(2)
+
+
+    def animate_angle_line_to_plane(
+        self,
+    ) -> None:
+        """
+        Show angle between a line and a plane in 3D.
+        Uses perpendicular projection from point to plane.
+        """
+        # 0-2s: Show plane (horizontal) and line
+        # Plane represented as rectangle
+        plane_corners = [
+            np.array([-2.5, -1, 0]),
+            np.array([2.5, -1, 0]),
+            np.array([2.5, 1, 0]),
+            np.array([-2.5, 1, 0]),
+        ]
+        plane = self.polygon(*plane_corners, color=GRAY, fill_opacity=0.2)
+        
+        # Point above plane
+        P = np.array([0, 2, 0])
+        P_dot = Dot(P, color=YELLOW)
+        self.play(FadeIn(P_dot))
+        self.label_point(P_dot, "P", direction=UP)
+        
+        # Point on plane
+        Q = np.array([1.5, -0.5, 0])
+        Q_dot = Dot(Q, color=YELLOW)
+        self.play(FadeIn(Q_dot))
+        self.label_point(Q_dot, "Q")
+        
+        # Line PQ
+        line_PQ = self.segment(P, Q, color=BLUE, stroke_width=5)
+        
+        self.pause(1.5)
+        
+        # 2-5s: Drop perpendicular from P to plane
+        P_proj = np.array([P[0], P[1], 0])  # Project onto z=0
+        # For visual clarity, project onto plane at same y
+        R = np.array([0, -0.5, 0])
+        R_dot = Dot(R, color=RED)
+        self.play(FadeIn(R_dot))
+        self.label_point(R_dot, "R")
+        
+        perp = self.segment(P, R, color=RED, dashed=True)
+        self.right_angle_mark(Q, R, P)
+        
+        self.pause(1.5)
+        
+        # 5-8s: Show angle θ in triangle PQR
+        angle = self.angle_mark(Q, P, R, color=YELLOW, label="θ")
+        
+        self.pause(1.5)
+        
+        # 8-10s: Show formula
+        eq = self.mtex(r"\sin \theta = \frac{PR}{PQ}", scale=0.9)
+        eq.to_edge(DOWN, buff=0.5)
+        self.play(Write(eq))
+        self.pause(2)
+
+
+    ## Solving Trigonometric Equations
+
+    def animate_solve_trig_equation(
+        self,
+        equation_latex: str = r"\sin \theta = 0.5",
+        solutions_degrees: list[float] = [30, 150],
+    ) -> None:
+        """
+        Show solutions of trigonometric equation on unit circle.
+        Solutions confined to [0°, 360°].
+        
+        Args:
+            equation_latex: The equation to solve
+            solutions_degrees: List of solutions in degrees
+        """
+        # 0-2s: Show equation
+        eq = self.mtex(equation_latex, scale=1.0)
+        eq.to_edge(UP, buff=0.8)
+        self.play(Write(eq))
+        self.pause(1)
+        
+        # 2-5s: Draw unit circle
+        circle = self.circle_from_center_radius(ORIGIN, 2, color=WHITE)
+        
+        # Draw axes
+        self.segment(np.array([-2.5, 0, 0]), np.array([2.5, 0, 0]), color=GRAY)
+        self.segment(np.array([0, -2.5, 0]), np.array([0, 2.5, 0]), color=GRAY)
+        
+        self.pause(1)
+        
+        # 5-9s: Mark solutions on circle
+        for i, angle_deg in enumerate(solutions_degrees):
+            angle_rad = angle_deg * DEGREES
+            x = 2 * np.cos(angle_rad)
+            y = 2 * np.sin(angle_rad)
+            point = np.array([x, y, 0])
+            
+            dot = Dot(point, color=YELLOW)
+            self.play(FadeIn(dot, scale=1.5))
+            
+            label = self.mtex(f"{angle_deg}°", scale=0.7)
+            label.next_to(dot, UR if x > 0 else UL, buff=0.15)
+            self.play(Write(label))
+            
+            # Draw radius to point
+            radius = self.segment(ORIGIN, point, color=YELLOW, dashed=True)
+            
+            self.pause(1.5 if i == 0 else 1)
+        
+        # 9-10s: Final pause
+        self.pause(1)
