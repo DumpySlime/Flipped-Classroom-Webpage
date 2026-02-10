@@ -696,3 +696,91 @@ def generate_fallback_report(analytics_data):
         report += "- All submitted answers were correct\n"
     
     return report
+
+@ai_bp.route('/grade-short-answer', methods=['POST'])
+@jwt_required()
+def grade_short_answer():
+    """
+    Grade short answer questions using AI
+    Compares student's answer with the correct answer and determines if it's correct
+    """
+    if not DEEPSEEK_API_KEY:
+        return jsonify({'error': 'DEEPSEEK_API_KEY missing in .env'}), 400
+
+    data = request.get_json()
+    user_answer = data.get('user_answer', '')
+    correct_answer = data.get('correct_answer', '')
+    question_text = data.get('question_text', '')
+
+    if not user_answer or not correct_answer:
+        return jsonify({'error': 'user_answer and correct_answer are required'}), 400
+
+    try:
+        system_prompt = {
+            "role": "system",
+            "content": (
+                "You are an educational assessment assistant. Your task is to evaluate a student's short answer "
+                "by comparing it with the correct answer. You must respond with ONLY a JSON object containing "
+                "two fields: 'is_correct' (boolean) and 'feedback' (string). "
+                "The 'is_correct' field should be true if the student's answer demonstrates understanding of the concept, "
+                "even if the wording is different. Consider semantic meaning, not exact string matching. "
+                "The 'feedback' field should be a brief explanation (max 50 words) of why the answer is correct or incorrect. "
+                "Do NOT include any other text, explanations, or formatting outside the JSON object."
+            )
+        }
+
+        user_prompt = {
+            "role": "user",
+            "content": f"""Evaluate the following short answer:
+
+Question: {question_text}
+Correct Answer: {correct_answer}
+Student's Answer: {user_answer}
+
+Return a JSON object with 'is_correct' (boolean) and 'feedback' (string)."""
+        }
+
+        payload = {
+            "model": DEEPSEEK_MODEL,
+            "messages": [system_prompt, user_prompt],
+            "temperature": 0.1,
+            "stream": False
+        }
+
+        response = requests.post(
+            f"{DEEPSEEK_BASE_URL}/chat/completions",
+            json=payload,
+            headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
+            timeout=30
+        )
+        response.raise_for_status()
+
+        result = response.json()
+        content = result['choices'][0]['message']['content']
+
+        print(f"[AI GRADING] Question: {question_text[:50]}...")
+        print(f"[AI GRADING] Correct Answer: {correct_answer}")
+        print(f"[AI GRADING] Student Answer: {user_answer}")
+        print(f"[AI GRADING] AI Response: {content}")
+
+        try:
+            parsed_result = json.loads(content)
+            is_correct = parsed_result.get('is_correct', False)
+            feedback = parsed_result.get('feedback', '')
+            print(f"[AI GRADING] Parsed is_correct: {is_correct}")
+        except json.JSONDecodeError:
+            is_correct = False
+            feedback = "Unable to evaluate answer"
+            print(f"[AI GRADING] JSONDecodeError, defaulting to False")
+
+        print(f"[AI GRADING] Final result: is_correct={is_correct}, feedback={feedback}")
+        return jsonify({
+            'is_correct': is_correct,
+            'feedback': feedback
+        }), 200
+
+    except Exception as e:
+        print(f"Error in grade_short_answer: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
