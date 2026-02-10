@@ -271,6 +271,21 @@ Keep descriptions clear, concise, and implementable in Manim.
 Do NOT output any code, only natural language storyboard.
 """.strip()
 
+MANIM_CODE_SYSTEM_PROMPT = """  
+You are an expert Manim programmer. Generate complete, executable Manim Community Edition v0.18+ code for an educational video.  
+
+Requirements:  
+- Import from manim import *  
+- Class EducationalVideo(Scene):  
+- Implement the storyboard exactly: match scenes, visuals, animations (Write, FadeIn, Transform, etc.), timing.  
+- Use smooth transitions (self.wait(1), etc.).  
+- Colors: BLUE for titles, GREEN for equations, standard Manim styling.  
+- Total runtime 60-120 seconds.  
+- No extra narration/audio; focus on visuals.  
+- Code must run with `manim -qm file.py EducationalVideo`.  
+
+Output ONLY the Python code, no explanations.
+""".strip()
 
 
 def create_code_generation_prompt(storyboard: str, topic: str) -> str:
