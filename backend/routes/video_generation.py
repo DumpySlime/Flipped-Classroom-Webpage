@@ -234,34 +234,43 @@ def generate_manim_storyboard():
         print("[VIDEO_GEN] Error generating storyboard:", str(e))
         return jsonify({"error": "Failed to generate storyboard", "details": str(e)}), 500
 
+MANIM_STORYBOARD_SYSTEM_PROMPT = """
+You are an expert educational animator specializing in creating Manim storyboards.
 
-# ---------- 3) Manim code generation ----------
+Given slide content, generate a detailed scene-by-scene storyboard for a Manim animation.
 
+Structure the video into at least 4 scenes:
+1) Introduction to the topic
+2) Key concepts explained
+3) Worked example or visualization
+4) Summary / recap
 
-MANIM_CODE_SYSTEM_PROMPT = """You are an expert Manim programmer.
+Target total duration: 60–120 seconds.
 
-Given a textual storyboard, generate a COMPLETE, RUNNABLE Manim script.
+For each scene, describe:
+- Visual elements (text, shapes, equations, diagrams)
+- Animation types (Write, FadeIn, Transform, etc.)
+- Timing and transitions with approximate seconds
+- Camera movements (if needed)
+- Colors and styling
 
-Requirements:
-- Use: `from manim import *`
-- Define exactly ONE scene class named `EducationalVideo(Scene)`
-- Implement `def construct(self):` with all animations
-- Use standard Manim objects (Text, MathTex, VGroup, etc.)
-- Use animations like Write, FadeIn, FadeOut, Transform, Create
-- Add short comments explaining key blocks
-- Do NOT access external files
-- Code must be valid Python 3.11
+Output format:
 
-Output ONLY a Python code block:
+Scene 1: [Title]
+Duration: [X seconds]
+Visual:
+- [element description]
+Animations:
+- [animation description with order + timing]
 
-```python
-from manim import *
+Scene 2: ...
+Scene 3: ...
+Scene 4: ...
 
-class EducationalVideo(Scene):
-    def construct(self):
-        ...
-```
+Keep descriptions clear, concise, and implementable in Manim.
+Do NOT output any code, only natural language storyboard.
 """.strip()
+
 
 
 def create_code_generation_prompt(storyboard: str, topic: str) -> str:
@@ -319,20 +328,30 @@ def generate_manim_code():
             },
             timeout=120,
         )
+
         resp.raise_for_status()
         data_json = resp.json()
-        raw = data_json["choices"][0]["message"]["content"]
-        manim_code = extract_code_block(raw)
 
+        choices = data_json.get("choices", [])
+        if not isinstance(choices, list) or not choices:
+            return jsonify({"error": "DeepSeek returned no choices"}), 500
+
+        first = choices[0]
+        message = first.get("message", {})
+        raw = message.get("content", "")
+
+        manim_code = extract_code_block(raw)
+        
+        manim_code = (
+            manim_code.replace("```python", "")
+            .replace("```", "")
+            .strip()
+        )
         return jsonify({"topic": topic, "manim_code": manim_code}), 200
 
     except Exception as e:
         print("[VIDEO_GEN] Error generating Manim code:", str(e))
         return jsonify({"error": "Failed to generate Manim code", "details": str(e)}), 500
-
-
-# ---------- 4) Render Manim video ----------
-
 
 def _find_video_file(root_dir: str) -> str | None:
     for root, _, files in os.walk(root_dir):
@@ -373,59 +392,104 @@ def render_manim_video():
         except Exception:
             return jsonify({"error": "Invalid material_id format"}), 400
 
-        # Write temp script
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write(manim_code)
+        unsafe_code = manim_code or ""
+        safe_code = unsafe_code.replace("```python", "").replace("```", "")
+        safe_code = re.sub(r"\\ufffd.", "", safe_code, flags=re.IGNORECASE)
+        safe_code = safe_code.encode("utf-8", errors="replace").decode(
+            "utf-8", errors="replace"
+        )
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".py", delete=False, encoding="utf-8"
+        ) as f:
+            f.write(safe_code)
             script_path = f.name
 
-        quality_flag = {"low": "-ql", "medium": "-qm", "high": "-qh"}.get(quality, "-qm")
+        quality_flag = {"low": "-ql", "medium": "-qm", "high": "-qh"}.get(
+            quality, "-qm"
+        )
         out_dir = tempfile.mkdtemp()
+        print("[VIDEO_GEN] Manim temp dir:", out_dir)
 
         try:
             print(f"[VIDEO_GEN] Rendering Manim video for {material_id_str}...")
 
-            proc = subprocess.run(
-                [
-                    sys.executable, 
-                    "-m",
-                    "manim",
-                    quality_flag,
-                    script_path,
-                    "EducationalVideo",
-                    "-o",
-                    f"video_{material_id_str}",
-                ],
-                cwd=out_dir,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="ignore",
-                timeout=300,
-            )
+            try:
+                proc = subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "manim",
+                        quality_flag,
+                        script_path,
+                        "EducationalVideo",
+                        "-o",
+                        f"video_{material_id_str}",
+                    ],
+                    cwd=out_dir,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="ignore",
+                    timeout=300,
+                )
+            except Exception as sub_err:
+                return (
+                    jsonify(
+                        {
+                            "error": "Failed to start Manim subprocess",
+                            "details": str(sub_err),
+                        }
+                    ),
+                    500,
+                )
 
             if proc.returncode != 0:
-                # Save stderr to a file for debugging
-                error_log_path = os.path.join(out_dir, "manim_stderr.txt")
-                with open(error_log_path, "w", encoding="utf-8", errors="ignore") as log_f:
-                    log_f.write(proc.stderr or "")
-
-                return jsonify({
-                    "error": "Manim rendering failed",
-                    "details": f"See manim_stderr.txt in {out_dir}"
-                }), 500
-
-            video_path = _find_video_file(out_dir)
-            if not video_path:
-                return jsonify({"error": "Rendered video not found"}), 500
+                # Try to locate a rendered video anyway
+                maybe_video = _find_video_file(out_dir)
+                if maybe_video:
+                    # Treat as success if an mp4 was produced
+                    video_path = maybe_video
+                else:
+                    out_text = (proc.stdout or "").strip()
+                    err_text = (proc.stderr or "").strip()
+                    combined = (out_text + "\n\n" + err_text).strip()
+                    return (
+                        jsonify(
+                            {
+                                "error": "Manim rendering failed",
+                                "details": combined[:4000],
+                            }
+                        ),
+                        500,
+                    )
+            else:
+                video_path = _find_video_file(out_dir)
+                if not video_path:
+                    return jsonify({"error": "Rendered video not found"}), 500
 
             video_url = _save_video_to_static(video_path, material_id_str)
 
             db.materials.update_one(
                 {"_id": material_obj_id},
-                {"$set": {"video_url": video_url, "video_generated_at": datetime.utcnow()}},
+                {
+                    "$set": {
+                        "video_url": video_url,
+                        "video_generated_at": datetime.utcnow(),
+                    }
+                },
             )
 
-            return jsonify({"success": True, "video_url": video_url, "message": "Video generated"}), 200
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "video_url": video_url,
+                        "message": "Video generated",
+                    }
+                ),
+                200,
+            )
 
         finally:
             if os.path.exists(script_path):
@@ -433,12 +497,11 @@ def render_manim_video():
 
     except subprocess.TimeoutExpired:
         return jsonify({"error": "Video rendering timed out"}), 408
-    except Exception as e:
-        msg = str(e)
-        try:
-            msg.encode("cp950")
-        except UnicodeEncodeError:
-            msg = msg.encode("cp950", errors="ignore").decode("cp950", errors="ignore")
-        print("[VIDEO_GEN] Error in render_manim_video:", msg)
-        return jsonify({"error": "Failed to render video", "details": msg}), 500
 
+    except Exception:
+        return jsonify(
+            {
+                "error": "Failed to render video",
+                "details": "Unexpected error while rendering Manim. See 'details' from subprocess or run manim manually.",
+            }
+        ), 500

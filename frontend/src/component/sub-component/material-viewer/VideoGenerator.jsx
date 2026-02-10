@@ -14,15 +14,18 @@ function VideoGenerator({ materialId, onVideoGenerated }) {
   const [videoUrl, setVideoUrl] = useState("");
   const [error, setError] = useState(null);
 
-  const authHeaders = {
-    Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-  };
-
   const handleGenerate = async () => {
     if (!materialId) {
       setError("materialId is missing.");
       return;
     }
+
+    const token = localStorage.getItem("access_token"); // check this key
+    if (!token) {
+      setError("You are not logged in or token is missing.");
+      return;
+    }
+    const authHeaders = { Authorization: `Bearer ${token}` };
 
     setIsLoading(true);
     setError(null);
@@ -33,7 +36,6 @@ function VideoGenerator({ materialId, onVideoGenerated }) {
     setStep("Step 1/4: Extracting slides from material...");
 
     try {
-      // 1) Prepare: get slides from backend
       const prepareRes = await axios.post(
         `${API_BASE_URL}/api/generate-video/prepare`,
         { material_id: materialId },
