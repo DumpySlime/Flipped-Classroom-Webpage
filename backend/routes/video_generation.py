@@ -19,6 +19,23 @@ DEEPSEEK_API_KEY = None
 DEEPSEEK_MODEL = None
 DEEPSEEK_BASE_URL = None
 
+def get_manim_command():
+    """
+    Return the Manim command as a list, portable across macOS and Windows.
+    - On macOS: try Homebrew path first, then fall back to 'manim' on PATH.
+    - On Windows/Linux: use 'manim' and rely on PATH.
+    """
+    if sys.platform == "darwin":
+        homebrew_path = "/opt/homebrew/bin/manim"
+        if os.path.exists(homebrew_path):
+            return [homebrew_path]
+        return ["manim"]
+    else:
+        # Windows and Linux
+        return ["manim"]
+
+
+
 def init_video_generation(database, app):
     """Initialize video generation module with DB and app config."""
     global db, DEEPSEEK_API_KEY, DEEPSEEK_MODEL, DEEPSEEK_BASE_URL
@@ -54,7 +71,6 @@ def extract_slides(content: str):
     if not content:
         return []
 
-    # Priorities: '---' as slide separator, else triple newline, else single slide
     if "---" in content:
         parts = content.split("---")
     elif "\n\n\n" in content:
@@ -67,15 +83,8 @@ def extract_slides(content: str):
         part = part.strip()
         if not part:
             continue
-        slides.append(
-            {
-                "slide_number": i + 1,
-                "title": extract_title(part),
-                "content": part,
-            }
-        )
-    return slides
 
+    return slides
 
 # ---------- 1) Prepare: get material + slides ----------
 
@@ -273,6 +282,13 @@ Do NOT output any code, only natural language storyboard.
 MANIM_CODE_SYSTEM_PROMPT = """
 You are an expert Manim programmer. Generate complete, executable Manim Community Edition v0.18+ code for an educational video.
 
+from manim import *
+class CreateCircle(Scene):
+    def construct(self):
+        circle = Circle()  # create a circle
+        circle.set_fill(PINK, opacity=0.5)  # set the color and transparency
+        self.play(Create(circle))  # show the circle on screen
+
 Requirements:
 - from manim import *
 - Define class EducationalVideo(Scene):
@@ -390,6 +406,7 @@ def generate_manim_code():
 def find_video_file(rootdir: str, materialid: str) -> str | None:
     """
     Try to get the full Manim render, not the short scene previews.
+
     1. Prefer the expected output filename we asked Manim to create.
     2. If that does not exist, fall back to the largest .mp4 in the folder.
     """
@@ -494,17 +511,17 @@ def render_manim_video():
         try:
             print(f"[VIDEO_GEN] Rendering Manim video for {material_id_str}...")
 
+            cmd = get_manim_command() + [
+                quality_flag,
+                script_path,
+                "EducationalVideo",
+                "-o",
+                f"video_{material_id_str}",
+            ]
+
             try:
                 proc = subprocess.run(
-                    
-                    [
-                        "/opt/homebrew/bin/manim",  # Homebrew manim binary
-                        quality_flag,
-                        script_path,
-                        "EducationalVideo",
-                        "-o",
-                        f"video_{material_id_str}",
-                    ],
+                    cmd,
                     cwd=out_dir,
                     capture_output=True,
                     text=True,
@@ -514,8 +531,6 @@ def render_manim_video():
                 )
                 print("MANIM STDOUT:\n", proc.stdout)
                 print("MANIM STDERR:\n", proc.stderr)
-
-
             except Exception as sub_err:
                 return (
                     jsonify(
@@ -526,6 +541,7 @@ def render_manim_video():
                     ),
                     500,
                 )
+
 
             if proc.returncode != 0:
                 # Try to locate a rendered video anyway
