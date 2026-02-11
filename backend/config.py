@@ -1,24 +1,27 @@
-from dotenv import load_dotenv
 import os
+from dotenv import load_dotenv
 
-# take environment variables from .env
+# Load environment variables from .env file
 load_dotenv()
 
 class Config:
     # MongoDB
-    MONGO_URI = os.environ.get("MONGO_URI")
-
+    MONGO_URI = os.getenv('MONGO_URI')
+    
     # Flask
-    FLASK_DEBUG = os.environ.get("FLASK_DEBUG", "true")
-    TESTING = False
-    DEBUG = False
-
+    FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
+    
     # JWT
-    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
-    JWT_ACCESS_TOKEN_EXPIRES = int(os.environ.get("JWT_ACCESS_TOKEN_EXPIRES"))  # Default 1 hour
-    JWT_REFRESH_TOKEN_EXPIRES = int(os.environ.get("JWT_REFRESH_TOKEN_EXPIRES"))  # Default 1 day
-
-    # OpenAI
-    OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-    OPENAI_MODEL = os.environ.get("OPENAI_MODEL")
-    OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL")
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
+    JWT_ACCESS_TOKEN_EXPIRES = int(os.getenv('JWT_ACCESS_TOKEN_EXPIRES', 3600))
+    JWT_REFRESH_TOKEN_EXPIRES = int(os.getenv('JWT_REFRESH_TOKEN_EXPIRES', 86400))
+    
+    # DeepSeek AI
+    DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
+    DEEPSEEK_MODEL = os.getenv('DEEPSEEK_MODEL', 'deepseek-chat')
+    DEEPSEEK_BASE_URL = os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
+    
+    # Other configs
+    OFFICE_SECRET_KEY = os.getenv('OFFICE_SECRET_KEY')
+    PUBLIC_BASE_URL = os.getenv('PUBLIC_BASE_URL')
+    HOST = os.getenv('HOST', 'localhost')

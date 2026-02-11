@@ -1,31 +1,19 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from bson.objectid import ObjectId
-import bcrypt
-
+from datetime import datetime
+from flask_bcrypt import Bcrypt
 
 db = None
 
-def init_db(mongo):
+def init_db(db_instance):
     global db
-    db = mongo.db
+    db = db_instance
 
 admin_bp = Blueprint('admin', __name__)
-
+@jwt_required()
 def admin_auth():
     current_user_id = get_jwt_identity()
     current_user = db.users.find_one({"_id": ObjectId(current_user_id)})
     if not current_user or current_user.get('role', '').lower() == "admin":
         return jsonify({"error": "Admin access is required"})
-    
-@admin_bp.route('/api/users', methods=['GET'])
-def get_users():
-    try:
-        users = db.users.find()
-        user_list = []
-        for user in users:
-            user['_id'] = str(user['_id'])
-            user_list.append(user)
-        return jsonify({"users": user_list}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500

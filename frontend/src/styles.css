@@ -7,6 +7,131 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* slide template styles */
+.slide-explanation, .slide-example {
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 3px;
+    padding: 20px;
+    margin: 10px auto;
+    max-width: 800px;
+    height: 400px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+}
+
+.slide-explanation h1, .slide-example h1 {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #333;
+    text-align: center;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 10px;
+}
+
+.slide-explanation ul, .slide-example ol {
+    padding-left: 50px;
+    margin: 30px 0;
+}
+
+.slide-explanation li, .slide-example li {
+    font-size: 16px;
+    line-height: 1.4;
+    margin-bottom: 8px;
+    color: #333;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.slide-example p, .slide-explanation p {
+    font-size: 16px;
+    line-height: 1.5;
+    color: #333;
+}
+
+.slide-explanation .slide-footer, .slide-example .slide-footer {
+    font-size: 14px;
+    color: #666;
+    text-align: right;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid #e0e0e0;
+    position: relative;
+}
+
+/* Slide Example Two-column Layout */
+.slide-example {
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+    position: relative;
+}
+
+/* Two-column body layout */
+.example-body {
+    display: flex;
+    gap: 24px;
+    flex: 1;
+    margin-bottom: 20px;
+}
+
+/* Left column - Question */
+.example-left {
+    flex: 1;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 3px;
+    border: 1px solid #e0e0e0;
+}
+
+.example-left h2 {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+/* Right column - Solution */
+.example-right {
+    flex: 1;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 3px;
+    border: 1px solid #e0e0e0;
+}
+
+.example-right h2 {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.example-right ul {
+    padding-left: 20px;
+    margin: 0;
+}
+
+.example-right li {
+    font-size: 16px;
+    line-height: 1.5;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+/* Page footer */
+.slide-footer {
+    font-size: 14px;
+    color: #666;
+    text-align: right;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid #e0e0e0;
+}
+
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
@@ -85,6 +210,15 @@ code {
   border-radius: 3px;
 }
 
+.form-textarea {
+  width: 99%;
+  height: 100px;
+  padding: 8px;
+  font-size: 16px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+}
+
 button {
   background-color: #61dafb;
   color: #282c34;
@@ -100,6 +234,28 @@ button:hover {
   background-color: #4fa8c7;
 }
 
+.submit-button {
+  background-color: #61dafb;
+  color: #282c34;
+  border: none;
+  padding: 10px 16px;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 0.3s;
+}
+
+.submit-button.hovered-disabled {
+  background-color: #4fa8c7; /* darkened background */
+  cursor: not-allowed;
+  color: #282c34;
+  border: none;
+  padding: 10px 16px;
+  font-size: 16px;
+  border-radius: 3px;
+  transition: background-color 0.3s;
+}
+
 .error-message {
   color: red;
   font-size: 14px;
@@ -113,3 +269,34 @@ button:hover {
   font-size: 14px;
   text-align: left;
 }
+
+/* SubjectMembers styles */
+.sm-container { display: block; gap: 16px; }
+.sm-subject-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.sm-subject-title { margin:0; font-size:20px; color:#1f2937; }
+.sm-subject-count { color:#6b7280; font-size:13px; }
+
+.sm-multi { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; }
+.sm-subject-card { background:#fff; border:1px solid #e6e9ee; border-radius:10px; padding:12px; box-shadow:0 1px 3px rgba(16,24,40,0.04); }
+.sm-subject-card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.sm-subject-title-small { font-weight:600; color:#111827; }
+.sm-subject-count-small { color:#6b7280; font-size:13px; }
+
+.sm-list { display:flex; flex-direction:column; gap:8px; }
+.sm-member-row { display:flex; align-items:center; justify-content:space-between; padding:8px; border-radius:8px; transition:background .12s ease, transform .08s ease; }
+.sm-member-row:hover { background:#f8fafc; transform:translateY(-2px); }
+
+.sm-left { display:flex; align-items:center; gap:10px; }
+.sm-avatar { width:40px; height:40px; border-radius:50%; background:#0ea5a4; color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; }
+.sm-name-block { display:flex; flex-direction:column; }
+.sm-name { font-weight:600; color:#0f172a; }
+.sm-subtext { font-size:12px; color:#6b7280; }
+
+.sm-right { display:flex; align-items:center; gap:8px; }
+.sm-role-badge { padding:6px 10px; border-radius:999px; font-size:12px; font-weight:600; text-transform:capitalize; }
+.sm-role-student { background:#eef2ff; color:#4338ca; }
+.sm-role-teacher { background:#ecfdf5; color:#065f46; }
+.sm-role-admin { background:#fff7ed; color:#92400e; }
+
+.sm-loading, .sm-empty, .sm-error { padding:12px; color:#374151; }
+.sm-no-members { color:#6b7280; font-size:13px; padding:8px 0; }
