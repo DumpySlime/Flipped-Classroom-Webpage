@@ -296,6 +296,11 @@ Syntax and indentation rules:
 - Every self.play(...) call must be on a single line with matching parentheses.
 - Never split a self.play( call across multiple lines unless you use explicit line continuation with matching brackets.
 
+- Total runtime must be between 55 and 65 seconds.
+- Use at least 10–15 self.play(...) calls in construct().
+- Every self.play(...) must have an explicit run_time between 2 and 4 seconds.
+- After each main scene, call self.wait(1.0) or self.wait(1.5) so the viewer can read.
+- Do NOT end the scene early: play through all scenes from the storyboard to reach about 60 seconds total.
 
 Output ONLY the Python code, no explanations.
 """.strip()
@@ -389,7 +394,7 @@ def find_video_file(rootdir: str, materialid: str) -> str | None:
     2. If that does not exist, fall back to the largest .mp4 in the folder.
     """
     # 1) Expected filename from the manim command: video<materialid>.mp4
-    expected_name = f"video{materialid}.mp4"
+    expected_name = f"video_{materialid}.mp4"
     expected_path = os.path.join(rootdir, expected_name)
     if os.path.exists(expected_path):
         return expected_path
@@ -449,6 +454,8 @@ def render_manim_video():
         safe_code = unsafe_code.replace("```python", "").replace("```", "")
         safe_code = re.sub(r"\ufffd.", "", safe_code, flags=re.IGNORECASE)
         safe_code = safe_code.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+        safe_code = safe_code.replace("MathTex(", "Text(")
+
 
         # 2) Normalize indentation
         lines = safe_code.splitlines()
@@ -489,6 +496,7 @@ def render_manim_video():
 
             try:
                 proc = subprocess.run(
+                    
                     [
                         "/opt/homebrew/bin/manim",  # Homebrew manim binary
                         quality_flag,
@@ -504,6 +512,8 @@ def render_manim_video():
                     errors="ignore",
                     timeout=600,
                 )
+                print("MANIM STDOUT:\n", proc.stdout)
+                print("MANIM STDERR:\n", proc.stderr)
 
 
             except Exception as sub_err:
