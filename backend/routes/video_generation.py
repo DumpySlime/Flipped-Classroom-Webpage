@@ -84,7 +84,14 @@ def extract_slides(content: str):
         if not part:
             continue
 
+        slides.append({
+            "slide_number": i + 1,
+            "title": extract_title(part),
+            "content": part,
+        })
+
     return slides
+
 
 # ---------- 1) Prepare: get material + slides ----------
 
@@ -318,6 +325,15 @@ Syntax and indentation rules:
 - After each main scene, call self.wait(1.0) or self.wait(1.5) so the viewer can read.
 - Do NOT end the scene early: play through all scenes from the storyboard to reach about 60 seconds total.
 
+- Use at least 20 self.play(...) calls.
+- Every self.play(...) must include run_time between 2.0 and 4.0 seconds (no smaller values).
+- Do NOT use run_time less than 2.0.
+
+- Do NOT use MathTex or Tex anywhere.
+- For all formulas/equations, use Text(...) with plain characters instead of LaTeX
+  (for example: Text("sin(theta) = opposite / hypotenuse")).
+
+
 Output ONLY the Python code, no explanations.
 """.strip()
 
@@ -478,9 +494,15 @@ def render_manim_video():
         lines = safe_code.splitlines()
         normalized = []
         for line in lines:
-            line = line.replace("\t", "    ")  # tabs -> 4 spaces
+            line = line.replace("\t", "    ") 
             normalized.append(line.rstrip())
-        safe_code = "\n".join(normalized).lstrip()  # drop leading blank lines
+        safe_code = "\n".join(normalized).lstrip() 
+        
+        safe_code = re.sub(
+            r".*RightAngle\([^)]*\)\s*\n",
+            "",
+            safe_code,
+        )
 
         # 3) Syntax check
         try:
