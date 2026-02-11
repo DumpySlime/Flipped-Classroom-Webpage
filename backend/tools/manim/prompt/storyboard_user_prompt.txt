@@ -1,0 +1,7 @@
+[ROLE: user]
+
+Slide explanation:
+
+{SLIDE_TEXT}
+
+Task: produce ONLY the storyboard JSON as specified above. Do not include any code, comments, or explanations.
