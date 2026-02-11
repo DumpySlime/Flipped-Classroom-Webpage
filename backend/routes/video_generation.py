@@ -19,7 +19,6 @@ DEEPSEEK_API_KEY = None
 DEEPSEEK_MODEL = None
 DEEPSEEK_BASE_URL = None
 
-
 def init_video_generation(database, app):
     """Initialize video generation module with DB and app config."""
     global db, DEEPSEEK_API_KEY, DEEPSEEK_MODEL, DEEPSEEK_BASE_URL
@@ -271,21 +270,36 @@ Keep descriptions clear, concise, and implementable in Manim.
 Do NOT output any code, only natural language storyboard.
 """.strip()
 
-MANIM_CODE_SYSTEM_PROMPT = """  
-You are an expert Manim programmer. Generate complete, executable Manim Community Edition v0.18+ code for an educational video.  
+MANIM_CODE_SYSTEM_PROMPT = """
+You are an expert Manim programmer. Generate complete, executable Manim Community Edition v0.18+ code for an educational video.
 
-Requirements:  
-- Import from manim import *  
-- Class EducationalVideo(Scene):  
-- Implement the storyboard exactly: match scenes, visuals, animations (Write, FadeIn, Transform, etc.), timing.  
-- Use smooth transitions (self.wait(1), etc.).  
-- Colors: BLUE for titles, GREEN for equations, standard Manim styling.  
-- Total runtime 60-120 seconds.  
-- No extra narration/audio; focus on visuals.  
-- Code must run with `manim -qm file.py EducationalVideo`.  
+Requirements:
+- from manim import *
+- Define class EducationalVideo(Scene):
+- Implement the storyboard exactly: match scenes, visuals, animations (Write, FadeIn, Transform, etc.) and timing.
+- Use smooth transitions (self.wait(1), etc.).
+- Colors: BLUE for titles, GREEN for equations, standard Manim styling.
+- Total runtime 60–120 seconds.
+- No extra narration/audio; focus on visuals.
+- Code must run with:
+  - python file.py
+  - manim -qm file.py EducationalVideo
+
+Syntax and indentation rules:
+- The Python code must be syntactically valid: no unmatched parentheses and no incorrect indentation.
+- Use valid Python 3.12 syntax with 4-space indentation.
+- Do NOT start a line with extra indentation unless it is inside a class or function body.
+- Do NOT leave lines like `triangle.animate.set_color(YELLOW),` by themselves; they must be part of self.play(...) or removed.
+- Do NOT leave trailing commas or standalone expressions (e.g. an animation call followed by just a comma).
+- The code must compile without SyntaxError when checked with: compile(code, "<generated-manim>", "exec").
+
+- Every self.play(...) call must be on a single line with matching parentheses.
+- Never split a self.play( call across multiple lines unless you use explicit line continuation with matching brackets.
+
 
 Output ONLY the Python code, no explanations.
 """.strip()
+
 
 
 def create_code_generation_prompt(storyboard: str, topic: str) -> str:
@@ -368,12 +382,33 @@ def generate_manim_code():
         print("[VIDEO_GEN] Error generating Manim code:", str(e))
         return jsonify({"error": "Failed to generate Manim code", "details": str(e)}), 500
 
-def _find_video_file(root_dir: str) -> str | None:
-    for root, _, files in os.walk(root_dir):
+def find_video_file(rootdir: str, materialid: str) -> str | None:
+    """
+    Try to get the full Manim render, not the short scene previews.
+    1. Prefer the expected output filename we asked Manim to create.
+    2. If that does not exist, fall back to the largest .mp4 in the folder.
+    """
+    # 1) Expected filename from the manim command: video<materialid>.mp4
+    expected_name = f"video{materialid}.mp4"
+    expected_path = os.path.join(rootdir, expected_name)
+    if os.path.exists(expected_path):
+        return expected_path
+
+    # 2) Fallback: choose the largest .mp4 (full render is usually the biggest)
+    candidates = []
+    for root, _, files in os.walk(rootdir):
         for f in files:
-            if f.endswith(".mp4"):
-                return os.path.join(root, f)
+            if f.lower().endswith(".mp4"):
+                path = os.path.join(root, f)
+                size = os.path.getsize(path)
+                candidates.append((size, path))
+
+    if candidates:
+        # return the path of the largest file
+        return max(candidates, key=lambda x: x[0])[1]
+
     return None
+
 
 
 def _save_video_to_static(video_path: str, material_id_str: str) -> str:
@@ -388,6 +423,7 @@ def _save_video_to_static(video_path: str, material_id_str: str) -> str:
 @jwt_required()
 def render_manim_video():
     """Render Manim code into video and store URL on material."""
+    script_path = None 
     try:
         if db is None:
             return jsonify({"error": "Database not initialized"}), 500
@@ -408,23 +444,45 @@ def render_manim_video():
             return jsonify({"error": "Invalid material_id format"}), 400
 
         unsafe_code = manim_code or ""
+
+        # 1) Strip fences and bad chars
         safe_code = unsafe_code.replace("```python", "").replace("```", "")
-        safe_code = re.sub(r"\\ufffd.", "", safe_code, flags=re.IGNORECASE)
-        safe_code = safe_code.encode("utf-8", errors="replace").decode(
-            "utf-8", errors="replace"
-        )
+        safe_code = re.sub(r"\ufffd.", "", safe_code, flags=re.IGNORECASE)
+        safe_code = safe_code.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+
+        # 2) Normalize indentation
+        lines = safe_code.splitlines()
+        normalized = []
+        for line in lines:
+            line = line.replace("\t", "    ")  # tabs -> 4 spaces
+            normalized.append(line.rstrip())
+        safe_code = "\n".join(normalized).lstrip()  # drop leading blank lines
+
+        # 3) Syntax check
+        try:
+            compile(safe_code, "<generated-manim>", "exec")
+        except SyntaxError as e:
+            return jsonify(
+                {
+                    "error": "Generated Manim code has a syntax error",
+                    "details": f"{e.__class__.__name__}: {e}",
+                }
+            ), 400
 
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".py", delete=False, encoding="utf-8"
         ) as f:
             f.write(safe_code)
             script_path = f.name
+        print("[VIDEO_GEN] script_path:", script_path)
 
         quality_flag = {"low": "-ql", "medium": "-qm", "high": "-qh"}.get(
             quality, "-qm"
         )
         out_dir = tempfile.mkdtemp()
         print("[VIDEO_GEN] Manim temp dir:", out_dir)
+        
+        videopath = None
 
         try:
             print(f"[VIDEO_GEN] Rendering Manim video for {material_id_str}...")
@@ -432,9 +490,7 @@ def render_manim_video():
             try:
                 proc = subprocess.run(
                     [
-                        sys.executable,
-                        "-m",
-                        "manim",
+                        "/opt/homebrew/bin/manim",  # Homebrew manim binary
                         quality_flag,
                         script_path,
                         "EducationalVideo",
@@ -446,8 +502,10 @@ def render_manim_video():
                     text=True,
                     encoding="utf-8",
                     errors="ignore",
-                    timeout=300,
+                    timeout=600,
                 )
+
+
             except Exception as sub_err:
                 return (
                     jsonify(
@@ -461,10 +519,10 @@ def render_manim_video():
 
             if proc.returncode != 0:
                 # Try to locate a rendered video anyway
-                maybe_video = _find_video_file(out_dir)
+                maybe_video = find_video_file(out_dir, material_id_str)
                 if maybe_video:
                     # Treat as success if an mp4 was produced
-                    video_path = maybe_video
+                    videopath = maybe_video
                 else:
                     out_text = (proc.stdout or "").strip()
                     err_text = (proc.stderr or "").strip()
@@ -479,11 +537,17 @@ def render_manim_video():
                         500,
                     )
             else:
-                video_path = _find_video_file(out_dir)
-                if not video_path:
-                    return jsonify({"error": "Rendered video not found"}), 500
+                videopath = find_video_file(out_dir, material_id_str)
+                if not videopath:
+                    all_videos = []
+                    for root, _, files in os.walk(out_dir):
+                        for f in files:
+                            if f.lower().endswith(".mp4"):
+                                all_videos.append(os.path.join(root, f))
+                    print("VIDEOGEN: No suitable video found. MP4 files:", all_videos)
+                    return jsonify(error="Rendered video not found"), 500
 
-            video_url = _save_video_to_static(video_path, material_id_str)
+            video_url = _save_video_to_static(videopath, material_id_str)
 
             db.materials.update_one(
                 {"_id": material_obj_id},
@@ -507,16 +571,17 @@ def render_manim_video():
             )
 
         finally:
-            if os.path.exists(script_path):
+            if script_path and os.path.exists(script_path):
                 os.unlink(script_path)
 
     except subprocess.TimeoutExpired:
         return jsonify({"error": "Video rendering timed out"}), 408
 
-    except Exception:
+    except Exception as e:
         return jsonify(
             {
                 "error": "Failed to render video",
-                "details": "Unexpected error while rendering Manim. See 'details' from subprocess or run manim manually.",
+                "details": str(e),
             }
         ), 500
+
