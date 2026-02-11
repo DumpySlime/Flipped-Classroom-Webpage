@@ -333,6 +333,7 @@ Syntax and indentation rules:
 - For all formulas/equations, use Text(...) with plain characters instead of LaTeX
   (for example: Text("sin(theta) = opposite / hypotenuse")).
 
+- Do not use fancy color. Please use basic colors like BLUE for titles, GREEN for equations, and standard Manim colors for shapes.
 
 Output ONLY the Python code, no explanations.
 """.strip()
