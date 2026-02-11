@@ -23,7 +23,7 @@ A = np.array([-2,0,0])
 hyp_line = self.segment(A,B, color=RED)
 self.play(Indicate(hyp_line))
 
-WRONG: self.mobjects[-1] ❌
+WRONG: self.mobjects[-1] 
 
 TIMING BUDGET (20s max)
 Beat 1 (0-4s): pause(1.0)
@@ -80,7 +80,7 @@ class RightTriangleSidesScene(CScene):
         sin_eq.to_corner(UR)
         self.play(Write(sin_eq))
         self.pause(1.0)
-        
+
 STORYBOARD → CODE MAPPING
 show_triangle → self.polygon(A,B,C) + store vars
 

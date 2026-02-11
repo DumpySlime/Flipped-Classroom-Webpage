@@ -61,6 +61,7 @@ self.animate_solve_trig_equation(
 )
 
 PRIMITIVES (use if no template fits)
+
 # Scene Setup
 self.setup_scene("Title")   # title at top
 self.pause(1.0)             # wait 1s
@@ -79,7 +80,7 @@ hyp = self.segment(B,C, color=RED, stroke_width=6)
 circle = self.circle_from_center_radius(ORIGIN, 2.5)
 
 # Right angle
-self.right_angle_mark(B, A, C)
+self.right_angle_mark(B, A, C, size=0.25, color=YELLOW)
 
 # Angle
 self.angle_mark(B, A, C, color=YELLOW, label="A")
@@ -87,6 +88,7 @@ self.angle_mark(B, A, C, color=YELLOW, label="A")
 # Labels
 self.label_point(A, "A")                    # near point
 self.label_line(hyp, "hyp", offset=UR)      # midpoint
+
 
 # Equations
 eq = self.mtex(r"\\sin A = \\frac{\\text{opp}}{\\text{hyp}}")
@@ -99,21 +101,20 @@ P = self.to_xy(plane, 2, 3)
 
 # Dynamic (moving points)
 t = self.tracker(0.0)
-self.play(t.animate.set_value(PI))
+self.play_steps(t.animate.set_value(PI))
 moving_dot = self.dynamic_point_on_plane(plane, xt, yt)
 dyn_line = self.dynamic_line(get_A, get_B)
 
 ANIMATIONS (standard patterns)
 # Basic
 self.play_steps(Create(triangle))
-self.play(Indicate(hyp_line), run_time=1.5)
 
 # Transform / Dim
-self.play(triangle.animate.set_opacity(0.3))     # dim background
-self.play(Transform(line1, line2))               # change shape
+self.play_steps(triangle.animate.set_opacity(0.3))     # dim background
+self.play_steps(Transform(line1, line2))               # change shape
 
 # Emphasize
-self.play(Circumscribe(angle_mark, color=YELLOW))
+self.play_steps(Circumscribe(angle_mark, color=YELLOW))
 
 CODE GENERATION RULES
 Use templates first. Match the storyboard to a template.
@@ -141,17 +142,17 @@ class RightTriangleSidesScene(CScene):
         B = np.array([2,0,0])
         C = np.array([0,2,0])
         triangle = self.polygon(A,B,C)
-        self.right_angle_mark(B,A,C)
+        right_mark = self.right_angle_mark(B,A,C, size=0.25, color=YELLOW)
         self.pause(1.5)
         
         # Beat 2: Highlight hypotenuse
         hyp = self.segment(B,C, color=RED, stroke_width=6)
         self.label_line(hyp, "hyp")
-        self.play(Indicate(hyp))
+        self.play_steps(Indicate(hyp))
         self.pause(2)
         
         # Beat 3: Show ratio
         eq = self.mtex(r"\\sin A = \\frac{\\text{opp}}{\\text{hyp}}")
-        self.play(Write(eq))
+        self.play_steps(Write(eq))
         self.pause(3)
 ```
