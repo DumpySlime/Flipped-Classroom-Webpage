@@ -1,3 +1,4 @@
 backend/tools/manim/test.py
 backend/tools/manim/media
 backend/static/generated_videos/video_697ae319e353c94a63260624.mp4
+*.mp4
