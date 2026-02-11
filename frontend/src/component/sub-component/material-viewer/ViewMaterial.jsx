@@ -19,6 +19,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 	const [materialId, setMaterialId] = useState(null);
 	const [submitting, setSubmitting] = useState(false);
 	const [savedSubmissionTime, setSavedSubmissionTime] = useState(null);
+	const [gradedAnswers, setGradedAnswers] = useState({});
 	
     const [showEdit, setShowEdit] = useState(false);
 	const [selectedMaterial, setSelectedMaterial] = useState(null);
@@ -48,11 +49,13 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 
 	// load saved submission (single submission expected)
 	const loadStudentSubmission = async (studentId, materialIdParam, questionsList) => {
+		console.log(`[LOAD SUBMISSION] Loading submission for studentId=${studentId}, materialId=${materialIdParam}`);
 		if (!studentId || !materialIdParam || !questionsList || questionsList.length === 0) return;
 
 		try {
 		const resp = await axios.get(`/db/student-answers?student_id=${studentId}&material_id=${materialIdParam}`);
 		const submissions = resp.data?.submissions || [];
+		console.log(`[LOAD SUBMISSION] Found ${submissions.length} submissions`);
 		if (!submissions.length) return;
 
 		// Use the first submission (student can only submit once)
@@ -78,6 +81,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 		});
 
 		const loadedUserAnswers = {};
+		const loadedGradedAnswers = {};
 
 		// Helper to get qObj id string robustly
 		const getQObjId = (qObj) => {
@@ -104,6 +108,8 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 				const questionKey = savedQid.slice(prefix.length); // e.g. "0-1"
 				// store raw value for now; we'll normalize below using questionMap
 				loadedUserAnswers[questionKey] = a.user_answer;
+				// store graded result for short answer questions
+				loadedGradedAnswers[questionKey] = { is_correct: a.is_correct ?? false };
 				break;
 			}
 			}
@@ -132,7 +138,10 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 		});
 
 		setUserAnswers(loadedUserAnswers);
-		setScore(saved.total_score ?? 0);
+		setGradedAnswers(loadedGradedAnswers);
+		const loadedScore = saved.total_score ?? 0;
+		console.log(`[LOAD SUBMISSION] Loading saved submission with score: ${loadedScore}`);
+		setScore(loadedScore);
 		setSavedSubmissionTime(saved.submission_time ?? null);
 		// mark submitted if backend says so
 		if (saved.status && String(saved.status).toLowerCase() === 'submitted') {
@@ -527,8 +536,14 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 				const questionContent = q.question_content?.questions || [];
 				return questionContent.map((question, qIndex) => {
 					const questionKey = `${index}-${qIndex}`;
-					const selectedOption = userAnswers[questionKey]; // Get user selection
-					const isCorrect = question.correctAnswer === selectedOption;
+					const selectedOption = userAnswers[questionKey];
+					let isCorrect = false;
+
+					if (question.questionType === 'multiple_choice') {
+						isCorrect = question.correctAnswer === selectedOption;
+					} else if (question.questionType === 'short_answer') {
+						isCorrect = submitted ? (gradedAnswers[questionKey]?.is_correct ?? false) : false;
+					}
 
 					return (
 					<div key={questionKey} style={{
@@ -704,49 +719,69 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 						boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
 					}}
 					onClick={async () => {
-						// Calculate score
-						let totalCorrect = 0;
-						let totalQuestions = 0;
-						const answers = [];
-
-						questions.forEach((q, index) => {
-						const questionContent = q.question_content?.questions || [];
-						totalQuestions += questionContent.length;
-						questionContent.forEach((question, qIndex) => {
-							const questionKey = `${index}-${qIndex}`;
-							const userAnswer = userAnswers[questionKey];
-							const isCorrect = question.questionType === 'multiple_choice'
-							? Number(userAnswer) === Number(question.correctAnswer)
-							: (typeof userAnswer === 'string' && typeof question.correctAnswer === 'string')
-								? userAnswer?.trim().toLowerCase() === question.correctAnswer?.trim().toLowerCase()
-								: userAnswer === question.correctAnswer;
-
-							// Collect answer data for backend storage
-							// Use question document id (if available) + questionKey to create stable id
-							const qDocId = q.id || (q._id && (q._id.$oid || q._id)) || q._id || '';
-							const question_id = qDocId ? `${qDocId}-${questionKey}` : `${questionKey}`;
-
-							answers.push({
-							question_id: question_id,
-							user_answer: userAnswer,
-							is_correct: !!isCorrect,
-							score: isCorrect ? 1 : 0 // Simplified score calculation, 1 point for correct answer
-							});
-
-							if (isCorrect) {
-							totalCorrect++;
-							}
-						});
-						});
-
-						const finalScore = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
-						setScore(finalScore);
-
-						// optimistic UI
-						setSubmitted(true);
 						setSubmitting(true);
 
 						try {
+						let totalCorrect = 0;
+						let totalQuestions = 0;
+						const answers = [];
+						const newGradedAnswers = {};
+
+						for (const [index, q] of questions.entries()) {
+							const questionContent = q.question_content?.questions || [];
+							for (const [qIndex, question] of questionContent.entries()) {
+								const questionKey = `${index}-${qIndex}`;
+								const userAnswer = userAnswers[questionKey];
+								let isCorrect = false;
+
+								if (question.questionType === 'multiple_choice') {
+									isCorrect = Number(userAnswer) === Number(question.correctAnswer);
+								} else if (question.questionType === 'short_answer') {
+									if (!userAnswer || userAnswer.trim() === '') {
+										isCorrect = false;
+									} else {
+										try {
+											const response = await axios.post('/api/ai/grade-short-answer', {
+												user_answer: userAnswer,
+												correct_answer: question.correctAnswer,
+												question_text: question.questionText
+											});
+											isCorrect = response.data.is_correct;
+											newGradedAnswers[questionKey] = { is_correct: isCorrect, feedback: response.data.feedback };
+											console.log(`AI Grading - Q${questionKey}: is_correct=${isCorrect}, user_answer="${userAnswer}", correct_answer="${question.correctAnswer}"`);
+										} catch (error) {
+											console.error(`AI Grading Error - Q${questionKey}:`, error);
+											isCorrect = false;
+											newGradedAnswers[questionKey] = { is_correct: false, feedback: 'Error grading answer' };
+										}
+									}
+								}
+
+								const qDocId = q.id || (q._id && (q._id.$oid || q._id)) || q._id || '';
+								const question_id = qDocId ? `${qDocId}-${questionKey}` : `${questionKey}`;
+
+								answers.push({
+									question_id: question_id,
+									user_answer: userAnswer,
+									is_correct: !!isCorrect,
+									score: isCorrect ? 1 : 0
+								});
+
+								totalQuestions++;
+								if (isCorrect) {
+									totalCorrect++;
+								}
+							}
+						}
+
+						setGradedAnswers(newGradedAnswers);
+
+						const finalScore = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+						console.log(`[SCORE CALCULATION] totalCorrect=${totalCorrect}, totalQuestions=${totalQuestions}, finalScore=${finalScore}`);
+						setScore(finalScore);
+
+						setSubmitted(true);
+
 						const currentStudentId = userInfo?.id || localStorage.getItem('student_id');
 						const response = await axios.post('/db/student-answers-submit', {
 							student_id: currentStudentId,
@@ -758,19 +793,20 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 						});
 
 						console.log('Student answers submitted successfully:', response.data);
+						console.log('Backend returned total_score:', response.data?.submission?.total_score);
 
-						// reflect backend canonical values if present
 						const saved = response.data?.submission;
 						if (saved) {
 							setSavedSubmissionTime(saved.submission_time ?? new Date().toISOString());
-							setScore(saved.total_score ?? finalScore);
+							const backendScore = saved.total_score ?? finalScore;
+							console.log(`[SCORE UPDATE] Setting score from backend: ${backendScore}`);
+							setScore(backendScore);
 							if (saved.status && String(saved.status).toLowerCase() === 'submitted') {
-							setSubmitted(true);
+								setSubmitted(true);
 							}
 						}
 						} catch (error) {
 						console.error('Error submitting student answers:', error);
-						// Optionally revert optimistic UI or notify user; keep submitted true so they see their answers
 						} finally {
 						setSubmitting(false);
 						}
