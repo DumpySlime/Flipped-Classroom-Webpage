@@ -1,38 +1,158 @@
-# CScene Boilerplate API
+RULES (MUST FOLLOW)
+Subclass CScene.
 
-## Scene setup
-- self.setup_scene(title: str, subtitle: str = None) → VGroup
-- self.pause(t: float = 0.5) → None
+Max 20s, 4–7 beats.
 
-## Geometry (static)
-- self.segment(A: np.ndarray, B: np.ndarray, color=None, dashed: bool = False) → Line
-- self.polygon(*points: np.ndarray, color=None) → Polygon
-- self.circle_from_center_radius(center: np.ndarray, r: float, color=None) → Circle
-- self.right_angle_mark(A: np.ndarray, O: np.ndarray, B: np.ndarray) → Polygon
-- self.angle_mark(A: np.ndarray, O: np.ndarray, B: np.ndarray, label: str = None) → VGroup
+Labels ≤ 3 chars (e.g. "hyp", "A", "opp").
 
-## Labels
-- self.label_point(dot: Dot, name: str, direction=UR) → Text
-- self.label_line(line: Line, text: str, offset=UP) → Text
+COLORS
+Angle/focus: YELLOW
 
-## Coordinate geometry
-- self.make_plane(x_range=[-6,6,1], y_range=[-4,4,1]) → NumberPlane
-- self.plot_point(plane, x: float, y: float, color=None) → Dot
+Hypotenuse: RED
 
-## Dynamic (drag-a-point)
-- self.tracker(x0: float) → ValueTracker
-- self.dynamic_line(get_A: Callable, get_B: Callable, color=None) → Line
-- self.dynamic_angle(get_A, get_O, get_B, color=YELLOW) → Angle
+Opposite: BLUE
 
-## Standard Manim animations
-- self.play(animation, run_time=1.0)
-- Create(mobject)
-- FadeIn(mobject)
-- FadeOut(mobject)
-- Transform(mobject_from, mobject_to)
-- Indicate(mobject)
-- Circumscribe(mobject, color=YELLOW)
-- mobject.animate.set_opacity(0.3)
+Adjacent: GREEN
 
-## Colors
-- RED, BLUE, GREEN, YELLOW, WHITE, GRAY
+Aux: GRAY
+
+Lines: WHITE
+
+Animations: Transform, Indicate, Create, set_opacity(0.3) for dimming.
+
+NO: scene clearing, camera moves, eval, long labels, sentences.
+
+TYPICAL SCENE STRUCTURE
+from manim import *
+from scene import CScene
+import numpy as np
+
+class GeneratedScene(CScene):
+    def construct(self):
+        self.setup_scene("Right Triangle Ratios")
+        self.animate_right_triangle_ratios()  # or primitives
+
+HIGH-LEVEL TEMPLATES (use these first!)
+# Right Triangle Ratios
+self.animate_right_triangle_ratios(
+    focus_angle="A",                    # "A" or "B"
+    highlight_sequence=["hyp","opp","adj"]
+)
+
+# Sine Rule
+self.animate_sine_rule(triangle_angles=(30,60,90))
+
+# Cosine Rule
+self.animate_cosine_rule(side_a=5, side_b=4, angle_C_degrees=60)
+
+# Area Formula
+self.animate_triangle_area_formula(side_a=4, side_b=3, angle_C_degrees=60)
+
+# Trig Values (30°, 45°, 60°)
+self.animate_trig_ratio_values(30, ["sin","cos"])
+
+# Sine Graph
+self.animate_sine_wave_properties()
+
+# Solve Trig Equation
+self.animate_solve_trig_equation(
+    equation_latex=r"\\sin \\theta = 0.5",
+    solutions_degrees=[30,150]
+)
+
+PRIMITIVES (use if no template fits)
+
+# Scene Setup
+self.setup_scene("Title")   # title at top
+self.pause(1.0)             # wait 1s
+
+Geometry
+# Triangle
+A = np.array([-2,0,0])
+B = np.array([2,0,0])
+C = np.array([0,2,0])
+triangle = self.polygon(A,B,C)
+
+# Segment
+hyp = self.segment(B,C, color=RED, stroke_width=6)
+
+# Circle
+circle = self.circle_from_center_radius(ORIGIN, 2.5)
+
+# Right angle
+self.right_angle_mark(B, A, C, size=0.25, color=YELLOW)
+
+# Angle
+self.angle_mark(B, A, C, color=YELLOW, label="A")
+
+# Labels
+self.label_point(A, "A")                    # near point
+self.label_line(hyp, "hyp", offset=UR)      # midpoint
+
+
+# Equations
+eq = self.mtex(r"\\sin A = \\frac{\\text{opp}}{\\text{hyp}}")
+eq = self.show_equation_step(eq, r"h = b \\sin C")
+
+# Coordinate Plane
+plane = self.make_plane()
+P = self.plot_point(plane, 2, 3)
+P = self.to_xy(plane, 2, 3)
+
+# Dynamic (moving points)
+t = self.tracker(0.0)
+self.play_steps(t.animate.set_value(PI))
+moving_dot = self.dynamic_point_on_plane(plane, xt, yt)
+dyn_line = self.dynamic_line(get_A, get_B)
+
+ANIMATIONS (standard patterns)
+# Basic
+self.play_steps(Create(triangle))
+
+# Transform / Dim
+self.play_steps(triangle.animate.set_opacity(0.3))     # dim background
+self.play_steps(Transform(line1, line2))               # change shape
+
+# Emphasize
+self.play_steps(Circumscribe(angle_mark, color=YELLOW))
+
+CODE GENERATION RULES
+Use templates first. Match the storyboard to a template.
+
+If no template: use primitives, keep it simple.
+
+Variable names: A, B, C, hyp_line, opp_line, etc.
+
+Timing: Use self.pause() to pace beats.
+
+Continuity: Dim with set_opacity(0.3) instead of FadeOut.
+
+EXAMPLE OUTPUT (what LLM should produce)
+```
+from manim import *
+from hkdse_geometry_base import CScene
+import numpy as np
+
+class RightTriangleSidesScene(CScene):
+    def construct(self):
+        self.setup_scene("Right Triangle Sides")
+        
+        # Beat 1: Show triangle
+        A = np.array([-2,0,0])
+        B = np.array([2,0,0])
+        C = np.array([0,2,0])
+        triangle = self.polygon(A,B,C)
+        right_mark = self.right_angle_mark(B,A,C, size=0.25, color=YELLOW)
+        self.pause(1.5)
+        
+        # Beat 2: Highlight hypotenuse
+        hyp = self.segment(B,C, color=RED, stroke_width=6)
+        self.label_line(hyp, "hyp")
+        self.play_steps(Indicate(hyp))
+        self.pause(2)
+        
+        # Beat 3: Show ratio
+        eq = self.mtex(r"\\sin A = \\frac{\\text{opp}}{\\text{hyp}}")
+        self.play_steps(Write(eq))
+        self.pause(3)
+```

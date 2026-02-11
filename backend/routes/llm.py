@@ -28,7 +28,7 @@ llm_bp = Blueprint('llm', __name__)
 
 # DeepSeek AI Configuration (loaded from Flask app config)
 DEEPSEEK_API_KEY = None
-DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+DEEPSEEK_BASE_URL = None
 
 
 @llm_bp.record_once
@@ -39,7 +39,7 @@ def on_load(state):
 
     # DeepSeek Configuration
     DEEPSEEK_API_KEY = app.config.get("DEEPSEEK_API_KEY")
-    DEEPSEEK_BASE_URL = app.config.get("DEEPSEEK_BASE_URL", DEEPSEEK_BASE_URL)
+    DEEPSEEK_BASE_URL = app.config.get("DEEPSEEK_BASE_URL")
 
     print(f"DeepSeek API Key loaded: {'YES' if DEEPSEEK_API_KEY else 'NO'}")
     print(f"DeepSeek Base URL: {DEEPSEEK_BASE_URL}")
