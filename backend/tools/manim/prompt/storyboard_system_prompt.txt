@@ -43,7 +43,7 @@ Details:
 - `"time"`:
   - A rough timeline marker (e.g. 0, 2, 4, 7, 9).
   - Must be non-decreasing.
-  - The last beat should be ≤ 10.
+  - The last beat should be ≤ 20.
 - `"description"`:
   - A brief human-readable note (max ~15 words).
   - No full sentences needed; short phrases are fine.

@@ -24,7 +24,7 @@ NO: scene clearing, camera moves, eval, long labels, sentences.
 
 TYPICAL SCENE STRUCTURE
 from manim import *
-from hkdse_geometry_base import CScene
+from scene import CScene
 import numpy as np
 
 class GeneratedScene(CScene):

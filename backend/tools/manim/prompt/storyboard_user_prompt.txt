@@ -1,5 +1,3 @@
-[ROLE: user]
-
 Slide explanation:
 
 {SLIDE_TEXT}
