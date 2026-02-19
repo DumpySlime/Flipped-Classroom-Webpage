@@ -18,7 +18,7 @@ Aux: GRAY
 
 Lines: WHITE
 
-Animations: Transform, Indicate, Create, set_opacity(0.3) for dimming.
+Animations: Prefer Transform for changing main objects; use fade_out_group for removing helpers; Indicate, Create, set_opacity(0.3) for dimming.
 
 NO: scene clearing, camera moves, eval, long labels, sentences.
 
@@ -66,6 +66,10 @@ PRIMITIVES (use if no template fits)
 self.setup_scene("Title")   # title at top
 self.pause(1.0)             # wait 1s
 
+# Title (store reference for fading!)
+title = self.setup_scene("Title")  # Returns title Text mobject
+# Later: fade_out=[title, old_labels]
+
 Geometry
 # Triangle
 A = np.array([-2,0,0])
@@ -79,16 +83,21 @@ hyp = self.segment(B,C, color=RED, stroke_width=6)
 # Circle
 circle = self.circle_from_center_radius(ORIGIN, 2.5)
 
-# Right angle
-self.right_angle_mark(B, A, C, size=0.25, color=YELLOW)
+# Right angle (CRITICAL: middle vertex = right angle location!)
+right_mark = self.right_angle_mark(A, B, C, size=0.25, color=YELLOW)
+# Order: from_vertex, right_angle_vertex, to_vertex
 
-# Angle
-self.angle_mark(B, A, C, color=YELLOW, label="A")
+# Angle mark (CRITICAL: middle vertex = angle location!)
+angle_A = self.angle_mark(B, A, C, color=YELLOW, label="A")
+# Order: from_vertex, angle_vertex, to_vertex
 
-# Labels
-self.label_point(A, "A")                    # near point
-self.label_line(hyp, "hyp", offset=UR)      # midpoint
+# Shape center (compute once per polygon)
+shape_center = self.get_shape_center(A,B,C)  # triangle center
 
+# Labels (ALWAYS pass shape_center - positions outside shape automatically)
+self.label_point(A, "A", shape_center)      # outside near point A
+self.label_line(hyp, "hyp", shape_center)   # outside near hypotenuse
+self.label_point(B, "B", shape_center)      # outside near point B
 
 # Equations
 eq = self.mtex(r"\\sin A = \\frac{\\text{opp}}{\\text{hyp}}")
@@ -111,10 +120,16 @@ self.play_steps(Create(triangle))
 
 # Transform / Dim
 self.play_steps(triangle.animate.set_opacity(0.3))     # dim background
-self.play_steps(Transform(line1, line2))               # change shape
+# CRITICAL: transform_focus = Transform OLD_SHAPE → NEW_SHAPE + fade helpers
+# OLD_SHAPE gets REPLACED entirely by NEW_SHAPE (no overlap!)
+old_main = self.transform_focus(
+    pentagon,           # OLD_SHAPE → gets transformed away
+    self.polygon(F,G,H), # NEW_SHAPE → replaces old completely  
+    fade_out=[labels, helpers]  # fade these BEFORE transform
+)
 
-# Emphasize
-self.play_steps(Circumscribe(angle_mark, color=YELLOW))
+# Focus / transition
+self.fade_out_group([label1, guide_line, brace])  # fade helpers FIRST
 
 CODE GENERATION RULES
 Use templates first. Match the storyboard to a template.
@@ -125,12 +140,12 @@ Variable names: A, B, C, hyp_line, opp_line, etc.
 
 Timing: Use self.pause() to pace beats.
 
-Continuity: Dim with set_opacity(0.3) instead of FadeOut.
+Continuity: Dim with set_opacity(0.3) instead of FadeOut. When replacing a diagram, use transform_focus on the main object and fade_out_group for labels, braces, and guide lines (avoid stacking).
 
 EXAMPLE OUTPUT (what LLM should produce)
 ```
 from manim import *
-from hkdse_geometry_base import CScene
+from scene import CScene
 import numpy as np
 
 class RightTriangleSidesScene(CScene):

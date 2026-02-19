@@ -26,7 +26,7 @@ class CScene(Scene):
         pass
 
     # ---------- Scene / layout boilerplate ----------
-
+    
     def setup_scene(self, title: str, subtitle: str | None = None) -> VGroup:
         title_m = Text(title, weight=BOLD, font_size=40, color=self.CONFIG_COLOR_TEXT)
         title_m.to_edge(UP)
@@ -36,16 +36,63 @@ class CScene(Scene):
             group = VGroup(title_m, subtitle_m)
         else:
             group = VGroup(title_m)
-        self.play_steps(Write(group), run_time=0.5)
+        self.play(Write(group), run_time=1)
         self.wait(0.5)
         return group
 
     def pause(self, t: float = 0.5) -> None:
         self.wait(t)
 
-    def play_steps(self, *anims, run_time: float = 1.0, rate_func = smooth) -> None:
+    def play_steps(self, *anims, run_time: float = 0.5, rate_func = smooth) -> None:
         self.play(*anims, run_time=run_time, rate_func=rate_func)
 
+    # ---------- High-level animation helpers ----------
+
+    def fade_out_group(
+        self,
+        mobjects: list[Mobject] | tuple[Mobject, ...],
+        run_time: float = 0.6,
+    ) -> None:
+        """
+        Fade out multiple non-prominent objects at once.
+
+        Args:
+            mobjects: Iterable of mobjects to fade out (labels, guides, etc.)
+            run_time: Duration of fade-out animation.
+        """
+        if not mobjects:
+            return
+        group = VGroup(*mobjects)
+        self.play_steps(FadeOut(group), run_time=run_time)
+
+    def transform_focus(
+        self,
+        old_main: Mobject,
+        new_main: Mobject,
+        fade_out: list[Mobject] | tuple[Mobject, ...] = (),
+        run_time: float = 1.0,
+    ) -> Mobject:
+        """
+        Transform the main object while fading out secondary helpers.
+
+        Typical pattern:
+        - Transform a prominent object (triangle, main line, main equation).
+        - Simultaneously fade out labels, braces, guide lines, etc.
+
+        Args:
+            old_main: Current prominent object to transform from.
+            new_main: Target object to transform to.
+            fade_out: Non-prominent objects to fade away during the transform.
+            run_time: Duration of the transform.
+
+        Returns:
+            The (now transformed) main object, for continued use.
+        """
+        anims = [Transform(old_main, new_main)]
+        if fade_out:
+            anims.append(FadeOut(VGroup(*fade_out)))
+        self.play_steps(*anims, run_time=run_time)
+        return old_main
 
     # ---------- Text & labels ----------
 
@@ -58,26 +105,56 @@ class CScene(Scene):
             m.set_color(self.CONFIG_COLOR_TEXT)
         return m
 
-    def label_point(self, dot: np.ndarray, 
-                    name: str,
-                    direction=UR, 
-                    buff: float = 0.15,
-                    font_size: int = 28) -> Text:
+    def label_point(self, point: np.ndarray, name: str, shape_center: np.ndarray, font_size: int = 28) -> Text:
+        """
+        Label a point positioned OUTSIDE the shape, away from shape center.
+        
+        Args:
+            point: The point location to label
+            name: Label text (≤3 chars)
+            shape_center: Center of the polygon/shape (use triangle/pentagon center)
+        """
         label = Text(name, font_size=font_size, color=self.CONFIG_COLOR_TEXT)
-        label.next_to(Dot(dot, radius=0.08), direction, buff=buff * 1.5)
-        self.play_steps(FadeIn(label, shift=0.2 * direction))
+        
+        # Vector from shape center → this point (outward direction)
+        outward_dir = normalize(point - shape_center)
+        
+        # Position label outside: point + outward direction
+        label_pos = point + 0.4 * outward_dir
+        label.move_to(label_pos)
+        
+        self.play_steps(FadeIn(label, shift=0.2 * outward_dir))
         return label
 
-    def label_line(self, line: Line, 
-                   text: str,
-                   offset=UP, 
-                   buff: float = 0.15,
-                   font_size: int = 26) -> Text:
+    def label_line(self, line: Line, text: str, 
+               shape_center: np.ndarray, font_size: int = 26) -> Text:
+        """
+        Label a line positioned OUTSIDE the shape, away from shape center.
+        
+        Args:
+            line: The line/segment to label
+            text: Label text (≤3 chars)
+            shape_center: Center of the polygon/shape
+        """
         mid = line.get_center()
         label = Text(text, font_size=font_size, color=self.CONFIG_COLOR_TEXT)
-        label.move_to(mid + buff * offset * 10)
-        self.play_steps(FadeIn(label))
+        
+        # Vector from shape center → line midpoint (outward direction)
+        outward_dir = normalize(mid - shape_center)
+        
+        # Position label outside near line: midpoint + outward direction
+        label_pos = mid + 0.35 * outward_dir
+        label.move_to(label_pos)
+        
+        self.play_steps(FadeIn(label, shift=0.2 * OUT))
         return label
+
+    def get_shape_center(self, *points: np.ndarray) -> np.ndarray:
+        """Average of polygon vertices = shape center."""
+        if not points:
+            return ORIGIN
+        return np.mean(points, axis=0)
+
 
     def show_equation_step(
         self,
@@ -89,9 +166,9 @@ class CScene(Scene):
         eq = self.mtex(new_latex, scale=0.9)
         eq.to_edge(to_edge_dir, buff=buff)
         if prev is None:
-            self.play_steps(Write(eq))
+            self.play(Write(eq))
         else:
-            self.play_steps(Transform(prev, eq))
+            self.play(Transform(prev, eq))
             eq = prev  # keep reference
         self.wait(0.3)
         return eq
@@ -121,7 +198,7 @@ class CScene(Scene):
         if show_numbers:
             plane.add_coordinates()
         plane.to_edge(DOWN, buff=0.4)
-        self.play_steps(Create(plane))
+        self.play(Create(plane))
         return plane
 
     def to_xy(self, plane: NumberPlane, x: float, y: float) -> np.ndarray:
@@ -138,7 +215,7 @@ class CScene(Scene):
         if color is None:
             color = self.CONFIG_COLOR_POINT
         dot = Dot(point=plane.c2p(x, y), radius=radius, color=color)
-        self.play_steps(FadeIn(dot, scale=0.8))
+        self.play(FadeIn(dot, scale=0.8))
         return dot
 
 
@@ -158,7 +235,7 @@ class CScene(Scene):
             line = DashedLine(A, B, color=color, stroke_width=stroke_width)
         else:
             line = Line(A, B, color=color, stroke_width=stroke_width)
-        self.play_steps(Create(line))
+        self.play(Create(line))
         return line
 
     def ray(
@@ -174,7 +251,7 @@ class CScene(Scene):
         direction = (B - A) / np.linalg.norm(B - A)
         end = A + direction * length
         line = Line(A, end, color=color, stroke_width=stroke_width)
-        self.play_steps(Create(line))
+        self.play(Create(line))
         return line
 
     def polygon(self, *points: np.ndarray,
@@ -187,7 +264,7 @@ class CScene(Scene):
                        color=color,
                        stroke_width=stroke_width,
                        fill_opacity=fill_opacity)
-        self.play_steps(Create(poly))
+        self.play(Create(poly))
         return poly
 
     def circle_from_center_radius(
@@ -201,7 +278,7 @@ class CScene(Scene):
             color = self.CONFIG_COLOR_CIRCLE
         circle = Circle(radius=r, color=color, stroke_width=stroke_width)
         circle.move_to(center)
-        self.play_steps(Create(circle))
+        self.play(Create(circle))
         return circle
 
     def angle_mark(
@@ -228,20 +305,20 @@ class CScene(Scene):
             label_m = MathTex(label, font_size=label_font_size, color=color)
             label_m.move_to(angle.point_from_proportion(0.5) + label_offset * OUT)
             group.add(label_m)
-        self.play_steps(Create(group))
+        self.play(Create(group))
         return group
 
     def right_angle_mark(
-    self,
-    A: np.ndarray,
-    O: np.ndarray,
-    B: np.ndarray,
-    size: float = 0.25,
-    color=YELLOW,
+        self,
+        A: np.ndarray,
+        O: np.ndarray,
+        B: np.ndarray,
+        size: float = 0.25,
+        color=YELLOW,
     ) -> Square:
         """
         Draw right angle mark using a small square at vertex O.
-        
+
         Args:
             A, O, B: Points forming ∠AOB (O is vertex)
             size: Side length of square
@@ -250,13 +327,13 @@ class CScene(Scene):
         # Get unit vectors along OA and OB
         OA_dir = (A - O) / np.linalg.norm(A - O)
         OB_dir = (B - O) / np.linalg.norm(B - O)
-        
+
         # Create square: O → OA_dir → OA+OB → OB
         p1 = O                           # Bottom-left corner
         p2 = O + OA_dir * size           # Bottom-right (along OA)
         p3 = p2 + OB_dir * size          # Top-right (along OB from p2)
         p4 = O + OB_dir * size           # Top-left (along OB)
-        
+
         # Create square with stroke only (no fill)
         square = Square(
             side_length=size,
@@ -265,13 +342,13 @@ class CScene(Scene):
             fill_color=color,
             fill_opacity=0.0  # Stroke only, no fill
         )
-        
+
         # Position square correctly
         square.move_to(p1, aligned_edge=LEFT + DOWN)  # Align to bottom-left
-        
+
         # Animate appearance
-        self.play_steps(FadeIn(square, scale=0.8))
-        
+        self.play(FadeIn(square, scale=0.8))
+
         return square
 
 
@@ -289,9 +366,9 @@ class CScene(Scene):
             t = MathTex(label, font_size=label_font_size, color=color)
             t.next_to(brace, brace.get_direction(), buff=0.15)
             group.add(t)
-        self.play_steps(GrowFromCenter(brace))
+        self.play(GrowFromCenter(brace))
         if len(group) > 1:
-            self.play_steps(FadeIn(group[1]))
+            self.play(FadeIn(group[1]))
         return group
 
 
@@ -404,7 +481,7 @@ class CScene(Scene):
         card.arrange(DOWN, buff=0.3, aligned_edge=LEFT)
         rect = SurroundingRectangle(card, color=WHITE, buff=0.3)
         full = VGroup(rect, card)
-        self.play_steps(FadeIn(full))
+        self.play(FadeIn(full))
         return full
 
     def proof_skeleton(
@@ -422,7 +499,7 @@ class CScene(Scene):
         prove_eq = self.mtex(to_prove, scale=0.8).next_to(prove_text, RIGHT, buff=0.2)
 
         group = VGroup(given_text, given_items, prove_text, prove_eq)
-        self.play_steps(FadeIn(group, lag_ratio=0.1))
+        self.play(FadeIn(group, lag_ratio=0.1))
         return group
 
     def locus_traced_path(
@@ -446,7 +523,7 @@ class CScene(Scene):
         prob = self.mtex(problem_latex, scale=0.8)
         prob.to_edge(UP, buff=0.5)
 
-        self.play_steps(Write(prob))
+        self.play(Write(prob))
         last = None
         lines = VGroup()
         for s in steps:
@@ -455,13 +532,13 @@ class CScene(Scene):
                 eq.next_to(prob, DOWN, buff=0.3, aligned_edge=LEFT)
             else:
                 eq.next_to(last, DOWN, buff=0.2, aligned_edge=LEFT)
-            self.play_steps(Write(eq))
+            self.play(Write(eq))
             lines.add(eq)
             last = eq
 
         final = self.mtex(final_latex, scale=0.9, color=YELLOW)
         final.next_to(last, DOWN, buff=0.4, aligned_edge=LEFT)
-        self.play_steps(Write(final))
+        self.play(Write(final))
         return VGroup(prob, lines, final)
 
     # ==================================
@@ -519,7 +596,7 @@ class CScene(Scene):
             line = self.segment(P1, P2, color=color, stroke_width=6)
             self.label_line(line, side_name, offset=label_dir)
             lines[side_name] = line
-            self.play_steps(Indicate(line, scale_factor=1.15))
+            self.play(Indicate(line, scale_factor=1.15))
             self.pause(1.2)
         
         # 7-10s: Show ratio equations if requested
@@ -529,10 +606,10 @@ class CScene(Scene):
                 scale=0.8
             )
             eq.to_edge(DOWN, buff=0.5)
-            self.play_steps(Write(eq))
+            self.play(Write(eq))
             self.pause(1.5)
         else:
-            self.play_steps(triangle.animate.set_opacity(0.3))
+            self.play(triangle.animate.set_opacity(0.3))
             self.pause(2)
 
 
@@ -595,7 +672,7 @@ class CScene(Scene):
         equations.to_edge(RIGHT, buff=0.8)
         
         for eq in equations:
-            self.play_steps(Write(eq))
+            self.play(Write(eq))
             self.pause(1.5)
 
 
@@ -624,20 +701,20 @@ class CScene(Scene):
         
         sine_curve = axes.plot(lambda x: np.sin(x), color=BLUE, stroke_width=4)
         
-        self.play_steps(Create(axes))
-        self.play_steps(Create(sine_curve))
+        self.play(Create(axes))
+        self.play(Create(sine_curve))
         self.pause(0.5)
         
         # 2-5s: Mark maximum and minimum
         max_dot = Dot(axes.c2p(PI/2, 1), color=YELLOW)
         min_dot = Dot(axes.c2p(3*PI/2, -1), color=YELLOW)
         
-        self.play_steps(FadeIn(max_dot), FadeIn(min_dot))
+        self.play(FadeIn(max_dot), FadeIn(min_dot))
         
         if show_amplitude:
             max_label = self.mtex("1", scale=0.7).next_to(max_dot, UR, buff=0.1)
             min_label = self.mtex("-1", scale=0.7).next_to(min_dot, DR, buff=0.1)
-            self.play_steps(Write(max_label), Write(min_label))
+            self.play(Write(max_label), Write(min_label))
         
         self.pause(1.5)
         
@@ -650,8 +727,8 @@ class CScene(Scene):
             )
             period_label = self.mtex("2\pi", scale=0.8).next_to(period_brace, DOWN)
             
-            self.play_steps(GrowFromCenter(period_brace))
-            self.play_steps(Write(period_label))
+            self.play(GrowFromCenter(period_brace))
+            self.play(Write(period_label))
         
         self.pause(2)
 
@@ -755,7 +832,7 @@ class CScene(Scene):
         self.pause(2)
         
         # 6-10s: Highlight the ratio relationship
-        self.play_steps(Circumscribe(eq, color=YELLOW))
+        self.play(Circumscribe(eq, color=YELLOW))
         self.pause(2)
 
 
@@ -814,7 +891,7 @@ class CScene(Scene):
         )
         
         # 8-10s: Highlight result on diagram
-        self.play_steps(Indicate(c_line, scale_factor=1.2, color=YELLOW))
+        self.play(Indicate(c_line, scale_factor=1.2, color=YELLOW))
         self.pause(2)
 
 
@@ -886,7 +963,7 @@ class CScene(Scene):
         # 8-10s: Show equation
         eq = self.mtex(r"\cos \theta = \text{(use cosine rule)}", scale=0.8)
         eq.to_edge(DOWN)
-        self.play_steps(Write(eq))
+        self.play(Write(eq))
         self.pause(2)
 
 
@@ -910,13 +987,13 @@ class CScene(Scene):
         # Point above plane
         P = np.array([0, 2, 0])
         P_dot = Dot(P, color=YELLOW)
-        self.play_steps(FadeIn(P_dot))
+        self.play(FadeIn(P_dot))
         self.label_point(P_dot, "P", direction=UP)
         
         # Point on plane
         Q = np.array([1.5, -0.5, 0])
         Q_dot = Dot(Q, color=YELLOW)
-        self.play_steps(FadeIn(Q_dot))
+        self.play(FadeIn(Q_dot))
         self.label_point(Q_dot, "Q")
         
         # Line PQ
@@ -929,7 +1006,7 @@ class CScene(Scene):
         # For visual clarity, project onto plane at same y
         R = np.array([0, -0.5, 0])
         R_dot = Dot(R, color=RED)
-        self.play_steps(FadeIn(R_dot))
+        self.play(FadeIn(R_dot))
         self.label_point(R_dot, "R")
         
         perp = self.segment(P, R, color=RED, dashed=True)
@@ -945,7 +1022,7 @@ class CScene(Scene):
         # 8-10s: Show formula
         eq = self.mtex(r"\sin \theta = \frac{PR}{PQ}", scale=0.9)
         eq.to_edge(DOWN, buff=0.5)
-        self.play_steps(Write(eq))
+        self.play(Write(eq))
         self.pause(2)
 
 
@@ -967,7 +1044,7 @@ class CScene(Scene):
         # 0-2s: Show equation
         eq = self.mtex(equation_latex, scale=1.0)
         eq.to_edge(UP, buff=0.8)
-        self.play_steps(Write(eq))
+        self.play(Write(eq))
         self.pause(1)
         
         # 2-5s: Draw unit circle
@@ -987,11 +1064,11 @@ class CScene(Scene):
             point = np.array([x, y, 0])
             
             dot = Dot(point, color=YELLOW)
-            self.play_steps(FadeIn(dot, scale=1.5))
+            self.play(FadeIn(dot, scale=1.5))
             
             label = self.mtex(f"{angle_deg}°", scale=0.7)
             label.next_to(dot, UR if x > 0 else UL, buff=0.15)
-            self.play_steps(Write(label))
+            self.play(Write(label))
             
             # Draw radius to point
             radius = self.segment(ORIGIN, point, color=YELLOW, dashed=True)

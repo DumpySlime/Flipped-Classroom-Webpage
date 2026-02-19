@@ -9,7 +9,7 @@ Environment
 - Black background, static camera (NO camera moves).
 - Use `MathTex` only.
 - **Labels ≤ 3 chars** (`"hyp"`, `"opp"`, `"adj"`, `"A"`, `"B"`, `"C"`).
-- **Max 20s**, **4–5 beats**.
+- **Max 20 beats**.
 - Colors: angle=`YELLOW`, hyp=`RED`, opp=`BLUE`, adj=`GREEN`, aux=`GRAY`, lines=`WHITE`.
 
 NO INVENTED APIs (common mistakes)
@@ -25,14 +25,8 @@ self.play(Indicate(hyp_line))
 
 WRONG: self.mobjects[-1] 
 
-TIMING BUDGET (20s max)
-Beat 1 (0-4s): pause(1.0)
-Beat 2 (4-8s): pause(1.0)
-Beat 3 (8-12s): pause(1.0)
-Beat 4 (12-16s): pause(1.0)
-Beat 5 (16-20s): pause(2.0)
-
-Use `self.pause(0.8-1.5)` max per beat.
+TIMING BUDGET
+Use `self.pause(0.5-1)` max per beat.
 
 CScene API (boilerplate)
 You MUST call these methods. DO NOT re-implement.
@@ -57,28 +51,42 @@ import numpy as np
 
 class RightTriangleSidesScene(CScene):
     def construct(self):
-        self.setup_scene("Trig Ratios")
+        title = self.setup_scene("Trig Ratios")  # STORE TITLE FOR FADING!
         
-        # Beat 1: Build triangle explicitly
+        # Beat 1: Build triangle + labels
         A = np.array([-2,0,0])
-        B = np.array()[1]
-        C = np.array()[1]
+        B = np.array([2,0,0])
+        C = np.array([0,2,0])
         triangle = self.polygon(A,B,C)
-        self.right_angle_mark(B,A,C)
-        self.pause(1.0)
         
-        # Define sides (explicit colors)
-        hyp_line = self.segment(B,C, color=RED)
-        self.label_line(hyp_line, "hyp")
+        shape_center = self.get_shape_center(A,B,C)
+        A_label = self.label_point(A, "A", shape_center)
+        B_label = self.label_point(B, "B", shape_center)
+        right_mark = self.right_angle_mark(B,A,C)
+        self.pause(0.5)
+        
+        # Beat 2: Highlight/label sides
+        hyp_line = self.segment(B,C, color=RED, stroke_width=6)
+        hyp_label = self.label_line(hyp_line, "hyp", shape_center)
         opp_line = self.segment(A,C, color=BLUE)
-        self.label_line(opp_line, "opp")
-        self.pause(1.0)
+        opp_label = self.label_line(opp_line, "opp", shape_center)
+        self.pause(0.5)
         
-        # Beat 2: ratios (short labels)
-        self.play(triangle.animate.set_opacity(0.3))
+        # Beat 3: Dim background, show equation
+        self.play_steps(triangle.animate.set_opacity(0.3))
         sin_eq = self.mtex(r"\sin B = \frac{opp}{hyp}")
         sin_eq.to_corner(UR)
-        self.play(Write(sin_eq))
+        self.play_steps(Write(sin_eq))
+        self.pause(0.5)
+        
+        # Beat 4: Transform → NEW diagram (OLD triangle DISAPPEARS!)
+        new_adj_line = self.segment(A,B, color=GREEN, stroke_width=6)
+        adj_label = self.label_line(new_adj_line, "adj", shape_center)
+        new_triangle = self.transform_focus(  # triangle → new_triangle, NO OVERLAP!
+            triangle,                          # OLD_SHAPE → gone after this
+            self.polygon(A,B,C),               # NEW_SHAPE → replaces old completely
+            fade_out=[title, right_mark, hyp_label, opp_label, A_label, B_label]  # ALL old!
+        )
         self.pause(1.0)
 
 STORYBOARD → CODE MAPPING
@@ -91,5 +99,9 @@ label_side → self.label_line(line, "hyp")
 show_ratio → self.mtex(r"\sin B = \frac{opp}{hyp}")
 
 dim_objects → triangle.animate.set_opacity(0.3)
+
+transform_main → self.transform_focus(old_main, new_main, fade_out=[helpers])
+
+fade_helpers → self.fade_out_group([label1, guide_line])
 
 Use storyboard "params" for coordinates, roles, text. Make reasonable assumptions if underspecified.
