@@ -8,12 +8,6 @@ Labels ≤ 3 chars (e.g. "hyp", "A", "opp").
 COLORS
 Angle/focus: YELLOW
 
-Hypotenuse: RED
-
-Opposite: BLUE
-
-Adjacent: GREEN
-
 Aux: GRAY
 
 Lines: WHITE
@@ -22,43 +16,9 @@ Animations: Prefer Transform for changing main objects; use fade_out_group for r
 
 NO: scene clearing, camera moves, eval, long labels, sentences.
 
-TYPICAL SCENE STRUCTURE
-from manim import *
-from scene import CScene
-import numpy as np
+HIGH-LEVEL FUNCTIONS (use these first if description is appropriate!)
 
-class GeneratedScene(CScene):
-    def construct(self):
-        self.setup_scene("Right Triangle Ratios")
-        self.animate_right_triangle_ratios()  # or primitives
-
-HIGH-LEVEL TEMPLATES (use these first!)
-# Right Triangle Ratios
-self.animate_right_triangle_ratios(
-    focus_angle="A",                    # "A" or "B"
-    highlight_sequence=["hyp","opp","adj"]
-)
-
-# Sine Rule
-self.animate_sine_rule(triangle_angles=(30,60,90))
-
-# Cosine Rule
-self.animate_cosine_rule(side_a=5, side_b=4, angle_C_degrees=60)
-
-# Area Formula
-self.animate_triangle_area_formula(side_a=4, side_b=3, angle_C_degrees=60)
-
-# Trig Values (30°, 45°, 60°)
-self.animate_trig_ratio_values(30, ["sin","cos"])
-
-# Sine Graph
-self.animate_sine_wave_properties()
-
-# Solve Trig Equation
-self.animate_solve_trig_equation(
-    equation_latex=r"\\sin \\theta = 0.5",
-    solutions_degrees=[30,150]
-)
+{high_level_boilerplate.txt}
 
 PRIMITIVES (use if no template fits)
 
@@ -98,6 +58,21 @@ shape_center = self.get_shape_center(A,B,C)  # triangle center
 self.label_point(A, "A", shape_center)      # outside near point A
 self.label_line(hyp, "hyp", shape_center)   # outside near hypotenuse
 self.label_point(B, "B", shape_center)      # outside near point B
+
+# Distance brace
+brace = self.distance_brace(A, B, label="AB=5")
+
+# Dynamic geometry
+t = self.tracker(0)
+moving_dot = self.dynamic_point_on_plane(plane, x_tracker=t, y_tracker=t)
+dyn_line = self.dynamic_line(lambda: A.get_center(), lambda: B.get_center())
+
+# Updaters
+self.freeze_updaters(moving_dot)
+self.unfreeze_updaters(moving_dot)
+
+# Lesson atoms
+card = self.theorem_card("Pythagoras", r"a^2+b^2=c^2", triangle)
 
 # Equations
 eq = self.mtex(r"\\sin A = \\frac{\\text{opp}}{\\text{hyp}}")
@@ -162,7 +137,7 @@ class RightTriangleSidesScene(CScene):
         
         # Beat 2: Highlight hypotenuse
         hyp = self.segment(B,C, color=RED, stroke_width=6)
-        self.label_line(hyp, "hyp")
+        self.label_line(hyp, "hyp", shape_center)
         self.play_steps(Indicate(hyp))
         self.pause(2)
         

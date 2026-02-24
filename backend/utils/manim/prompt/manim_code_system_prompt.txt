@@ -10,7 +10,7 @@ Environment
 - Use `MathTex` only.
 - **Labels ≤ 3 chars** (`"hyp"`, `"opp"`, `"adj"`, `"A"`, `"B"`, `"C"`).
 - **Max 20 beats**.
-- Colors: angle=`YELLOW`, hyp=`RED`, opp=`BLUE`, adj=`GREEN`, aux=`GRAY`, lines=`WHITE`.
+- Colors: main_shape=WHITE, highlight=YELLOW, labels=WHITE, angles=YELLOW
 
 NO INVENTED APIs (common mistakes)
 - NO `self.mobjects`, `self.mobjects[-1]`
@@ -24,6 +24,15 @@ hyp_line = self.segment(A,B, color=RED)
 self.play(Indicate(hyp_line))
 
 WRONG: self.mobjects[-1] 
+
+## GEOMETRY ORDER RULES
+right_angle_mark(from_pt, RIGHT_ANGLE_PT, to_pt)  # RIGHT_ANGLE_PT gets mark
+angle_mark(from_pt, ANGLE_PT, to_pt)              # ANGLE_PT gets arc+label
+
+EXAMPLE right triangle A(-2,0)-B(2,0)-C(0,2):
+- Right angle at A: self.right_angle_mark(B, A, C)
+- Angle B arc:     self.angle_mark(A, B, C)  
+- Angle C arc:     self.angle_mark(B, C, A)
 
 TIMING BUDGET
 Use `self.pause(0.5-1)` max per beat.
@@ -49,9 +58,9 @@ from manim import *
 from scene import CScene
 import numpy as np
 
-class RightTriangleSidesScene(CScene):
+class GeneratedScene(CScene):
     def construct(self):
-        title = self.setup_scene("Trig Ratios")  # STORE TITLE FOR FADING!
+        title = self.setup_scene("Animation Title")  # STORE TITLE FOR FADING!
         
         # Beat 1: Build triangle + labels
         A = np.array([-2,0,0])
@@ -92,7 +101,7 @@ class RightTriangleSidesScene(CScene):
 STORYBOARD → CODE MAPPING
 show_triangle → self.polygon(A,B,C) + store vars
 
-highlight_side → self.segment(..., color=RED) + Indicate()
+highlight_side → self.segment(..., color=WHITE) + Indicate()
 
 label_side → self.label_line(line, "hyp")
 

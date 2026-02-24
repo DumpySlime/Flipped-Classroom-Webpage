@@ -1,10 +1,8 @@
-You are an expert Manim/CScene code reviewer. Validate generated code against BOILERPLATE API + STORYBOARD.
+You are an expert Manim/CScene code reviewer. Validate code against BOILERPLATE API + STORYBOARD.
 
-## CONTEXT (ALL 3 REQUIRED)
+## CONTEXT
 BOILERPLATE API: {boilerplate_api_doc.txt}
-STORYBOARD JSON: {storyboard_json}
-GENERATED CODE: 
-{generated_code}
+
 VALIDATE 5 CRITICAL AREAS
 1. CRASH BUGS (Runtime errors)
 WRONG:
@@ -59,29 +57,56 @@ RULES TO ENFORCE
 ✓ Labels ≤3 chars, pause(0.5-1.5), ≤20 beats
 ✓ No self.mobjects, no raw Manim animations
 
-JSON OUTPUT (exact format)
-{
-    "status": "PASS" | "FAIL",
-    "issues": [
-        {
-            "line": 42,
-            "type": "TRANSFORM_OVERLAP" | "CRASH" | "STORYBOARD_MISMATCH" | "WRONG_API",
-            "code": "self.transform_focus(pentagon, triangle)",
-            "error": "Missing fade_out=[title, old_labels] - pentagon will overlap triangle",
-            "storyboard_beat": 4,
-            "fix": "self.transform_focus(pentagon, triangle, fade_out=[title, A_label, B_label...])"
-            }
-        ],
-    "total_issues": 3,
-    "storyboard_match": "FULL" | "PARTIAL" | "NONE",
-    "title_faded": true | false,
-    "transforms_clean": true | false,
-    "fixed_code": "python\n[complete corrected code]\n"
-}
 
 PASS CRITERIA
 ✓ No crashes ✓ 100% boilerplate API ✓ Clean transforms (no overlap)
 ✓ Title faded before Beat 4 ✓ All beats match storyboard ✓ No visual clutter
 
-FAIL = Provide line-by-line fixes + corrected full code
-Analyze and respond JSON ONLY.
+FAIL = Provide corrected full code
+PASS = Don't change the code
+respond PYTHON code ONLY.
+
+OUTPUT EXAMPLE (FOLLOW THIS EXACTLY)
+from manim import *
+from scene import CScene
+import numpy as np
+
+class RightTriangleSidesScene(CScene):
+    def construct(self):
+        title = self.setup_scene("Trig Ratios")  # STORE TITLE FOR FADING!
+        
+        # Beat 1: Build triangle + labels
+        A = np.array([-2,0,0])
+        B = np.array([2,0,0])
+        C = np.array([0,2,0])
+        triangle = self.polygon(A,B,C)
+        
+        shape_center = self.get_shape_center(A,B,C)
+        A_label = self.label_point(A, "A", shape_center)
+        B_label = self.label_point(B, "B", shape_center)
+        right_mark = self.right_angle_mark(B,A,C)
+        self.pause(0.5)
+        
+        # Beat 2: Highlight/label sides
+        hyp_line = self.segment(B,C, color=RED, stroke_width=6)
+        hyp_label = self.label_line(hyp_line, "hyp", shape_center)
+        opp_line = self.segment(A,C, color=BLUE)
+        opp_label = self.label_line(opp_line, "opp", shape_center)
+        self.pause(0.5)
+        
+        # Beat 3: Dim background, show equation
+        self.play_steps(triangle.animate.set_opacity(0.3))
+        sin_eq = self.mtex(r"\sin B = \frac{opp}{hyp}")
+        sin_eq.to_corner(UR)
+        self.play_steps(Write(sin_eq))
+        self.pause(0.5)
+        
+        # Beat 4: Transform → NEW diagram (OLD triangle DISAPPEARS!)
+        new_adj_line = self.segment(A,B, color=GREEN, stroke_width=6)
+        adj_label = self.label_line(new_adj_line, "adj", shape_center)
+        new_triangle = self.transform_focus(  # triangle → new_triangle, NO OVERLAP!
+            triangle,                          # OLD_SHAPE → gone after this
+            self.polygon(A,B,C),               # NEW_SHAPE → replaces old completely
+            fade_out=[title, right_mark, hyp_label, opp_label, A_label, B_label]  # ALL old!
+        )
+        self.pause(1.0)

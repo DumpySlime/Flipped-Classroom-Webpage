@@ -1,0 +1,42 @@
+# Right Triangle Ratios
+self.animate_right_triangle_ratios(
+    focus_angle="A",                    # "A" or "B"
+    highlight_sequence=["hyp","opp","adj"]
+)
+
+# Sine Rule
+self.animate_sine_rule(triangle_angles=(30,60,90))
+
+# Cosine Rule
+self.animate_cosine_rule(side_a=5, side_b=4, angle_C_degrees=60)
+
+# Area Formula
+self.animate_triangle_area_formula(side_a=4, side_b=3, angle_C_degrees=60)
+
+# Trig Values (30°, 45°, 60°)
+self.animate_trig_ratio_values(30, ["sin","cos"])
+
+# Sine Graph
+self.animate_sine_wave_properties()
+
+# Solve Trig Equation
+self.animate_solve_trig_equation(
+    equation_latex=r"\\sin \\theta = 0.5",
+    solutions_degrees=[30,150]
+)
+
+# Trig Graph
+self.animate_sine_wave_properties(show_amplitude=True, show_period=True)
+
+# Area Formula  
+self.animate_triangle_area_formula(side_a=4, side_b=3, angle_C_degrees=60)
+
+# 3D Angles
+self.animate_3d_angle_between_lines()
+self.animate_angle_line_to_plane()
+
+# Trig Equation Solving
+self.animate_solve_trig_equation(
+    equation_latex=r"\sin \theta = 0.5", 
+    solutions_degrees=[30, 150]
+)

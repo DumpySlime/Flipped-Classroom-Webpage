@@ -3,56 +3,21 @@ import sys
 import os
 import json
 from pathlib import Path
-import logging
-
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 from dotenv import load_dotenv
+from logger import setup_logging
+from token_usage import get_token_usage
 
 load_dotenv()
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL")
 
-def setup_logging(log_file="logs/test.log", log_level=logging.INFO):
-    """Configure logging with both file and console handlers."""
-    # Create logs directory if it doesn't exist
-    log_dir = Path(log_file).parent
-    log_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Create logger
-    logger = logging.getLogger(__name__)
-    logger.setLevel(log_level)
-    
-    # Remove existing handlers to avoid duplicates
-    logger.handlers.clear()
-    
-    # File handler
-    file_handler = logging.FileHandler(log_file, encoding='utf-8')
-    file_handler.setLevel(log_level)
-    
-    # Console handler
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(log_level)
-    
-    # Formatter
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    file_handler.setFormatter(formatter)
-    console_handler.setFormatter(formatter)
-    
-    # Add handlers to logger
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
-    
-    return logger
-
-logger = setup_logging()
+logger = setup_logging(current_file=Path(__file__).stem)
 
 def get_session(retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504, 429)):
     """Custom retry logic for API calls."""
@@ -83,23 +48,6 @@ def load_prompt(prompt_file):
     except Exception as e:
         logger.error(f"Error loading prompt file {prompt_file}: {e}")
         return None
-
-def parse_token_usage(result):
-    """Parse and return token usage from API response."""
-    usage = result.get("usage", {})
-    return {
-        "prompt": usage.get("prompt_tokens", 0),
-        "completion": usage.get("completion_tokens", 0),
-        "total": usage.get("total_tokens", 0)
-    }
-
-def print_token_usage(token_usage, stage_name):
-    """Print formatted token usage."""
-    logger.info(f"{stage_name} Token Usage:")
-    logger.info(f"  Prompt:     {token_usage['prompt']:,}")
-    logger.info(f"  Completion: {token_usage['completion']:,}") 
-    logger.info(f"  Total:      {token_usage['total']:,}")
-    return token_usage
 
 def call_deepseek_storyboard(slide_text):
     """Call DeepSeek to generate storyboard JSON."""
@@ -159,15 +107,15 @@ def call_deepseek_storyboard(slide_text):
 
         result = response.json()
         content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
-        token_usage = parse_token_usage(result)
-        print_token_usage(token_usage, "STORYBOARD")
+        token_usage = get_token_usage(result)
+        logger.info(token_usage)
 
         # Parse JSON
         storyboard = json.loads(content)
 
         logger.info("STORYBOARD GENERATED SUCCESSFULLY")
         logger.debug(f"Storyboard content: {json.dumps(storyboard, indent=2)}")
-        logger.debug(f"Token usage: {token_usage}")
+        logger.debug(f"Storyboard generated with token usage: {token_usage}")
 
         return storyboard, token_usage
 
@@ -242,11 +190,11 @@ def call_deepseek_manim_code(storyboard):
 
         result = response.json()
         content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
-        token_usage = parse_token_usage(result)
+        token_usage = get_token_usage(result)
 
         logger.info("MANIM CODE GENERATED SUCCESSFULLY")
         logger.debug(f"Generated Manim code:\n{content}")
-        print_token_usage(token_usage, "MANIM CODE")
+        logger.debug(f"Manim code generated with token usage: {token_usage}")
 
         return content, token_usage
 
@@ -257,35 +205,13 @@ def call_deepseek_manim_code(storyboard):
         logger.error(f"Unexpected error in Manim code generation: {e}", exc_info=True)
         raise
 
-def validate_code(storyboard, manim_code, boilerplate):
-    """Full pipeline validation."""
-    review_prompt = load_prompt("prompt/code_review_prompt.txt")
-    
-    full_context = review_prompt.format(
-        boilerplate_api_doc_txt=boilerplate,
-        storyboard_json=json.dumps(storyboard, indent=2),
-        generated_code=manim_code
-    )
-    
-    response = call_deepseek({
-        "messages": [{"role": "system", "content": full_context}],
-        "temperature": 0.1
-    })
-    
-    review = json.loads(response["choices"][0]["message"]["content"])
-    
-    if review["status"] == "PASS":
-        return manim_code  # Ready to render
-    else:
-        logger.warning(f"Code review failed: {review['total_issues']} issues")
-        return review["fixed_code"]  # Use auto-fixed version
 
 def test_storyboard_generation():
     """Test storyboard generation with sample slide."""
     test_slide = """
-        Every right triangle has one 90° angle
-        The longest side is called the hypotenuse (opposite the right angle)
-        The other two sides are adjacent (next to) and opposite (across from) the angle we're studying
+        A polygon is a closed shape with straight sides
+        All sides connect end-to-end to form a single closed path
+        Polygons are named by how many sides they have
     """
 
     logger.info("Starting storyboard generation test")
