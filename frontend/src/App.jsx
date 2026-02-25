@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import axiosInstance from './services/axios'
+import axios from 'axios'
 import './styles.css'
 import Login from './component/Login.jsx'
 import Dashboard from './component/Dashboard.jsx'
@@ -48,7 +48,7 @@ export default function App() {
 		sessionStorage.removeItem('user_lastname');
 		sessionStorage.removeItem('user_username');
 		sessionStorage.removeItem('user');
-		delete axiosInstance.defaults.headers.common['Authorization'];
+		delete axios.defaults.headers.common['Authorization'];
 		window.location.href = '/';
 	};
 
