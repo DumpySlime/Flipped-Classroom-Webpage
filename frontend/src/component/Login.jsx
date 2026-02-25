@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axiosInstance from '../services/axios';
+import axios from 'axios';
 import "../styles.css";
 
 function Login({ onLogin }) {
@@ -18,7 +18,7 @@ function Login({ onLogin }) {
     
     try {
       // Send login request to backend API
-      const response = await axiosInstance.post('auth/api/login', {
+      const response = await axios.post('auth/api/login', {
         username: state.username,
         password: state.password
       });
