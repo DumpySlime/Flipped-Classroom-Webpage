@@ -151,14 +151,14 @@ function VideoGenerator({ materialId, onVideoGenerated }) {
           </details>
         )}
 
-        {videoUrl && (
+        {/* {videoUrl && (
           <div style={{ marginTop: "0.5rem" }}>
             <p>Generated video:</p>
             <video controls width="100%">
               <source src={videoUrl} type="video/mp4" />
             </video>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );

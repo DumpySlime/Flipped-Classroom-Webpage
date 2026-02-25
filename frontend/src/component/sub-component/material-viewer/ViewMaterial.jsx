@@ -22,7 +22,8 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 	
     const [showEdit, setShowEdit] = useState(false);
 	const [selectedMaterial, setSelectedMaterial] = useState(null);
-
+	
+	const [videoUrl, setVideoUrl] = useState(null);
 	// back navigation
 	function handleBackToMaterials() {
         // Reset all state before navigating back
@@ -200,6 +201,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 		})
 			.then(response => {
 			if (!active) return;
+			const materialObj = response.data.materials[0];
 			const slidesData = response.data.materials[0]?.slides || [];
 			console.log('Fetched slides data:', slidesData);
 			const slidesArray = Array.isArray(slidesData) ? slidesData : slidesData?.slides || [];
@@ -209,6 +211,10 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 			}));
 			setSlides(normalizedSlides);
 			setCurrentSlideIndex(0);
+			// capture video_url
+			if (materialObj?.video_url) { 
+				setVideoUrl(materialObj.video_url); 
+			}
 			})
 			.catch(e => {
 			if (active) setErr('Unable to fetch slides');
@@ -473,7 +479,16 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 			))}
 			</div>
 		</div>
-
+		
+		{videoUrl && ( 
+			<div style={{ marginTop: "20px" }}> 
+			<h3>🎬 Generated Video</h3> 
+			<video controls width="100%"> 
+				<source src={videoUrl} type="video/mp4" /> 
+				</video> 
+			</div> 
+		)}
+		
 		{/* ========== QUESTIONS SECTION (SEPARATE) ========== */}
 		<div
 			style={{
@@ -518,8 +533,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 			{userRole === "teacher" && (
 			<VideoGenerator
 				materialId={materialId}
-				onVideoGenerated={() => {
-				}}
+				onVideoGenerated={(url) => setVideoUrl(url)}
 			/>
 			)}
 
