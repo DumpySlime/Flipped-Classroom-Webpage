@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import '../../../styles.css';
 import '../../../dashboard.css';
-import axios from 'axios';
+import axiosInstance from '../../../../services/axios';
 import SlideExplanation from './slide-template/SlideExplanation';
 import SlideExample from './slide-template/SlideExample';
 import VideoGenerator from "./VideoGenerator";
@@ -105,11 +105,9 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 			if (!qId) continue;
 			const prefix = `${qId}-`;
 			if (savedQid.startsWith(prefix)) {
-				const questionKey = savedQid.slice(prefix.length); // e.g. "0-1"
-				// store raw value for now; we'll normalize below using questionMap
+				const questionKey = savedQid.slice(prefix.length);
 				loadedUserAnswers[questionKey] = a.user_answer;
-				// store graded result for short answer questions
-				loadedGradedAnswers[questionKey] = { is_correct: a.is_correct ?? false };
+				loadedGradedAnswers[questionKey] = { is_correct: a.is_correct ?? false, feedback: a.feedback ?? '' };
 				break;
 			}
 			}
@@ -669,6 +667,20 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 						</div>
 						)}
 
+						{submitted && question.questionType === 'short_answer' && gradedAnswers[questionKey]?.feedback && (
+						<div style={{
+							marginTop: '15px',
+							padding: '12px',
+							backgroundColor: '#f3e5f5',
+							borderRadius: '5px',
+							borderLeft: '5px solid #9c27b0',
+							fontSize: '13px',
+							lineHeight: '1.4'
+						}}>
+							<strong>🤖 AI Feedback:</strong> {gradedAnswers[questionKey].feedback.length > 150 ? gradedAnswers[questionKey].feedback.substring(0, 150) + '...' : gradedAnswers[questionKey].feedback}
+						</div>
+						)}
+
 						{submitted && question.explanation && (
 						<div style={{
 							marginTop: '15px',
@@ -741,11 +753,11 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 										isCorrect = false;
 									} else {
 										try {
-											const response = await axios.post('/api/ai/grade-short-answer', {
-												user_answer: userAnswer,
-												correct_answer: question.correctAnswer,
-												question_text: question.questionText
-											});
+											const response = await axiosInstance.post('/api/ai/grade-short-answer', {
+											user_answer: userAnswer,
+											correct_answer: question.correctAnswer,
+											question_text: question.questionText
+										});
 											isCorrect = response.data.is_correct;
 											newGradedAnswers[questionKey] = { is_correct: isCorrect, feedback: response.data.feedback };
 											console.log(`AI Grading - Q${questionKey}: is_correct=${isCorrect}, user_answer="${userAnswer}", correct_answer="${question.correctAnswer}"`);
@@ -759,12 +771,14 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 
 								const qDocId = q.id || (q._id && (q._id.$oid || q._id)) || q._id || '';
 								const question_id = qDocId ? `${qDocId}-${questionKey}` : `${questionKey}`;
+								const feedback = newGradedAnswers[questionKey]?.feedback ?? '';
 
 								answers.push({
 									question_id: question_id,
 									user_answer: userAnswer,
 									is_correct: !!isCorrect,
-									score: isCorrect ? 1 : 0
+									score: isCorrect ? 1 : 0,
+									feedback: feedback
 								});
 
 								totalQuestions++;
@@ -782,15 +796,15 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 
 						setSubmitted(true);
 
-						const currentStudentId = userInfo?.id || localStorage.getItem('student_id');
-						const response = await axios.post('/db/student-answers-submit', {
-							student_id: currentStudentId,
-							material_id: materialId,
-							answers: answers,
-							total_score: finalScore,
-							submission_time: new Date().toISOString(),
-							status: "submitted"
-						});
+						const currentStudentId = userInfo?.id || sessionStorage.getItem('user_id');
+									const response = await axiosInstance.post('/db/student-answers-submit', {
+										student_id: currentStudentId,
+										material_id: materialId,
+										answers: answers,
+										total_score: finalScore,
+										submission_time: new Date().toISOString(),
+										status: "submitted"
+									});
 
 						console.log('Student answers submitted successfully:', response.data);
 						console.log('Backend returned total_score:', response.data?.submission?.total_score);
