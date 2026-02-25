@@ -2,6 +2,9 @@ import sys
 import os
 import json
 from pathlib import Path
+import tempfile
+import subprocess
+import traceback
 
 PROMPT_DIR = Path(__file__).parent / "prompt"
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -175,17 +178,66 @@ def review_animation_code(manim_code: str, storyboard):
         logger.error(f"Code review failed: {e}")
         return None
 
-def generate_animation(slide_text: str, review_code: bool = True):
+def validate_code(cscene_code: str) -> bool:
+    with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as tf:
+        logger.info(f"Validating code by writing to temporary file: {tf.name}\n Code content:\n{cscene_code}")
+        tf.write(cscene_code.encode('utf-8'))
+        tf.flush()
+        try:
+            cmd = [
+                sys.executable, "-m", "manim", "render",
+                tf.name,
+                "--dry_run",
+                "--disable_caching",
+                "-v", "WARNING",  # Minimal logs
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            
+            if result.returncode != 0:
+                logger.error(f"Manim dry-run failed:\n{result.stderr}")
+                return False
+                
+            logger.info("Dry-run passed - code is safe!")
+            return True
+
+            
+        except subprocess.TimeoutExpired:
+            logger.error("Manim dry-run timed out")
+            return False
+        except Exception as e:
+            logger.error(f"Validation error: {traceback.format_exc()}")
+            return False
+
+
+def generate_animation(slide_text: str) -> str:
+    total_tokens = 0
     if not slide_text:
         logger.warning("Empty slide text provided")
         return None        
     logger.info(f"Generating animation for slide text: {slide_text}")
     storyboard, storyboard_tokens = call_storyboard(slide_text)
+    total_tokens += storyboard_tokens
     if storyboard:
         manim_code, manim_tokens = call_animation(storyboard)
-        if review_code:
+        total_tokens += manim_tokens
+        for i in range(3):  # Retry up to 3 times if validation fails
+            validation = validate_code(manim_code)
+            if validation:
+                break
+            logger.warning(f"Validation failed for generated code. Attempt {i+1}/3")
             manim_code, review_tokens = review_animation_code(manim_code, storyboard)
-        logger.info(f"Animation generated with total tokens: {storyboard_tokens + manim_tokens if not review_code else storyboard_tokens + manim_tokens + review_tokens}")
+            total_tokens += review_tokens
+            if i == 2:  # If all retries failed, return error code
+                logger.error("Failed to generate valid animation code after 3 attempts")
+                manim_code = """
+                from scene import CScene
+                import numpy as np
+
+                class GeneratedScene(CScene):
+                    def construct(self):
+                        title = self.setup_scene("Failed Animation")
+                """
+        logger.info(f"Animation generated with total tokens: {total_tokens}")
 
         return manim_code
     else:
@@ -194,9 +246,15 @@ def generate_animation(slide_text: str, review_code: bool = True):
 
 if __name__ == "__main__":
     # Example usage
-    test_slide = """
+    test_slide1 = """
         A polygon is a closed shape with straight sides
         All sides connect end-to-end to form a single closed path
         Polygons are named by how many sides they have
     """
-    generate_animation(test_slide)
+    test_slide2 = """
+        Sine (sin) = Opposite ÷ Hypotenuse
+        Cosine (cos) = Adjacent ÷ Hypotenuse    
+        Tangent (tan) = Opposite ÷ Adjacent
+        Remember: SOH-CAH-TOA helps recall these ratios
+    """
+    final_code = generate_animation(test_slide2)

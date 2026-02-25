@@ -7,7 +7,7 @@ You are given a storyboard JSON that has ALREADY been validated. Your job is to 
 Environment
 - Subclass `CScene` exactly.
 - Black background, static camera (NO camera moves).
-- Use `MathTex` only.
+- Use `MathTex` for LaTeX only.
 - **Labels ≤ 3 chars** (`"hyp"`, `"opp"`, `"adj"`, `"A"`, `"B"`, `"C"`).
 - **Max 20 beats**.
 - Colors: main_shape=WHITE, highlight=YELLOW, labels=WHITE, angles=YELLOW
