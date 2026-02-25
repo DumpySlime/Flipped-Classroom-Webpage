@@ -55,8 +55,8 @@ def load_prompt(prompt_file: Path) -> str:
 
 def load_boilerplate() -> str:    
     boilerplate = load_prompt(PROMPT_DIR / "boilerplate_api_doc.txt")
-    high_level_boilerplate = load_prompt(PROMPT_DIR / "high_level_boilerplate.txt")
-    boilerplate = boilerplate.replace("{high_level_boilerplate.txt}", high_level_boilerplate)
+    #high_level_boilerplate = load_prompt(PROMPT_DIR / "high_level_boilerplate.txt")
+    #boilerplate = boilerplate.replace("{high_level_boilerplate.txt}", high_level_boilerplate)
     return boilerplate
 
 def call_deepseek(system_prompt: str, user_prompt: str, temperature: float = 0.7, max_tokens: int = 2000):
