@@ -243,10 +243,3 @@ def generate_animation(slide_text: str) -> str:
     else:
         logger.error("Failed to generate storyboard, skipping animation generation")
         return None
-
-if __name__ == "__main__":
-    sample_slide_text = """A polygon is a closed shape with straight sides
-All sides connect end-to-end to form a single closed path
-Polygons are named by how many sides they have"""
-    generated_code = generate_animation(sample_slide_text)
-    print("Generated Manim Code:\n", generated_code)
