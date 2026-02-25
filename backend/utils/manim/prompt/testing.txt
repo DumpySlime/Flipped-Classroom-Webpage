@@ -1,0 +1,20 @@
+# code review output
+JSON OUTPUT (exact format)
+{
+    "status": "PASS" | "FAIL",
+    "issues": [
+        {
+            "line": 42,
+            "type": "TRANSFORM_OVERLAP" | "CRASH" | "STORYBOARD_MISMATCH" | "WRONG_API",
+            "code": "self.transform_focus(pentagon, triangle)",
+            "error": "Missing fade_out=[title, old_labels] - pentagon will overlap triangle",
+            "storyboard_beat": 4,
+            "fix": "self.transform_focus(pentagon, triangle, fade_out=[title, A_label, B_label...])"
+            }
+        ],
+    "total_issues": 3,
+    "storyboard_match": "FULL" | "PARTIAL" | "NONE",
+    "title_faded": true | false,
+    "transforms_clean": true | false,
+    "fixed_code": "python\n[complete corrected code]\n"
+}
