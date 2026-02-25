@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import axiosInstance from '../services/axios';
 import "../styles.css";
 
 function Login({ onLogin }) {
@@ -18,7 +18,7 @@ function Login({ onLogin }) {
     
     try {
       // Send login request to backend API
-      const response = await axios.post('auth/api/login', {
+      const response = await axiosInstance.post('auth/api/login', {
         username: state.username,
         password: state.password
       });
@@ -26,14 +26,14 @@ function Login({ onLogin }) {
       // Extract tokens and user info from response
       const { access_token, user } = response.data;
       
-      // Store authentication data in localStorage
-      localStorage.setItem('access_token', access_token);
-      localStorage.setItem('user_id', user._id || user.id);
-      localStorage.setItem('user_role', user.role);
-      localStorage.setItem('user_firstname', user.firstName);
-      localStorage.setItem('user_lastname', user.lastName);
-      localStorage.setItem('user_username', user.username);
-      localStorage.setItem('user', JSON.stringify(user));
+      // Store authentication data in sessionStorage
+      sessionStorage.setItem('access_token', access_token);
+      sessionStorage.setItem('user_id', user._id || user.id);
+      sessionStorage.setItem('user_role', user.role);
+      sessionStorage.setItem('user_firstname', user.firstName);
+      sessionStorage.setItem('user_lastname', user.lastName);
+      sessionStorage.setItem('user_username', user.username);
+      sessionStorage.setItem('user', JSON.stringify(user));
       
       // Set token as default header for future requests
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
