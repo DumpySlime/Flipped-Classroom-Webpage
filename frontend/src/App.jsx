@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import axiosInstance from './services/axios'
 import './styles.css'
 import Login from './component/Login.jsx'
 import Dashboard from './component/Dashboard.jsx'
@@ -10,9 +10,9 @@ export default function App() {
 	const [userInfo, setUserInfo] = useState(null);
 
 	useEffect(() => {
-		// Check if user is logged in by verifying token in localStorage
-		const token = localStorage.getItem('token');
-		const userData = localStorage.getItem('user');
+		// Check if user is logged in by verifying token in sessionStorage
+		const token = sessionStorage.getItem('access_token');
+		const userData = sessionStorage.getItem('user');
 		
 		if (token && userData) {
 		try {
@@ -21,7 +21,7 @@ export default function App() {
 			setUserRole(parsedUser.role);
 			setUserInfo(parsedUser);
 		} catch (error) {
-			console.error('Error parsing user data from localStorage:', error);
+			console.error('Error parsing user data from sessionStorage:', error);
 			setIsLoggedIn(false);
 			setUserRole('');
 			setUserInfo(null);
@@ -40,8 +40,15 @@ export default function App() {
 		setIsLoggedIn(false);
 		setUserRole('');
 		setUserInfo(null);
-		localStorage.clear();
-		delete axios.defaults.headers.common['Authorization'];
+		// Clear sessionStorage
+		sessionStorage.removeItem('access_token');
+		sessionStorage.removeItem('user_id');
+		sessionStorage.removeItem('user_role');
+		sessionStorage.removeItem('user_firstname');
+		sessionStorage.removeItem('user_lastname');
+		sessionStorage.removeItem('user_username');
+		sessionStorage.removeItem('user');
+		delete axiosInstance.defaults.headers.common['Authorization'];
 		window.location.href = '/';
 	};
 
