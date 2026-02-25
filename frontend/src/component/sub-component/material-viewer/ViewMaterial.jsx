@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import '../../../styles.css';
 import '../../../dashboard.css';
-import axiosInstance from '../../../../services/axios';
+import axios from 'axios';
 import SlideExplanation from './slide-template/SlideExplanation';
 import SlideExample from './slide-template/SlideExample';
 import VideoGenerator from "./VideoGenerator";
@@ -529,7 +529,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 				}}
 			/>
 			)}
-
+			
 				{questions.map((q, index) => {
 				const questionContent = q.question_content?.questions || [];
 				return questionContent.map((question, qIndex) => {
@@ -753,11 +753,11 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 										isCorrect = false;
 									} else {
 										try {
-											const response = await axiosInstance.post('/api/ai/grade-short-answer', {
-											user_answer: userAnswer,
-											correct_answer: question.correctAnswer,
-											question_text: question.questionText
-										});
+											const response = await axios.post('/api/ai/grade-short-answer', {
+												user_answer: userAnswer,
+												correct_answer: question.correctAnswer,
+												question_text: question.questionText
+											});
 											isCorrect = response.data.is_correct;
 											newGradedAnswers[questionKey] = { is_correct: isCorrect, feedback: response.data.feedback };
 											console.log(`AI Grading - Q${questionKey}: is_correct=${isCorrect}, user_answer="${userAnswer}", correct_answer="${question.correctAnswer}"`);
@@ -797,14 +797,14 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 						setSubmitted(true);
 
 						const currentStudentId = userInfo?.id || sessionStorage.getItem('user_id');
-									const response = await axiosInstance.post('/db/student-answers-submit', {
-										student_id: currentStudentId,
-										material_id: materialId,
-										answers: answers,
-										total_score: finalScore,
-										submission_time: new Date().toISOString(),
-										status: "submitted"
-									});
+						const response = await axios.post('/db/student-answers-submit', {
+							student_id: currentStudentId,
+							material_id: materialId,
+							answers: answers,
+							total_score: finalScore,
+							submission_time: new Date().toISOString(),
+							status: "submitted"
+						});
 
 						console.log('Student answers submitted successfully:', response.data);
 						console.log('Backend returned total_score:', response.data?.submission?.total_score);
