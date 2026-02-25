@@ -14,15 +14,18 @@ function VideoGenerator({ materialId, onVideoGenerated }) {
   const [videoUrl, setVideoUrl] = useState("");
   const [error, setError] = useState(null);
 
-  const authHeaders = {
-    Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-  };
-
   const handleGenerate = async () => {
     if (!materialId) {
       setError("materialId is missing.");
       return;
     }
+
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      setError("You are not logged in or token is missing.");
+      return;
+    }
+    const authHeaders = { Authorization: `Bearer ${token}` };
 
     setIsLoading(true);
     setError(null);
@@ -30,58 +33,20 @@ function VideoGenerator({ materialId, onVideoGenerated }) {
     setStoryboard("");
     setManimCode("");
     setVideoUrl("");
-    setStep("Step 1/4: Extracting slides from material...");
+    setStep("Generating Manim video (this may take a few minutes)...");
 
     try {
-      // 1) Prepare: get slides from backend
-      const prepareRes = await axios.post(
-        `${API_BASE_URL}/api/generate-video/prepare`,
-        { material_id: materialId },
-        { headers: authHeaders }
+      const res = await axios.post(
+        `${API_BASE_URL}/api/generate-video/generate`,
+        { material_id: materialId, quality: "medium" },
+        { headers: authHeaders, timeout: 6 * 60 * 1000 } // 6 minutes
       );
-      const { slides: preparedSlides, topic } = prepareRes.data;
 
-      if (!preparedSlides || preparedSlides.length === 0) {
-        throw new Error("No slides found in this material.");
+      const url = res.data.videoUrl || res.data.video_path || res.data.videoURL;
+      if (!url) {
+        throw new Error("Backend did not return videoUrl.");
       }
-      setSlides(preparedSlides);
 
-      // 2) Storyboard generation
-      setStep("Step 2/4: Generating Manim storyboard...");
-      const storyboardRes = await axios.post(
-        `${API_BASE_URL}/api/generate-video/storyboard`,
-        { slides: preparedSlides, topic },
-        { headers: authHeaders }
-      );
-      const sb = storyboardRes.data.storyboard;
-      setStoryboard(sb);
-
-      // 3) Manim code generation
-      setStep("Step 3/4: Generating Manim Python code...");
-      const codeRes = await axios.post(
-        `${API_BASE_URL}/api/generate-video/code`,
-        { storyboard: sb, topic },
-        { headers: authHeaders }
-      );
-      const code = codeRes.data.manim_code;
-      setManimCode(code);
-
-      // 4) Render video
-      setStep("Step 4/4: Rendering video with Manim (this may take a few minutes)...");
-      const renderRes = await axios.post(
-        `${API_BASE_URL}/api/generate-video/render`,
-        {
-          manim_code: code,
-          material_id: materialId,
-          quality: "medium",
-        },
-        {
-          headers: authHeaders,
-          timeout: 6 * 60 * 1000, // 6 minutes
-        }
-      );
-
-      const url = renderRes.data.video_url;
       setVideoUrl(url);
       setStep("Completed!");
 
@@ -100,6 +65,7 @@ function VideoGenerator({ materialId, onVideoGenerated }) {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div className="card" style={{ marginTop: "1rem" }}>
