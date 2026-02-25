@@ -16,10 +16,6 @@ Animations: Prefer Transform for changing main objects; use fade_out_group for r
 
 NO: scene clearing, camera moves, eval, long labels, sentences.
 
-HIGH-LEVEL FUNCTIONS (use these first if description is appropriate!)
-
-{high_level_boilerplate.txt}
-
 PRIMITIVES (use if no template fits)
 
 # Scene Setup
@@ -31,11 +27,28 @@ title = self.setup_scene("Title")  # Returns title Text mobject
 # Later: fade_out=[title, old_labels]
 
 Geometry
+## Polygon
 # Triangle
 A = np.array([-2,0,0])
 B = np.array([2,0,0])
 C = np.array([0,2,0])
 triangle = self.polygon(A,B,C)
+
+# Square
+S1 = np.array([-1.5, -1.5, 0])
+S2 = np.array([1.5, -1.5, 0])
+S3 = np.array([1.5, 1.5, 0])
+S4 = np.array([-1.5, 1.5, 0])
+square = self.polygon(S1,S2,S3,S4)
+
+# Pentagon
+A = np.array([0, 1.5, 0])
+B = np.array([-1.2, 0.5, 0])
+C = np.array([-0.8, -1.2, 0])
+D = np.array([0.8, -1.2, 0])
+E = np.array([1.2, 0.5, 0])
+pentagon = self.polygon(A, B, C, D, E)
+
 
 # Segment
 hyp = self.segment(B,C, color=RED, stroke_width=6)
@@ -61,11 +74,6 @@ self.label_point(B, "B", shape_center)      # outside near point B
 
 # Distance brace
 brace = self.distance_brace(A, B, label="AB=5")
-
-# Dynamic geometry
-t = self.tracker(0)
-moving_dot = self.dynamic_point_on_plane(plane, x_tracker=t, y_tracker=t)
-dyn_line = self.dynamic_line(lambda: A.get_center(), lambda: B.get_center())
 
 # Updaters
 self.freeze_updaters(moving_dot)
@@ -116,33 +124,3 @@ Variable names: A, B, C, hyp_line, opp_line, etc.
 Timing: Use self.pause() to pace beats.
 
 Continuity: Dim with set_opacity(0.3) instead of FadeOut. When replacing a diagram, use transform_focus on the main object and fade_out_group for labels, braces, and guide lines (avoid stacking).
-
-EXAMPLE OUTPUT (what LLM should produce)
-```
-from manim import *
-from scene import CScene
-import numpy as np
-
-class RightTriangleSidesScene(CScene):
-    def construct(self):
-        self.setup_scene("Right Triangle Sides")
-        
-        # Beat 1: Show triangle
-        A = np.array([-2,0,0])
-        B = np.array([2,0,0])
-        C = np.array([0,2,0])
-        triangle = self.polygon(A,B,C)
-        right_mark = self.right_angle_mark(B,A,C, size=0.25, color=YELLOW)
-        self.pause(1.5)
-        
-        # Beat 2: Highlight hypotenuse
-        hyp = self.segment(B,C, color=RED, stroke_width=6)
-        self.label_line(hyp, "hyp", shape_center)
-        self.play_steps(Indicate(hyp))
-        self.pause(2)
-        
-        # Beat 3: Show ratio
-        eq = self.mtex(r"\\sin A = \\frac{\\text{opp}}{\\text{hyp}}")
-        self.play_steps(Write(eq))
-        self.pause(3)
-```
