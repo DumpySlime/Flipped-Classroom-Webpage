@@ -557,3 +557,11 @@ JSON OUTPUT (exact format)
         
         # 9-10s: Final pause
         self.pause(1)
+
+
+
+#boilerplate
+
+HIGH-LEVEL FUNCTIONS (use these first if description is appropriate!)
+
+{high_level_boilerplate.txt}

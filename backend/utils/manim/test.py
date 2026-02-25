@@ -4,84 +4,130 @@ import numpy as np
 
 class GeneratedScene(CScene):
     def construct(self):
-        # Beat 1: Setup scene with right triangle
-        title = self.setup_scene("Trigonometric Ratios")
+        # Beat 1: Show title 'Polygons' and a simple closed shape
+        title = self.setup_scene("Polygons")
 
-        # Define triangle vertices (right angle at A)
-        A = np.array([-2, 0, 0])
-        B = np.array([2, 0, 0])
-        C = np.array([0, 2, 0])
+        # Create irregular pentagon
+        P1 = np.array([-2.5, -0.5, 0])
+        P2 = np.array([-1, 1.5, 0])
+        P3 = np.array([1.5, 1, 0])
+        P4 = np.array([2, -1, 0])
+        P5 = np.array([-1, -1.5, 0])
+        pentagon = self.polygon(P1, P2, P3, P4, P5)
+        shape_center = self.get_shape_center(P1, P2, P3, P4, P5)
 
-        # Create triangle and right angle mark
-        triangle = self.polygon(A, B, C)
-        right_mark = self.right_angle_mark(B, A, C, size=0.25, color=YELLOW)
+        self.pause(0.5)
 
-        # Label vertices
-        shape_center = self.get_shape_center(A, B, C)
-        A_label = self.label_point(A, "A", shape_center)
-        B_label = self.label_point(B, "B", shape_center)
-        C_label = self.label_point(C, "C", shape_center)
+        # Beat 2: Highlight that all sides are straight
+        # Create all sides with highlight color
+        side1 = self.segment(P1, P2, color=YELLOW)
+        side2 = self.segment(P2, P3, color=YELLOW)
+        side3 = self.segment(P3, P4, color=YELLOW)
+        side4 = self.segment(P4, P5, color=YELLOW)
+        side5 = self.segment(P5, P1, color=YELLOW)
+
+        # Sequential indication
+        self.play_steps(Indicate(side1))
+        self.play_steps(Indicate(side2))
+        self.play_steps(Indicate(side3))
+        self.play_steps(Indicate(side4))
+        self.play_steps(Indicate(side5))
+
+        self.pause(0.5)
+
+        # Beat 3: Emphasize closed path by tracing perimeter
+        # Create a moving dot to trace the perimeter
+        trace_dot = Dot(color=YELLOW, radius=0.08)
+        trace_path = VMobject(color=YELLOW, stroke_width=3)
+        trace_path.set_points_as_corners([P1, P2, P3, P4, P5, P1])
+
+        # Animate the dot along the path
+        self.play_steps(Create(trace_dot))
+        self.play_steps(MoveAlongPath(trace_dot, trace_path, run_time=2))
+        self.play_steps(FadeOut(trace_dot))
+
+        self.pause(0.5)
+
+        # Beat 4: Fade title and transform to triangle
+        self.fade_out_group([title, side1, side2, side3, side4, side5])
+
+        # Define triangle vertices
+        T1 = np.array([-2, -1, 0])
+        T2 = np.array([2, -1, 0])
+        T3 = np.array([0, 1.5, 0])
+
+        # Transform pentagon to triangle
+        triangle = self.transform_focus(
+            pentagon,
+            self.polygon(T1, T2, T3),
+            fade_out=[]
+        )
+        triangle_center = self.get_shape_center(T1, T2, T3)
+
+        self.pause(0.5)
+
+        # Beat 5: Label triangle as '3 sides'
+        side_label_tri = Text("3 sides", font_size=36, color=WHITE)
+        side_label_tri.next_to(triangle, DOWN, buff=0.5)
+        self.play_steps(Write(side_label_tri))
+
+        self.pause(0.5)
+
+        # Beat 6: Transform to square
+        self.fade_out_group([side_label_tri])
+
+        # Define square vertices
+        S1 = np.array([-1.5, -1.5, 0])
+        S2 = np.array([1.5, -1.5, 0])
+        S3 = np.array([1.5, 1.5, 0])
+        S4 = np.array([-1.5, 1.5, 0])
+
+        square = self.transform_focus(
+            triangle,
+            self.polygon(S1, S2, S3, S4),
+            fade_out=[]
+        )
+        square_center = self.get_shape_center(S1, S2, S3, S4)
+
+        self.pause(0.5)
+
+        # Beat 7: Label square as '4 sides'
+        side_label_sq = Text("4 sides", font_size=36, color=WHITE)
+        side_label_sq.next_to(square, DOWN, buff=0.5)
+        self.play_steps(Write(side_label_sq))
+
+        self.pause(0.5)
+
+        # Beat 8: Transform to pentagon
+        self.fade_out_group([side_label_sq])
+
+        # Define regular pentagon vertices
+        P1_new = np.array([0, 1.5, 0])
+        P2_new = np.array([-1.2, 0.5, 0])
+        P3_new = np.array([-0.8, -1.2, 0])
+        P4_new = np.array([0.8, -1.2, 0])
+        P5_new = np.array([1.2, 0.5, 0])
+
+        pentagon_new = self.transform_focus(
+            square,
+            self.polygon(P1_new, P2_new, P3_new, P4_new, P5_new),
+            fade_out=[]
+        )
+        pentagon_center = self.get_shape_center(P1_new, P2_new, P3_new, P4_new, P5_new)
+
+        self.pause(0.5)
+
+        # Beat 9: Label pentagon as '5 sides'
+        side_label_pent = Text("5 sides", font_size=36, color=WHITE)
+        side_label_pent.next_to(pentagon_new, DOWN, buff=0.5)
+        self.play_steps(Write(side_label_pent))
+
+        self.pause(0.5)
+
+        # Beat 10: Fade all and show summary text
+        self.fade_out_group([pentagon_new, side_label_pent])
+
+        summary_text = Text("Named by number of sides", font_size=48, color=WHITE)
+        self.play_steps(Write(summary_text))
 
         self.pause(1.0)
-
-        # Beat 2: Highlight opposite side to angle B (AC)
-        opp_line = self.segment(A, C, color=BLUE, stroke_width=6)
-        opp_label = self.label_line(opp_line, "opp", shape_center)
-        self.play_steps(Indicate(opp_line))
-        self.pause(1.0)
-
-        # Beat 3: Highlight adjacent side to angle B (AB)
-        adj_line = self.segment(A, B, color=GREEN, stroke_width=6)
-        adj_label = self.label_line(adj_line, "adj", shape_center)
-        self.play_steps(Indicate(adj_line))
-        self.pause(1.0)
-
-        # Beat 4: Highlight hypotenuse (BC)
-        hyp_line = self.segment(B, C, color=RED, stroke_width=6)
-        hyp_label = self.label_line(hyp_line, "hyp", shape_center)
-        self.play_steps(Indicate(hyp_line))
-        self.pause(1.0)
-
-        # Beat 5: Fade title and show sine ratio
-        self.fade_out_group([title])
-
-        sin_eq = self.mtex(r"\sin \theta = \frac{\text{opp}}{\text{hyp}}")
-        sin_eq.to_edge(UP)
-        self.play_steps(Write(sin_eq))
-        self.pause(1.0)
-
-        # Beat 6: Transform to show cosine ratio
-        # Fade old labels and equation
-        self.fade_out_group([opp_label, hyp_label, sin_eq])
-
-        # Show cosine equation
-        cos_eq = self.mtex(r"\cos \theta = \frac{\text{adj}}{\text{hyp}}")
-        cos_eq.to_edge(UP)
-        self.play_steps(Write(cos_eq))
-        self.pause(1.0)
-
-        # Beat 7: Transform to show tangent ratio
-        self.fade_out_group([adj_label, hyp_label, cos_eq])
-
-        # Show tangent equation
-        tan_eq = self.mtex(r"\tan \theta = \frac{\text{opp}}{\text{adj}}")
-        tan_eq.to_edge(UP)
-        self.play_steps(Write(tan_eq))
-        self.pause(1.0)
-
-        # Beat 8: Show SOH-CAH-TOA mnemonic
-        self.fade_out_group([tan_eq])
-
-        mnemonic = self.mtex(r"\text{SOH-CAH-TOA}")
-        mnemonic.scale(1.5)
-        self.play_steps(Write(mnemonic))
-        self.pause(1.0)
-
-        # Beat 9: Emphasize final result
-        self.fade_out_group([mnemonic])
-
-        # Show all three ratios together
-        final_text = self.mtex(r"\sin = \frac{\text{opp}}{\text{hyp}},\quad \cos = \frac{\text{adj}}{\text{hyp}},\quad \tan = \frac{\text{opp}}{\text{adj}}")
-        final_text.to_edge(DOWN)
-        self.play_steps(Write(final_text))
-        self.pause(2.0)

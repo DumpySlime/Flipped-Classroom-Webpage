@@ -245,16 +245,8 @@ def generate_animation(slide_text: str) -> str:
         return None
 
 if __name__ == "__main__":
-    # Example usage
-    test_slide1 = """
-        A polygon is a closed shape with straight sides
-        All sides connect end-to-end to form a single closed path
-        Polygons are named by how many sides they have
-    """
-    test_slide2 = """
-        Sine (sin) = Opposite ÷ Hypotenuse
-        Cosine (cos) = Adjacent ÷ Hypotenuse    
-        Tangent (tan) = Opposite ÷ Adjacent
-        Remember: SOH-CAH-TOA helps recall these ratios
-    """
-    final_code = generate_animation(test_slide2)
+    sample_slide_text = """A polygon is a closed shape with straight sides
+All sides connect end-to-end to form a single closed path
+Polygons are named by how many sides they have"""
+    generated_code = generate_animation(sample_slide_text)
+    print("Generated Manim Code:\n", generated_code)
