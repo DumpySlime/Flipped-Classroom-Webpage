@@ -214,7 +214,8 @@ def generate_animation(slide_text: str) -> str:
     if not slide_text:
         logger.warning("Empty slide text provided")
         return None        
-    logger.info(f"Generating animation for slide text: {slide_text}")
+    #logger.info(f"Generating animation for slide text: {slide_text}")
+    print("DEBUG in generate_animation, full slide_text:\n", slide_text)
     storyboard, storyboard_tokens = call_storyboard(slide_text)
     total_tokens += storyboard_tokens
     if storyboard:

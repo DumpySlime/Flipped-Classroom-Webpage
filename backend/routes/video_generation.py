@@ -84,7 +84,7 @@ def extract_slides_from_material(material: dict) -> list[dict]:
 
 
 @video_gen_bp.route("/api/generate-video/generate", methods=["POST"])
-@jwt_required()
+# @jwt_required()
 def generate_video():
     """
     Extract slides from material (ignoring first & last),
@@ -121,9 +121,11 @@ def generate_video():
             return jsonify({"error": "Slides could not be extracted"}), 400
 
         # Build a single slide_text string to pass to generate_animation
-        slide_text = "\n".join(
+        topic = material.get("topic") or material.get("title") or "Educational Topic"
+        slide_text = f"Topic: {topic}\n\n" + "\n".join(
             f"{s['title']}\n{s['content']}" for s in slides
         )
+        print("DEBUG slide_text passed to generate_animation:\n", slide_text)
 
         # generate_animation handles all prompt building and DeepSeek calls
         manim_code = generate_animation(slide_text)
@@ -219,4 +221,3 @@ def generate_video():
     finally:
         if script_path and os.path.exists(script_path):
             os.unlink(script_path)
-
