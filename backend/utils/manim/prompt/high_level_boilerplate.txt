@@ -1,4 +1,4 @@
-# Right Triangle Ratios
+# Right Square Ratios
 self.animate_right_triangle_ratios(
     focus_angle="A",                    # "A" or "B"
     highlight_sequence=["hyp","opp","adj"]
