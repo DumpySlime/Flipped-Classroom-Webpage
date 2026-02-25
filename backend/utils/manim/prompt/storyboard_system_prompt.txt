@@ -136,18 +136,3 @@ You may reuse and combine these types for different contexts; keep them generic 
     ]
   }
 ]
-
-### Error format
-
-If and ONLY if:
-
-- the input description clearly contains more than 2 distinct concepts, or
-- the content is not about geometry or trigonometry at all,
-
-then you MUST output exactly this JSON (no other text):
-
-{
-  "error": "MULTIPLE_OR_INVALID_CONCEPTS"
-}
-
-Do not invent additional error types.

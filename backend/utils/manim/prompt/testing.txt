@@ -565,3 +565,22 @@ JSON OUTPUT (exact format)
 HIGH-LEVEL FUNCTIONS (use these first if description is appropriate!)
 
 {high_level_boilerplate.txt}
+
+
+
+# storyboard error format
+
+### Error format
+
+If and ONLY if:
+
+- the input description clearly contains more than 2 distinct concepts, or
+- the content is not about geometry or trigonometry at all,
+
+then you MUST output exactly this JSON (no other text):
+
+{
+  "error": "MULTIPLE_OR_INVALID_CONCEPTS"
+}
+
+Do not invent additional error types.
