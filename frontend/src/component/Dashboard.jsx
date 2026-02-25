@@ -50,8 +50,8 @@ function Dashboard(props) {
       setLoading(true);
       setError(null);
       
-      const userId = props.userId || localStorage.getItem('user_id');
-      const userRole = props.userRole || localStorage.getItem('user_role');
+      const userId = props.userId || sessionStorage.getItem('user_id');
+      const userRole = props.userRole || sessionStorage.getItem('user_role');
       
       if (!userId || !userRole) {
         throw new Error('User information not available');
@@ -183,14 +183,14 @@ function Dashboard(props) {
   };
 
   const handleLogout = () => {
-    // Clear all localStorage data
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user_id');
-    localStorage.removeItem('user_role');
-    localStorage.removeItem('user_firstname');
-    localStorage.removeItem('user_lastname');
-    localStorage.removeItem('user_username');
-    localStorage.removeItem('user');
+    // Clear all sessionStorage data
+    sessionStorage.removeItem('access_token');
+    sessionStorage.removeItem('user_id');
+    sessionStorage.removeItem('user_role');
+    sessionStorage.removeItem('user_firstname');
+    sessionStorage.removeItem('user_lastname');
+    sessionStorage.removeItem('user_username');
+    sessionStorage.removeItem('user');
     
     // Redirect to login
     window.location.href = '/';
@@ -245,9 +245,9 @@ function Dashboard(props) {
         userRole={currentUserInfo.role}
         userInfo={{
           id: currentUserInfo.id,
-          username: localStorage.getItem('user_username'),
-          firstname: localStorage.getItem('user_firstname'),
-          lastname: localStorage.getItem('user_lastname')
+          username: sessionStorage.getItem('user_username'),
+          firstname: sessionStorage.getItem('user_firstname'),
+          lastname: sessionStorage.getItem('user_lastname')
         }}
         activeSection={activeSection}
 			/>
@@ -304,11 +304,11 @@ function Dashboard(props) {
         return (
           <SubjectMembers
             userInfo={{
-              id: currentUserInfo.id,
-              username: localStorage.getItem('user_username'),
-              firstname: localStorage.getItem('user_firstname'),
-              lastname: localStorage.getItem('user_lastname')
-            }}
+          id: currentUserInfo.id,
+          username: sessionStorage.getItem('user_username'),
+          firstname: sessionStorage.getItem('user_firstname'),
+          lastname: sessionStorage.getItem('user_lastname')
+        }}
             userRole={currentUserInfo.role}
             subjects={subjects}
           />
@@ -336,10 +336,10 @@ function Dashboard(props) {
           <div className="user-info">
             <div className="user-details">
               <span className="user-name">
-                {localStorage.getItem('user_firstname')} {localStorage.getItem('user_lastname')}
+                {sessionStorage.getItem('user_firstname')} {sessionStorage.getItem('user_lastname')}
               </span>
               <span className="user-role">
-                {currentUserInfo.role || localStorage.getItem('user_role')}
+                {currentUserInfo.role || sessionStorage.getItem('user_role')}
               </span>
             </div>
             <button 
