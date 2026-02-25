@@ -4,6 +4,7 @@ from flask_cors import CORS
 from flask_pymongo import PyMongo
 from gridfs import GridFS
 from config import Config
+from routes.video_generation import video_gen_bp, init_video_generation
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -44,6 +45,8 @@ init_auth_db(db)
 init_db_db(db, fs)
 init_llm_db(db, fs)
 init_analytics(db) 
+init_video_generation(db, app)
+
 
 app.register_blueprint(ai_bp, url_prefix='/api/ai')
 app.register_blueprint(admin_bp, url_prefix='/admin')
@@ -51,6 +54,7 @@ app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(db_bp, url_prefix='/db')
 app.register_blueprint(llm_bp, url_prefix='/api/llm')
 app.register_blueprint(analytics_bp)  
+app.register_blueprint(video_gen_bp)
 
 @app.route('/')
 def index():

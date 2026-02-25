@@ -26,7 +26,7 @@ def get_student_analytics():
     """
     try:
         # Get total number of materials for progress calculation
-        total_materials_count = db.materials.count_documents({})
+        total_materials_count = db.materials.count_documents({"is_deleted": {"$ne": True}})
         
         if total_materials_count == 0:
             total_materials_count = 1  # Prevent division by zero
@@ -188,7 +188,7 @@ def calculate_student_statistics_with_questions(submissions, student_name):
     
     # Get unique materials attempted
     materials_attempted = set(str(s.get('material_id')) for s in submissions)
-    total_materials = db.materials.count_documents({})
+    total_materials = db.materials.count_documents({"is_deleted": {"$ne": True}})
     
     # Calculate progress
     progress_percentage = (len(materials_attempted) / total_materials * 100) if total_materials > 0 else 0
