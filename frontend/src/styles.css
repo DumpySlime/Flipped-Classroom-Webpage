@@ -197,7 +197,7 @@ code {
 }
 
 .form-group label {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   font-weight: 500;
 }
 
@@ -300,3 +300,87 @@ button:hover {
 
 .sm-loading, .sm-empty, .sm-error { padding:12px; color:#374151; }
 .sm-no-members { color:#6b7280; font-size:13px; padding:8px 0; }
+
+/* Tablet Responsive Styles (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  /* Slide templates - full width on tablet */
+  .slide-explanation, 
+  .slide-example {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    min-height: 350px;
+    box-sizing: border-box;
+    min-width: 0;
+    margin: 0;
+    padding: 16px;
+  }
+  
+  /* Reduce font sizes for smaller screens */
+  .slide-explanation h1, 
+  .slide-example h1 {
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+  
+  .slide-explanation ul, 
+  .slide-example ol {
+    padding-left: 30px;
+    margin: 20px 0;
+  }
+  
+  .slide-explanation li, 
+  .slide-example li {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  .slide-example p, 
+  .slide-explanation p {
+    font-size: 14px;
+  }
+  
+  /* Example body - stack columns */
+  .example-body {
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+  }
+  
+  .example-left,
+  .example-right {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+  }
+  
+  .example-left h2,
+  .example-right h2 {
+    font-size: 16px;
+  }
+  
+  .example-right ul {
+    padding-left: 20px;
+  }
+  
+  .example-right li {
+    font-size: 14px;
+  }
+  
+  /* SubjectMembers responsive */
+  .sm-multi {
+    grid-template-columns: 1fr;
+  }
+  
+  .sm-subject-card {
+    padding: 10px;
+  }
+  
+  /* Login form adjustments */
+  .login-container {
+    margin: 10px;
+    max-width: none;
+    width: auto;
+  }
+}
