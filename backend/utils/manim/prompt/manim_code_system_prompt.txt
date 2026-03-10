@@ -16,6 +16,13 @@ NO INVENTED APIs (common mistakes)
 - NO `self.mobjects`, `self.mobjects[-1]`
 - NO `if mob.color == BLUE` (searching by color)
 - Templates do NOT return groups. **Build geometry manually** and store in variables.
+- DO NOT call helper methods that are not listed in the CScene boilerplate.
+  Examples of FORBIDDEN calls:
+  `self.make_3d_axes()`, `self.draw_cube()`, `self.draw_prism()`, `self.animate_camera()`, etc.
+- For 3D axes, use standard Manim classes directly:
+  `axes = ThreeDAxes()`, `self.add(axes)`.
+- If you need a helper not in the boilerplate, INLINE the logic instead of calling a new method.
+
 
 Correct patterns
 RIGHT: explicit variables

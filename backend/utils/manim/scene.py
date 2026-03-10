@@ -183,6 +183,7 @@ class CScene(Scene):
         x_length: float = 10,
         y_length: float = 6,
         show_numbers: bool = True,
+        three_d: bool = False,
     ) -> NumberPlane:
         plane = NumberPlane(
             x_range=x_range,
@@ -292,7 +293,6 @@ class CScene(Scene):
         label_offset: float = 0.2,
         label_font_size: int = 26,
     ) -> VGroup:
-        # OA and OB rays
         angle = Angle(
             Line(O, A),
             Line(O, B),
@@ -302,7 +302,7 @@ class CScene(Scene):
         )
         group = VGroup(angle)
         if label:
-            label_m = MathTex(label, font_size=label_font_size, color=color)
+            label_m = Text(label, font_size=label_font_size, color=color)
             label_m.move_to(angle.point_from_proportion(0.5) + label_offset * OUT)
             group.add(label_m)
         self.play(Create(group))
@@ -1077,3 +1077,8 @@ class CScene(Scene):
         
         # 9-10s: Final pause
         self.pause(1)
+        
+    def make_3d_axes(self):
+        axes = ThreeDAxes()
+        self.add(axes)
+        return axes

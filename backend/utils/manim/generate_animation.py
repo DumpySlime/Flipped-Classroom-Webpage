@@ -122,7 +122,7 @@ def call_storyboard(slide_text: str):
         raise
     except Exception as e:
         logger.error(f"Storyboard generation failed: {e}")
-        return None
+        return None, None
 
 def call_animation(storyboard):    
     system_prompt = load_prompt(PROMPT_DIR / "manim_code_system_prompt.txt")
@@ -151,7 +151,7 @@ def call_animation(storyboard):
         raise
     except Exception as e:
         logger.error(f"Animation generation failed: {e}")
-        return None
+        return None, None
 
 def review_animation_code(manim_code: str, storyboard):
     """Review generated Manim code against storyboard."""
@@ -173,25 +173,36 @@ def review_animation_code(manim_code: str, storyboard):
         return content, total_tokens
     except Exception as e:
         logger.error(f"Code review failed: {e}")
-        return None
+        return None, None
 
 def generate_animation(slide_text: str, review_code: bool = True):
+    print("DEBUG in generate_animation, full slide_text:\n", slide_text)
     if not slide_text:
         logger.warning("Empty slide text provided")
-        return None        
-    #logger.info(f"Generating animation for slide text: {slide_text}")
-    print("DEBUG in generate_animation, full slide_text:\n", slide_text)
-    storyboard, storyboard_tokens = call_storyboard(slide_text)
-    if storyboard:
-        manim_code, manim_tokens = call_animation(storyboard)
-        if review_code:
-            manim_code, review_tokens = review_animation_code(manim_code, storyboard)
-        logger.info(f"Animation generated with total tokens: {storyboard_tokens + manim_tokens if not review_code else storyboard_tokens + manim_tokens + review_tokens}")
+        return None
 
-        return manim_code
-    else:
+    storyboard, storyboard_tokens = call_storyboard(slide_text)
+    if storyboard is None:
         logger.error("Failed to generate storyboard, skipping animation generation")
         return None
+
+    manim_code, manim_tokens = call_animation(storyboard)
+    if manim_code is None:
+        logger.error("Failed to generate manim code from storyboard")
+        return None
+
+    review_tokens = 0
+    if review_code:
+        reviewed_code, review_tokens = review_animation_code(manim_code, storyboard)
+        if reviewed_code is None:
+            logger.error("Code review failed, using unreviewed manim_code")
+        else:
+            manim_code = reviewed_code
+
+    total = storyboard_tokens + manim_tokens + (review_tokens or 0)
+    logger.info(f"Animation generated with total tokens: {total}")
+    return manim_code
+
 
 if __name__ == "__main__":
     # Example usage
