@@ -913,7 +913,306 @@ button:hover {
   margin-top: 20px;
 }
 
-/* Responsive */
+/* Responsive - Tablet (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  /* Sidebar adjustments for tablet - reduced to 180px */
+  .sidebar {
+    width: 180px;
+    min-width: 180px;
+    max-width: 180px;
+  }
+  
+  .main-content {
+    margin-left: 180px;
+    width: calc(100% - 180px);
+    max-width: calc(100% - 180px);
+    padding: 15px;
+    box-sizing: border-box;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+  
+  /* Ensure all content containers don't overflow */
+  .main-content > div,
+  .main-content > section {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  
+  .sidebar-header h2 {
+    font-size: 18px;
+  }
+  
+  .sidebar-nav button {
+    font-size: 13px;
+    padding: 8px 10px;
+  }
+  
+  /* Subject grid - 2 columns on tablet */
+  .subject-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  
+  .subject-card {
+    height: 180px;
+  }
+  
+  .subject-title {
+    font-size: 16px;
+  }
+  
+  /* Header adjustments */
+  .section-title {
+    font-size: 22px;
+  }
+  
+  .header-content {
+    flex-direction: row;
+    align-items: center;
+  }
+  
+  /* Course and video cards - 2 per row */
+  .courses-list,
+  .videos-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  
+  .course-card,
+  .video-card {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  
+  /* Stats grid - 2x2 layout */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  
+  .stat-card {
+    min-width: 0;
+    padding: 16px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  /* Material list adjustments */
+  .material-row {
+    padding: 12px 16px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  
+  .material-topic {
+    font-size: 14px;
+  }
+  
+  /* Materials list container */
+  .materials-list {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  
+  /* Material viewer container */
+  .material-viewer {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+    padding: 0;
+  }
+  
+  /* Slide block - remove fixed sizing */
+  .slide-block {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    min-height: 400px;
+    box-sizing: border-box;
+    min-width: 0;
+    margin-bottom: 16px;
+  }
+  
+  .slide-container {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    min-height: 350px;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  
+  /* Slide content area */
+  .slide-content {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+    padding: 20px;
+  }
+  
+  /* Slide explanation and example templates */
+  .slide-explanation,
+  .slide-example {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    min-height: 300px;
+    box-sizing: border-box;
+    min-width: 0;
+    margin: 0;
+    padding: 16px;
+  }
+  
+  /* Example body - stack on tablet */
+  .example-body {
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .example-left,
+  .example-right {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  
+  /* Questions section */
+  .questions-section,
+  div[style*="Practice Exercises"] {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+    padding: 20px;
+  }
+  
+  /* Practice exercises container */
+  .practice-exercises {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  
+  /* Fix inline styles in ViewMaterial - target the slide container */
+  div[style*="width: 1200px"],
+  div[style*="width: '1200px'"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+  }
+  
+  /* Fix slide content area height */
+  div[style*="height: 560px"] {
+    height: auto !important;
+    min-height: 400px !important;
+  }
+  
+  /* Ensure all direct children of main-content are responsive */
+  .main-content > div > div {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  
+  /* Content list and cards */
+  .content-list {
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .content-card {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+    padding: 12px;
+  }
+  
+  /* Assignment tabs */
+  .assignment-tabs {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .tab-button {
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+  
+  /* Form adjustments */
+  .subject-form,
+  .ai-generator,
+  .create-assignment-form {
+    padding: 16px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  
+  /* Students table - allow horizontal scroll */
+  .students-list {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .students-table {
+    min-width: 600px;
+  }
+  
+  /* Button adjustments */
+  button {
+    padding: 8px 14px;
+    font-size: 14px;
+  }
+  
+  /* Activity list */
+  .activity-list {
+    padding: 16px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .activity-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  /* Subject section */
+  .subject-section {
+    padding: 15px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+/* Responsive - Mobile (< 768px) */
 @media (max-width: 768px) {
   .sidebar {
     width: 200px;
