@@ -292,7 +292,7 @@ class CScene(Scene):
         label_offset: float = 0.2,
         label_font_size: int = 26,
     ) -> VGroup:
-         # Vectors OA and OB
+        # Vectors OA and OB
         v1 = A - O
         v2 = B - O
 
