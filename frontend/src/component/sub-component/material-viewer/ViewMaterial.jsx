@@ -302,13 +302,25 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 
 	const renderSlide = () => {
 		if (!currentSlide) return null;
-		if (currentSlide.slidetype === 'explanation') {
-		return <SlideExplanation slide={currentSlide} />;
-		}
-		if (currentSlide.slidetype === 'example') {
-		return <SlideExample slide={currentSlide} />;
-		}
-		return <div>Unknown slide type</div>;
+
+		return ( 
+			<div style={{ display: "flex", gap: "20px" }}> 
+			{/* Left side: text content */} 
+			<div style={{ flex: 1 }}> 
+				{currentSlide.slidetype === 'explanation' && <SlideExplanation slide={currentSlide} />} 
+				{currentSlide.slidetype === 'example' && <SlideExample slide={currentSlide} />} 
+			</div>
+			 
+			{/* Right side: Manim video if available */} 
+			{currentSlide.video_url && ( 
+				<div style={{ flex: 1 }}> 
+				<video controls width="100%"> 
+					<source src={currentSlide.video_url} type="video/mp4" /> 
+				</video> 
+				</div> 
+			)} 
+			</div> 
+			);
 	};
 
 	return (
@@ -480,14 +492,14 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 			</div>
 		</div>
 		
-		{videoUrl && ( 
+		{/* {videoUrl && ( 
 			<div style={{ marginTop: "20px" }}> 
 			<h3>🎬 Generated Video</h3> 
 			<video controls width="100%"> 
 				<source src={videoUrl} type="video/mp4" /> 
 				</video> 
 			</div> 
-		)}
+		)} */}
 		
 		{/* ========== QUESTIONS SECTION (SEPARATE) ========== */}
 		<div
