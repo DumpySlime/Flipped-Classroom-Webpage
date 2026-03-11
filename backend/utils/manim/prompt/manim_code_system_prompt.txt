@@ -36,11 +36,6 @@ WRONG: self.mobjects[-1]
 right_angle_mark(from_pt, RIGHT_ANGLE_PT, to_pt)  # RIGHT_ANGLE_PT gets mark
 angle_mark(from_pt, ANGLE_PT, to_pt)              # ANGLE_PT gets arc+label
 
-EXAMPLE right triangle A(-2,0)-B(2,0)-C(0,2):
-- Right angle at A: self.right_angle_mark(B, A, C)
-- Angle B arc:     self.angle_mark(A, B, C)  
-- Angle C arc:     self.angle_mark(B, C, A)
-
 TIMING BUDGET
 Use `self.pause(0.5-1)` max per beat.
 
