@@ -165,8 +165,7 @@ def generate_video():
             return jsonify({
                 "error": "Need at least 6 slides (intro, 4 content, conclusion)"
             }), 400
-
-        # Slides 2–5 are indexes 1..4
+            
         content_slides = all_slides[1:5]
         topic = material.get("topic") or material.get("title") or "Educational Topic"
 
@@ -198,6 +197,13 @@ def generate_video():
             safe_code = safe_code.replace("MathTex", "Text")
             safe_code = "\n".join(line.rstrip() for line in safe_code.splitlines()).lstrip()
             safe_code = re.sub(r"\.RightAngle", "", safe_code)
+            
+            for bad, good in {
+                "→": "->",
+                "←": "<-",
+                "⇒": "=>",
+            }.items():
+                safe_code = safe_code.replace(bad, good)
 
             try:
                 compile(safe_code, f"generated-manim-{slide_number}", "exec")
@@ -264,6 +270,14 @@ def generate_video():
                     }), 500
 
                 video_url = save_video_to_static(video_path, output_id)
+                raw = material.get("slides", {})
+                if isinstance(raw, dict) and "slides" in raw:
+                    idx = slide_number - 1  # slide_number is 2..5
+                    field_path = f"slides.slides.{idx}.video_url"
+                    db.materials.update_one(
+                        {"_id": material_obj_id},
+                        {"$set": {field_path: video_url}},
+                    )
                 videos.append({
                     "slide": slide_number,
                     "videoUrl": video_url,
@@ -275,7 +289,44 @@ def generate_video():
                 if out_dir and os.path.isdir(out_dir):
                     shutil.rmtree(out_dir, ignore_errors=True)
 
-        # Store all part URLs on the material if you like
+        raw = material.get("slides", {})
+        if isinstance(raw, dict) and "slides" in raw:
+            slides_doc = raw.get("slides") or []
+            for part in videos:
+                slide_num = part["slide"] 
+                url = part["videoUrl"]
+                idx = slide_num - 1
+                if 0 <= idx < len(slides_doc):
+                    slides_doc[idx]["video_url"] = url
+
+            db.materials.update_one(
+                {"_id": material_obj_id},
+                {
+                    "$set": {
+                        "slides.slides": slides_doc,
+                        "videoGeneratedAt": datetime.utcnow(),
+                    }
+                },
+            )
+        else:
+            slides_list = raw if isinstance(raw, list) else []
+            for part in videos:
+                slide_num = part["slide"]
+                url = part["videoUrl"]
+                idx = slide_num - 1
+                if 0 <= idx < len(slides_list):
+                    slides_list[idx]["video_url"] = url
+
+            db.materials.update_one(
+                {"_id": material_obj_id},
+                {
+                    "$set": {
+                        "slides": slides_list,
+                        "videoGeneratedAt": datetime.utcnow(),
+                    }
+                },
+            )
+
         db.materials.update_one(
             {"_id": material_obj_id},
             {

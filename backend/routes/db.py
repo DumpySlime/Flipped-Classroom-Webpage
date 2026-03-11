@@ -163,6 +163,8 @@ def get_material():
                 "uploaded_by": str(m.get("uploaded_by")),
                 "created_at": m.get("created_at"),
                 # "content_type": m.get("content_type")
+                "video_url": m.get("video_url"),
+                "video_generated_at": m.get("video_generated_at")
             })
         print(f'Materials of {subject_id}:', materials)
         if not materials:

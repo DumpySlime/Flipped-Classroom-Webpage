@@ -39,7 +39,7 @@ function VideoGenerator({ materialId, onVideoGenerated }) {
       const res = await axios.post(
         `${API_BASE_URL}/api/generate-video/generate`,
         { material_id: materialId, quality: "medium" },
-        { headers: authHeaders, timeout: 6 * 60 * 1000 } // 6 minutes
+        { headers: authHeaders, timeout: 6 * 60 * 9000 } 
       );
 
       const url = res.data.videoUrl || res.data.video_path || res.data.videoURL;
@@ -55,6 +55,10 @@ function VideoGenerator({ materialId, onVideoGenerated }) {
       }
     } catch (err) {
       console.error("Video generation error:", err);
+      if (err.response) {
+        console.error("Status:", err.response.status);
+        console.error("Data:", err.response.data);
+      }
       const msg =
         err.response?.data?.error ||
         err.message ||
@@ -115,14 +119,14 @@ function VideoGenerator({ materialId, onVideoGenerated }) {
           </details>
         )}
 
-        {videoUrl && (
+        {/* {videoUrl && (
           <div style={{ marginTop: "0.5rem" }}>
             <p>Generated video:</p>
             <video controls width="100%">
               <source src={videoUrl} type="video/mp4" />
             </video>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );
