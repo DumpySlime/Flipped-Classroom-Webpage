@@ -321,3 +321,108 @@ class GeneratedScene3(CScene):
         rule_text.to_edge(UP)
         self.play_steps(Write(rule_text))
         self.pause(1.0)
+
+class GeneratedScene4(CScene):
+    def construct(self):
+        # Beat 1: Show title
+        title = self.setup_scene("Polygons: Regular vs Irregular")
+        self.pause(0.5)
+        
+        # Beat 2: Show regular hexagon
+        # Regular hexagon vertices (centered at origin)
+        hex_center = ORIGIN
+        hex_radius = 2.0
+        hex_vertices = []
+        for i in range(6):
+            angle = i * 2 * PI / 6
+            x = hex_center[0] + hex_radius * np.cos(angle)
+            y = hex_center[1] + hex_radius * np.sin(angle)
+            hex_vertices.append(np.array([x, y, 0]))
+        
+        regular_hexagon = self.polygon(*hex_vertices)
+        shape_center_hex = self.get_shape_center(*hex_vertices)
+        hex_label = self.label_point(hex_center, "Regular", shape_center_hex)
+        self.pause(0.5)
+        
+        # Beat 3: Highlight one side and one angle
+        # Highlight side 0 (between vertices 0 and 1)
+        side0 = self.segment(hex_vertices[0], hex_vertices[1], color=YELLOW, stroke_width=6)
+        # Highlight angle at vertex 0 (between vertices 5-0-1)
+        angle0 = self.angle_mark(hex_vertices[5], hex_vertices[0], hex_vertices[1], 
+                                color=YELLOW, label="")
+        self.pause(0.5)
+        
+        # Beat 4: Fade title and show definition text
+        self.fade_out_group([title])
+        definition_text = self.mtex(r"\text{All sides equal, all angles equal}")
+        definition_text.to_edge(UP)
+        self.play_steps(Write(definition_text))
+        self.pause(0.5)
+        
+        # Beat 5: Fade regular hexagon and its text
+        self.fade_out_group([regular_hexagon, hex_label, side0, angle0, definition_text])
+        self.pause(0.5)
+        
+        # Beat 6: Show irregular pentagon
+        # Irregular pentagon vertices (scalene)
+        pent_vertices = [
+            np.array([-1.5, 0.5, 0]),    # A
+            np.array([0.5, 1.2, 0]),     # B
+            np.array([1.8, -0.3, 0]),    # C
+            np.array([0.2, -1.5, 0]),    # D
+            np.array([-1.8, -0.8, 0])    # E
+        ]
+        
+        irregular_pentagon = self.polygon(*pent_vertices)
+        shape_center_pent = self.get_shape_center(*pent_vertices)
+        pent_label = self.label_point(self.get_shape_center(*pent_vertices), "Irregular", shape_center_pent)
+        self.pause(0.5)
+        
+        # Beat 7: Highlight two sides of different lengths
+        # Side 0 (A-B)
+        side_a = self.segment(pent_vertices[0], pent_vertices[1], color=YELLOW, stroke_width=6)
+        # Side 2 (C-D)
+        side_b = self.segment(pent_vertices[2], pent_vertices[3], color=RED, stroke_width=6)
+        self.pause(0.5)
+        
+        # Beat 8: Show definition text
+        definition_text2 = self.mtex(r"\text{Sides and/or angles are different}")
+        definition_text2.to_edge(UP)
+        self.play_steps(Write(definition_text2))
+        self.pause(0.5)
+        
+        # Beat 9: Fade irregular pentagon and its text
+        self.fade_out_group([irregular_pentagon, pent_label, side_a, side_b, definition_text2])
+        self.pause(0.5)
+        
+        # Beat 10: Transform to regular octagon (stop sign)
+        # Regular octagon vertices
+        oct_radius = 2.0
+        oct_vertices = []
+        for i in range(8):
+            angle = i * 2 * PI / 8 - PI/8  # Rotate so flat side is at top
+            x = oct_radius * np.cos(angle)
+            y = oct_radius * np.sin(angle)
+            oct_vertices.append(np.array([x, y, 0]))
+        
+        regular_octagon = self.polygon(*oct_vertices)
+        # Transform from irregular pentagon to regular octagon
+        self.transform_focus(
+            irregular_pentagon,
+            regular_octagon,
+            fade_out=[]
+        )
+        self.pause(0.5)
+        
+        # Beat 11: Label the shape
+        shape_center_oct = self.get_shape_center(*oct_vertices)
+        stop_label = self.label_point(np.array([0, 2.5, 0]), "Stop Sign", shape_center_oct)
+        
+        conclusion_text = self.mtex(r"\text{Regular Octagon (8 equal sides)}")
+        conclusion_text.to_edge(DOWN)
+        self.play_steps(Write(conclusion_text))
+        self.pause(0.5)
+        
+        # Beat 12: Emphasize conclusion text
+        self.play_steps(Indicate(conclusion_text))
+        self.pause(1.0)
