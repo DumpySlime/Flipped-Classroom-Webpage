@@ -323,7 +323,11 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 			{/* Right side: Manim video if available */} 
 			{currentSlide.video_url && ( 
 				<div style={{ flex: 1 }}> 
-				<video controls width="100%"> 
+				<video
+					key={currentSlideIndex} // re-render when slide changes
+					controls 
+					width="100%"
+				> 
 					<source src={currentSlide.video_url} type="video/mp4" /> 
 				</video> 
 				</div> 
