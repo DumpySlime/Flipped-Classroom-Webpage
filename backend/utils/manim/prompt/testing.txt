@@ -20,6 +20,10 @@ JSON OUTPUT (exact format)
 }
 
 
+EXAMPLE right triangle A(-2,0)-B(2,0)-C(2,2):
+- Right angle at A: self.right_angle_mark(B, A, C)
+- Angle B arc:     self.angle_mark(A, B, C)  
+- Angle C arc:     self.angle_mark(B, C, A)
 
     # ==================================
     # TRIGONOMETRY HIGH-LEVEL TEMPLATES

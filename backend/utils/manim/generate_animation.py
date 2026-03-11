@@ -1,3 +1,4 @@
+import re
 import sys
 import os
 import json
@@ -44,6 +45,13 @@ def get_session(
     session.mount('http://', adapter)
     session.mount('https://', adapter)
     return session
+
+def clean_code(content: str) -> str:
+    # Remove ```python ... ``` blocks, keeping only the code inside
+    code_match = re.search(r'```(?:python)?\s*(.*?)```', content, re.DOTALL)
+    if code_match:
+        return code_match.group(1).strip()
+    return content.strip()
 
 def load_prompt(prompt_file: Path) -> str:
     try:
@@ -142,13 +150,14 @@ def call_animation(storyboard):
     try:
         logger.info(f"Generating animation code...")
         result = call_deepseek(system_prompt, user_prompt, 0.5, 5000)
-        content = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip("```python").strip("```").strip()
+        content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+        clean_content = clean_code(content)
         token_usage, total_tokens = get_token_usage(result)
     
         logger.info("Manim code generated successfully")
-        logger.info(f"Code generated: {content}")
+        logger.info(f"Code generated: {clean_content}")
         logger.info(f"Manim code generated with token usage: {token_usage}")
-        return content, total_tokens
+        return clean_content, total_tokens
     except requests.exceptions.HTTPError as e:
         logger.error(f"HTTP Error: {e.response.status_code} - {e.response.text}")
         raise
@@ -169,11 +178,12 @@ def review_animation_code(manim_code: str, storyboard):
         logger.info(f"Reviewing code...")
         result = call_deepseek(system_prompt, user_prompt, 0.5, 5000)
         logger.info("Code review completed successfully")
-        content = result.get('choices', [{}])[0].get('message', {}).get('content', '').strip("```python").strip("```").strip()
-        logger.info(f"Code review result: {content}")
+        content = result.get('choices', [{}])[0].get('message', {}).get('content', '')
+        clean_content = clean_code(content)
+        logger.info(f"Code review result: {clean_content}")
         token_usage, total_tokens = get_token_usage(result)
         logger.info(f"Code review token usage: {token_usage}")
-        return content, total_tokens
+        return clean_content, total_tokens
     except Exception as e:
         logger.error(f"Code review failed: {e}")
         return None, None
