@@ -152,7 +152,7 @@ class CScene(Scene):
     def get_shape_center(self, *points: np.ndarray) -> np.ndarray:
         """Average of polygon vertices = shape center."""
         if not points:
-            return ORIGIN
+            return [0,0]
         return np.mean(points, axis=0)
 
 
@@ -292,18 +292,41 @@ class CScene(Scene):
         label_offset: float = 0.2,
         label_font_size: int = 26,
     ) -> VGroup:
+         # Vectors OA and OB
+        v1 = A - O
+        v2 = B - O
+
+        # Angles of OA, OB in [-pi, pi]
+        ang1 = np.arctan2(v1[1], v1[0])
+        ang2 = np.arctan2(v2[1], v2[0])
+
+        # Difference in [-pi, pi]
+        diff = ang2 - ang1
+        diff = (diff + np.pi) % (2 * np.pi) - np.pi
+
+        # If diff is negative, swap lines so that Angle takes the smaller interior angle
+        if diff < 0:
+            line1 = Line(O, B)
+            line2 = Line(O, A)
+        else:
+            line1 = Line(O, A)
+            line2 = Line(O, B)
+
         # OA and OB rays
         angle = Angle(
-            Line(O, A),
-            Line(O, B),
+            line1,
+            line2,
             radius=radius,
             other_angle=False,
             color=color,
         )
         group = VGroup(angle)
+        
         if label:
+            # Angle bisector direction (unit vector pointing into/out of angle)
+            bisector_dir = normalize(A - O + B - O)  # Sum OA + OB vectors  
             label_m = MathTex(label, font_size=label_font_size, color=color)
-            label_m.move_to(angle.point_from_proportion(0.5) + label_offset * OUT)
+            label_m.move_to(angle.point_from_proportion(0.5) + label_offset * bisector_dir)
             group.add(label_m)
         self.play(Create(group))
         return group
@@ -313,7 +336,7 @@ class CScene(Scene):
         A: np.ndarray,
         O: np.ndarray,
         B: np.ndarray,
-        size: float = 0.25,
+        size: float = 0.4,
         color=YELLOW,
     ) -> Square:
         """
@@ -324,27 +347,12 @@ class CScene(Scene):
             size: Side length of square
             color: Color of the square
         """
-        # Get unit vectors along OA and OB
-        OA_dir = (A - O) / np.linalg.norm(A - O)
-        OB_dir = (B - O) / np.linalg.norm(B - O)
-
-        # Create square: O → OA_dir → OA+OB → OB
-        p1 = O                           # Bottom-left corner
-        p2 = O + OA_dir * size           # Bottom-right (along OA)
-        p3 = p2 + OB_dir * size          # Top-right (along OB from p2)
-        p4 = O + OB_dir * size           # Top-left (along OB)
-
-        # Create square with stroke only (no fill)
-        square = Square(
-            side_length=size,
-            stroke_color=color,
-            stroke_width=8,
-            fill_color=color,
-            fill_opacity=0.0  # Stroke only, no fill
+        square = RightAngle(
+            Line(O, A),
+            Line(O, B),
+            length=size,
+            color=color,
         )
-
-        # Position square correctly
-        square.move_to(p1, aligned_edge=LEFT + DOWN)  # Align to bottom-left
 
         # Animate appearance
         self.play(FadeIn(square, scale=0.8))
@@ -540,3 +548,5 @@ class CScene(Scene):
         final.next_to(last, DOWN, buff=0.4, aligned_edge=LEFT)
         self.play(Write(final))
         return VGroup(prob, lines, final)
+
+    # ---------- Generic shape ----------
