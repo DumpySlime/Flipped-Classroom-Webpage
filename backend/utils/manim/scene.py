@@ -88,11 +88,11 @@ class CScene(Scene):
         Returns:
             The (now transformed) main object, for continued use.
         """
-        anims = [Transform(old_main, new_main)]
+        anims = [ReplacementTransform(old_main, new_main)]
         if fade_out:
             anims.append(FadeOut(VGroup(*fade_out)))
         self.play_steps(*anims, run_time=run_time)
-        return old_main
+        return new_main
 
     # ---------- Text & labels ----------
 
@@ -338,26 +338,16 @@ class CScene(Scene):
         B: np.ndarray,
         size: float = 0.4,
         color=YELLOW,
-    ) -> Square:
-        """
-        Draw right angle mark using a small square at vertex O.
-
-        Args:
-            A, O, B: Points forming ∠AOB (O is vertex)
-            size: Side length of square
-            color: Color of the square
-        """
-        square = RightAngle(
+    ) -> RightAngle:
+        right_angle = RightAngle(
             Line(O, A),
             Line(O, B),
             length=size,
             color=color,
         )
 
-        # Animate appearance
-        self.play(FadeIn(square, scale=0.8))
-
-        return square
+        self.play(FadeIn(right_angle, scale=0.8))
+        return right_angle
 
 
     def distance_brace(

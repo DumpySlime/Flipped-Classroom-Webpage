@@ -11,7 +11,7 @@ class GeneratedScene1(CScene):
         B = np.array([2, -1, 0])
         C = np.array([-2, 2, 0])
         triangle = self.polygon(A, B, C)
-        
+
         shape_center = self.get_shape_center(A, B, C)
         A_label = self.label_point(A, "A", shape_center)
         B_label = self.label_point(B, "B", shape_center)
@@ -27,7 +27,7 @@ class GeneratedScene1(CScene):
         self.pause(0.5)
         
         # Beat 3: Focus on angle B
-        angle_B_mark = self.interior_angle_mark(A, B, C, color=YELLOW, label="B")
+        angle_B_mark = self.angle_mark(A, B, C, color=YELLOW, label="B")
         
         self.pause(0.5)
         
@@ -76,7 +76,7 @@ class GeneratedScene1(CScene):
         self.pause(0.5)
         
         # Beat 8: Highlight angle C
-        angle_C_mark = self.interior_angle_mark(A, C, B, color=YELLOW, label="C")
+        angle_C_mark = self.angle_mark(A, C, B, color=YELLOW, label="C")
         
         self.pause(0.5)
         
