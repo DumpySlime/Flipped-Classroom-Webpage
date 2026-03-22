@@ -9,6 +9,7 @@ import StudentAnalytics from './sub-component/StudentAnalytics';
 import Assignment from './sub-component/Assignment';
 import AIChatroom from './sub-component/chatroom/AIChatroom';
 import SubjectMembers from './sub-component/SubjectMembers';
+import { useTranslation } from 'react-i18next';
 
 import { 
   materialAPI, 
@@ -31,6 +32,7 @@ function Dashboard(props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState(null);
+  const { t, i18n } = useTranslation();
 
   useEffect(() => {
     loadDashboardData();
@@ -201,7 +203,7 @@ function Dashboard(props) {
       <div className="dashboard-container">
         <div className="dashboard-loading">
           <div className="spinner"></div>
-          <p>Loading dashboard data...</p>
+          <p>{t('loadingDashboard')}</p>
         </div>
       </div>
     );
@@ -211,9 +213,9 @@ function Dashboard(props) {
     return (
       <div className="dashboard-container">
         <div className="dashboard-error">
-          <h2>Error Loading Dashboard</h2>
+          <h2>{t('errorLoadingDashboard')}</h2>
           <p>{error}</p>
-          <button onClick={() => loadDashboardData()}>Retry</button>
+          <button onClick={() => loadDashboardData()}>{t('retry')}</button>
         </div>
       </div>
     );
@@ -332,7 +334,7 @@ function Dashboard(props) {
     <div className="dashboard-container">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <h2>Dashboard</h2>
+          <h2>{t('dashboardTitle')}</h2>
           <div className="user-info">
             <div className="user-details">
               <span className="user-name">
@@ -346,7 +348,7 @@ function Dashboard(props) {
               className="logout-button"
               onClick={handleLogout}
             >
-              🚪 Logout
+              {t('logout')}
             </button>
           </div>
         </div>
@@ -357,7 +359,7 @@ function Dashboard(props) {
               onClick={() => {setActiveSection('overview'); 
 				loadDashboardData();}}
             >
-              📊 Overview
+              {t('navOverview')}
             </button>
           )}
           {roleSections.includes && roleSections.includes('subject-members') && (
@@ -365,7 +367,7 @@ function Dashboard(props) {
               className={activeSection === 'subject-members' ? 'active' : ''}
               onClick={() => setActiveSection('subject-members')}
             >
-              🧑‍🤝‍🧑 Subject Members
+              {t('navSubjectMembers')}
             </button>
           )}
           {roleSections.includes && roleSections.includes('materials') && (
@@ -373,7 +375,7 @@ function Dashboard(props) {
               className={activeSection === 'materials' ? 'active' : ''}
               onClick={() => setActiveSection('materials')}
             >
-              📚 Materials
+              {t('navMaterials')}
             </button>
           )}
           {roleSections.includes && roleSections.includes('assignments') && (
@@ -381,7 +383,7 @@ function Dashboard(props) {
               className={activeSection === 'assignments' ? 'active' : ''}
               onClick={() => setActiveSection('assignments')}
             >
-              📝 Assignments
+              {t('navAssignments')}
             </button>
           )}
           {roleSections.includes && roleSections.includes('analytics') && (
@@ -389,7 +391,7 @@ function Dashboard(props) {
               className={activeSection === 'analytics' ? 'active' : ''}
               onClick={() => setActiveSection('analytics')}
             >
-              📈 Analytics
+              {t('navAnalytics')}
             </button>
           )}
           {roleSections.includes && roleSections.includes('subjects') && (
@@ -397,7 +399,7 @@ function Dashboard(props) {
               className={activeSection === 'subjects' ? 'active' : ''}
               onClick={() => setActiveSection('subjects')}
             >
-              📖 Subjects
+              {t('navSubjects')}
             </button>
           )}
           {roleSections.includes && roleSections.includes('users') && (
@@ -405,7 +407,7 @@ function Dashboard(props) {
               className={activeSection === 'users' ? 'active' : ''}
               onClick={() => setActiveSection('users')}
             >
-              👥 Users
+              {t('navUsers')}
             </button>
           )}
           {roleSections.includes && roleSections.includes('chatroom') && (
@@ -413,10 +415,14 @@ function Dashboard(props) {
               className={activeSection === 'chatroom' ? 'active' : ''}
               onClick={() => setActiveSection('chatroom')}
             >
-              💬 AI Chatroom
+              💬 {t('navChatroom')}
             </button>
           )}
         </nav>
+        <div className="sidebar-language">
+          <button onClick={() => i18n.changeLanguage('en')} className="lang-btn">EN</button>
+          <button onClick={() => i18n.changeLanguage('zh-HK')} className="lang-btn">繁體中文(香港)</button>
+        </div>
       </aside>
       <main className="main-content">
         {renderActiveSection()}

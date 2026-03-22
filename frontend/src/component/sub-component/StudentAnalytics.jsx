@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 
 const API_BASE_URL = 'http://localhost:5000';
 
@@ -21,7 +22,7 @@ const fetchDataWithRetry = async (url, options = {}, retries = 3) => {
 
 const renderMarkdown = (markdown) => {
   if (!markdown) return null;
-  
+
   const lines = markdown.split('\n');
   let elements = [];
   let listItems = [];
@@ -45,10 +46,10 @@ const renderMarkdown = (markdown) => {
     if (trimmedLine.startsWith('-') || trimmedLine.startsWith('*') || /^\d+\./.test(trimmedLine)) {
       if (!inList) inList = true;
       const content = trimmedLine.replace(/^[-*]\s|^\d+\.\s/, '').trim();
-      const boldedContent = content.split('**').map((text, i) => 
+      const boldedContent = content.split('**').map((text, i) =>
         i % 2 === 1 ? <strong key={`bold-${index}-${i}`}>{text}</strong> : text
       );
-      listItems.push(<li key={`li-${index}`} className="mb-0.5">{boldedContent}</li>);
+      listItems.push(<li key={`li-${index}`}>{boldedContent}</li>);
       return;
     }
 
@@ -67,7 +68,7 @@ const renderMarkdown = (markdown) => {
         </h3>
       );
     } else if (trimmedLine.length > 0) {
-      const boldedContent = trimmedLine.split('**').map((text, i) => 
+      const boldedContent = trimmedLine.split('**').map((text, i) =>
         i % 2 === 1 ? <strong key={`p-bold-${index}-${i}`}>{text}</strong> : text
       );
       elements.push(
@@ -82,13 +83,11 @@ const renderMarkdown = (markdown) => {
   return elements;
 };
 
-const formatLastActivity = (dateString) => {
-  if (!dateString) return 'Never';
+const formatLastActivity = (dateString, neverLabel) => {
+  if (!dateString) return neverLabel;
 
   try {
     const date = new Date(dateString);
-    
-    // Format as: Jan 26, 2026, 10:30 PM
     const options = {
       year: 'numeric',
       month: 'short',
@@ -97,15 +96,15 @@ const formatLastActivity = (dateString) => {
       minute: '2-digit',
       hour12: true
     };
-    
     return date.toLocaleString('en-US', options);
   } catch (error) {
     return dateString;
   }
 };
 
-
 const StudentAnalytics = (props) => {
+  const { t } = useTranslation();
+
   const [studentData, setStudentData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -124,7 +123,7 @@ const StudentAnalytics = (props) => {
         method: 'GET',
         withCredentials: true,
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+          'Authorization': `Bearer ${sessionStorage.getItem('access_token')}`
         }
       });
 
@@ -135,7 +134,7 @@ const StudentAnalytics = (props) => {
       }
     } catch (err) {
       console.error('Error fetching student list:', err);
-      setError("Failed to load student data.");
+      setError(t('errorLabel'));
     } finally {
       setIsLoading(false);
     }
@@ -163,7 +162,7 @@ const StudentAnalytics = (props) => {
         data: { student_id: studentId },
         withCredentials: true,
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Authorization': `Bearer ${sessionStorage.getItem('access_token')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -176,7 +175,7 @@ const StudentAnalytics = (props) => {
       }));
     } catch (err) {
       console.error('Error generating AI report:', err.response ? err.response.data : err.message);
-      const errorMessage = err.response?.data?.error || `An error occurred while generating report for ${studentName}.`;
+      const errorMessage = err.response?.data?.error || t('errorFor', { name: studentName });
       setReportState(prev => ({
         ...prev,
         report: null,
@@ -192,19 +191,23 @@ const StudentAnalytics = (props) => {
     <div className="p-6 bg-gray-50 min-h-screen font-sans">
       <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-2xl p-10 lg:p-12">
         <div className="border-b border-gray-200 pb-4 mb-6">
-          <h3 className="text-3xl font-extrabold text-gray-900">Student Performance Analytics</h3>
-          <p className="mt-1 text-sm text-gray-500">View student progress and generate AI-driven performance reports.</p>
+          <h3 className="text-3xl font-extrabold text-gray-900">
+            {t('studentPerformanceAnalytics')}
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {t('viewStudentProgress')}
+          </p>
         </div>
 
         {isLoading && (
           <div className="text-center py-10 text-gray-600">
-            <p>Loading student data...</p>
+            <p>{t('loadingStudentData')}</p>
           </div>
         )}
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4 text-sm" role="alert">
-            <strong className="font-bold mr-2">Error</strong>
+            <strong className="font-bold mr-2">{t('errorLabel')}</strong>
             <span className="block sm:inline ml-2">{error}</span>
           </div>
         )}
@@ -215,19 +218,19 @@ const StudentAnalytics = (props) => {
               <thead className="bg-gray-100">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                    Student Name
+                    {t('studentName')}
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                    Progress
+                    {t('progress')}
                   </th>
                   <th scope="col" className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                    Avg. Score
+                    {t('avgScore')}
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                    Last Activity
+                    {t('lastActivity')}
                   </th>
                   <th scope="col" className="px-6 py-3">
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">{t('actions')}</span>
                   </th>
                 </tr>
               </thead>
@@ -251,7 +254,7 @@ const StudentAnalytics = (props) => {
                         {student.avgQuizScore}%
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatLastActivity(student.lastActivity)}
+                        {formatLastActivity(student.lastActivity, t('never'))}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
@@ -259,7 +262,9 @@ const StudentAnalytics = (props) => {
                           disabled={reportState.isLoading && reportState.targetId === student.id}
                           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-150"
                         >
-                          {reportState.isLoading && reportState.targetId === student.id ? 'Generating...' : 'Generate Report'}
+                          {reportState.isLoading && reportState.targetId === student.id
+                            ? t('generating')
+                            : t('generateReport')}
                         </button>
                       </td>
                     </tr>
@@ -268,7 +273,9 @@ const StudentAnalytics = (props) => {
                       <tr className="bg-indigo-50 border-t border-indigo-200">
                         <td colSpan="6" className="px-6 py-4">
                           <p className="font-bold text-base text-indigo-800 mb-2">
-                            {reportState.report ? `AI Report for ${student.name}:` : `Error for ${student.name}:`}
+                            {reportState.report
+                              ? t('aiReportFor', { name: student.name })
+                              : t('errorFor', { name: student.name })}
                           </p>
                           <div className={`p-4 rounded-lg border shadow-inner bg-white text-gray-800 text-sm ${reportState.error ? 'border-red-400 bg-red-50 text-red-700' : 'border-indigo-300'}`}>
                             {reportState.report ? renderMarkdown(reportState.report) : reportState.error}
@@ -284,7 +291,7 @@ const StudentAnalytics = (props) => {
         )}
 
         {studentData.length === 0 && !isLoading && (
-          <p className="p-4 text-center text-gray-500">No student data available.</p>
+          <p className="p-4 text-center text-gray-500">{t('noStudentData')}</p>
         )}
       </div>
     </div>

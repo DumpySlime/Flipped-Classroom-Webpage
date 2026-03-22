@@ -1,5 +1,3 @@
-# analytics.py - Student Analytics Backend
-
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from bson import ObjectId
@@ -7,7 +5,6 @@ from datetime import datetime
 
 analytics_bp = Blueprint('analytics', __name__)
 
-# Global variables - initialized by app
 db = None
 
 def init_analytics(database):
@@ -25,21 +22,16 @@ def get_student_analytics():
     Returns: List of students with their analytics metrics
     """
     try:
-        # Get total number of materials for progress calculation
         total_materials_count = db.materials.count_documents({"is_deleted": {"$ne": True}})
         
         if total_materials_count == 0:
-            total_materials_count = 1  # Prevent division by zero
-        
-        # Aggregation pipeline to calculate analytics per student
+            total_materials_count = 1
         pipeline = [
-            # Match only submitted answers
             {
                 "$match": {
                     "status": "submitted"
                 }
             },
-            # Group by student_id to aggregate their performance
             {
                 "$group": {
                     "_id": "$student_id",
@@ -49,7 +41,6 @@ def get_student_analytics():
                     "materials_attempted": {"$addToSet": "$material_id"}
                 }
             },
-            # Lookup student details from students collection
             {
                 "$lookup": {
                     "from": "students",
@@ -59,7 +50,6 @@ def get_student_analytics():
                 }
             },
             {"$unwind": {"path": "$student_info", "preserveNullAndEmptyArrays": True}},
-            # Lookup user details (in case student info is in users collection)
             {
                 "$lookup": {
                     "from": "users",
@@ -69,7 +59,6 @@ def get_student_analytics():
                 }
             },
             {"$unwind": {"path": "$user_info", "preserveNullAndEmptyArrays": True}},
-            # Project final output with calculated fields
             {
                 "$project": {
                     "id": {"$toString": "$_id"},
@@ -98,13 +87,11 @@ def get_student_analytics():
                     "totalSubmissions": "$total_submissions"
                 }
             },
-            # Sort by last activity (most recent first)
             {"$sort": {"lastActivity": -1}}
         ]
         
         results = list(db.student_answers.aggregate(pipeline))
         
-        # If no results, return empty array
         if not results:
             return jsonify([]), 200
         
@@ -130,16 +117,13 @@ def generate_ai_report():
         if not student_id_str:
             return jsonify({"error": "student_id is required"}), 400
         
-        # Convert string to ObjectId
         try:
             student_id = ObjectId(student_id_str)
         except:
             return jsonify({"error": "Invalid student_id format"}), 400
         
-        # Fetch student information
         student = db.students.find_one({"_id": student_id})
         if not student:
-            # Try users collection
             student = db.users.find_one({"_id": student_id})
         
         if not student:
@@ -147,7 +131,6 @@ def generate_ai_report():
         
         student_name = student.get('name') or student.get('username', 'Student')
         
-        # Fetch all submissions for this student
         submissions = list(db.student_answers.find({
             "student_id": student_id,
             "status": "submitted"
@@ -158,13 +141,10 @@ def generate_ai_report():
                 "report": f"## No Data Available\n\n{student_name} has not completed any quizzes or assignments yet. No performance data is available for analysis."
             }), 200
         
-        # Calculate detailed statistics with question analysis
         analytics_data = calculate_student_statistics_with_questions(submissions, student_name)
         
-        # Import ai_service from ai.py to generate report
         from routes.ai import generate_performance_report
         
-        # Call AI service to generate report
         ai_report = generate_performance_report(analytics_data)
         
         return jsonify({"report": ai_report}), 200
@@ -186,14 +166,11 @@ def calculate_student_statistics_with_questions(submissions, student_name):
     max_score = max(scores) if scores else 0
     min_score = min(scores) if scores else 0
     
-    # Get unique materials attempted
     materials_attempted = set(str(s.get('material_id')) for s in submissions)
     total_materials = db.materials.count_documents({"is_deleted": {"$ne": True}})
     
-    # Calculate progress
     progress_percentage = (len(materials_attempted) / total_materials * 100) if total_materials > 0 else 0
-    
-    # Analyze incorrect answers with question details
+
     incorrect_questions = []
     correct_count = 0
     total_questions = 0
@@ -209,16 +186,12 @@ def calculate_student_statistics_with_questions(submissions, student_name):
             if is_correct:
                 correct_count += 1
             else:
-                # Fetch question details from questions collection
                 question_id = answer.get('question_id', '')
                 question_doc = db.questions.find_one({"material_id": material_id})
                 
                 if question_doc:
                     question_content = question_doc.get('question_content', {})
                     questions_list = question_content.get('questions', [])
-                    
-                    # Parse question_id to find the specific question
-                    # Format: "material_id-index1-index2"
                     parts = question_id.split('-')
                     if len(parts) >= 3:
                         try:
@@ -235,7 +208,6 @@ def calculate_student_statistics_with_questions(submissions, student_name):
                         except (ValueError, IndexError):
                             pass
     
-    # Get recent activity (last 5 submissions)
     recent_submissions = submissions[:5]
     recent_performance = [
         {
@@ -246,7 +218,6 @@ def calculate_student_statistics_with_questions(submissions, student_name):
         for s in recent_submissions
     ]
     
-    # Calculate improvement trend
     if len(scores) >= 2:
         recent_half_avg = sum(scores[:len(scores)//2]) / len(scores[:len(scores)//2])
         older_half_avg = sum(scores[len(scores)//2:]) / len(scores[len(scores)//2:])
@@ -260,7 +231,6 @@ def calculate_student_statistics_with_questions(submissions, student_name):
     else:
         trend = "insufficient data"
     
-    # Calculate accuracy
     accuracy = (correct_count / total_questions * 100) if total_questions > 0 else 0
     
     return {
@@ -278,7 +248,7 @@ def calculate_student_statistics_with_questions(submissions, student_name):
         "correct_count": correct_count,
         "incorrect_count": total_questions - correct_count,
         "accuracy": accuracy,
-        "incorrect_questions": incorrect_questions[:10]  # Limit to 10 most recent mistakes
+        "incorrect_questions": incorrect_questions[:10]
     }
 
 
@@ -291,12 +261,10 @@ def get_student_detail(student_id):
     try:
         student_obj_id = ObjectId(student_id)
         
-        # Get all submissions
         submissions = list(db.student_answers.find({
             "student_id": student_obj_id
         }).sort("submission_time", -1))
         
-        # Get student info
         student = db.students.find_one({"_id": student_obj_id}) or db.users.find_one({"_id": student_obj_id})
         
         if not student:
