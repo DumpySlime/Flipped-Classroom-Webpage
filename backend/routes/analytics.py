@@ -11,27 +11,21 @@ def init_analytics(database):
     """Initialize the analytics blueprint with database connection"""
     global db
     db = database
+    # Auto-create index on ai_reports for fast student lookup
+    db.ai_reports.create_index([("student_id", 1)], unique=True)
     print("[ANALYTICS] Analytics module initialized")
 
 
 @analytics_bp.route('/api/analytics/students', methods=['GET'])
 @jwt_required()
 def get_student_analytics():
-    """
-    Aggregate student performance data from student_answers collection
-    Returns: List of students with their analytics metrics
-    """
     try:
         total_materials_count = db.materials.count_documents({"is_deleted": {"$ne": True}})
-        
         if total_materials_count == 0:
             total_materials_count = 1
+
         pipeline = [
-            {
-                "$match": {
-                    "status": "submitted"
-                }
-            },
+            {"$match": {"status": "submitted"}},
             {
                 "$group": {
                     "_id": "$student_id",
@@ -89,14 +83,12 @@ def get_student_analytics():
             },
             {"$sort": {"lastActivity": -1}}
         ]
-        
+
         results = list(db.student_answers.aggregate(pipeline))
-        
         if not results:
             return jsonify([]), 200
-        
         return jsonify(results), 200
-        
+
     except Exception as e:
         print(f"Error in get_student_analytics: {str(e)}")
         return jsonify({"error": "Failed to fetch student analytics", "details": str(e)}), 500
@@ -106,89 +98,176 @@ def get_student_analytics():
 @jwt_required()
 def generate_ai_report():
     """
-    Generate AI-driven performance report for a specific student
-    Request body: { "student_id": "ObjectId_string" }
-    This endpoint delegates to ai.py for AI report generation
+    Generate AI report for a single student, save both EN + ZH to ai_reports collection
     """
     try:
         data = request.get_json()
         student_id_str = data.get('student_id')
-        
+
         if not student_id_str:
             return jsonify({"error": "student_id is required"}), 400
-        
+
         try:
             student_id = ObjectId(student_id_str)
         except:
             return jsonify({"error": "Invalid student_id format"}), 400
-        
+
         student = db.students.find_one({"_id": student_id})
         if not student:
             student = db.users.find_one({"_id": student_id})
-        
         if not student:
             return jsonify({"error": "Student not found"}), 404
-        
+
         student_name = student.get('name') or student.get('username', 'Student')
-        
+
         submissions = list(db.student_answers.find({
             "student_id": student_id,
             "status": "submitted"
         }).sort("submission_time", -1))
-        
+
         if not submissions:
-            return jsonify({
-                "report": f"## No Data Available\n\n{student_name} has not completed any quizzes or assignments yet. No performance data is available for analysis."
-            }), 200
-        
+            no_data_en = f"## No Data Available\n\n{student_name} has not completed any quizzes or assignments yet."
+            no_data_zh = f"## 暫無資料\n\n{student_name} 尚未完成任何測驗或作業。"
+            return jsonify({"report_en": no_data_en, "report_zh": no_data_zh}), 200
+
         analytics_data = calculate_student_statistics_with_questions(submissions, student_name)
-        
-        from routes.ai import generate_performance_report
-        
-        ai_report = generate_performance_report(analytics_data)
-        
-        return jsonify({"report": ai_report}), 200
-        
+
+        from routes.ai import generate_performance_report, translate_report_to_chinese
+
+        report_en = generate_performance_report(analytics_data)
+        report_zh = translate_report_to_chinese(report_en)
+
+        db.ai_reports.update_one(
+            {"student_id": student_id},
+            {"$set": {
+                "student_id": student_id,
+                "student_name": student_name,
+                "report_en": report_en,
+                "report_zh": report_zh,
+                "generated_at": datetime.utcnow(),
+                "generated_by": ObjectId(get_jwt_identity())
+            }},
+            upsert=True
+        )
+
+        return jsonify({"report_en": report_en, "report_zh": report_zh}), 200
+
     except Exception as e:
         print(f"Error in generate_ai_report: {str(e)}")
         return jsonify({"error": "Failed to generate report", "details": str(e)}), 500
 
 
+@analytics_bp.route('/api/analytics/report/all', methods=['POST'])
+@jwt_required()
+def generate_all_reports():
+    """
+    Generate and store AI reports for ALL students in one go
+    """
+    try:
+        from routes.ai import generate_performance_report, translate_report_to_chinese
+
+        students = list(db.student_answers.aggregate([
+            {"$match": {"status": "submitted"}},
+            {"$group": {"_id": "$student_id"}}
+        ]))
+
+        results = {"success": [], "failed": []}
+
+        for s in students:
+            try:
+                student_id = s["_id"]
+                student = db.students.find_one({"_id": student_id}) or db.users.find_one({"_id": student_id})
+                student_name = (student.get('name') or student.get('username', 'Student')) if student else 'Unknown'
+
+                submissions = list(db.student_answers.find({
+                    "student_id": student_id,
+                    "status": "submitted"
+                }).sort("submission_time", -1))
+
+                if not submissions:
+                    results["failed"].append({"id": str(student_id), "error": "No submissions"})
+                    continue
+
+                analytics_data = calculate_student_statistics_with_questions(submissions, student_name)
+                report_en = generate_performance_report(analytics_data)
+                report_zh = translate_report_to_chinese(report_en)
+
+                db.ai_reports.update_one(
+                    {"student_id": student_id},
+                    {"$set": {
+                        "student_id": student_id,
+                        "student_name": student_name,
+                        "report_en": report_en,
+                        "report_zh": report_zh,
+                        "generated_at": datetime.utcnow(),
+                        "generated_by": ObjectId(get_jwt_identity())
+                    }},
+                    upsert=True
+                )
+                results["success"].append(str(student_id))
+
+            except Exception as e:
+                results["failed"].append({"id": str(s["_id"]), "error": str(e)})
+
+        return jsonify(results), 200
+
+    except Exception as e:
+        print(f"Error in generate_all_reports: {str(e)}")
+        return jsonify({"error": "Failed to generate all reports", "details": str(e)}), 500
+
+
+@analytics_bp.route('/api/analytics/report/<student_id>', methods=['GET'])
+@jwt_required()
+def get_stored_report(student_id):
+    """
+    Fetch previously stored AI report for a student from ai_reports collection
+    """
+    try:
+        report = db.ai_reports.find_one({"student_id": ObjectId(student_id)})
+        if not report:
+            return jsonify({"error": "No report found"}), 404
+
+        generated_at = report.get("generated_at")
+        return jsonify({
+            "report_en": report.get("report_en"),
+            "report_zh": report.get("report_zh"),
+            "generated_at": generated_at.isoformat() if generated_at else None
+        }), 200
+
+    except Exception as e:
+        print(f"Error in get_stored_report: {str(e)}")
+        return jsonify({"error": "Failed to fetch report", "details": str(e)}), 500
+
+
 def calculate_student_statistics_with_questions(submissions, student_name):
-    """
-    Calculate comprehensive statistics from student submissions
-    Includes analysis of incorrect questions
-    Returns dict with analytics data for AI report generation
-    """
     total_submissions = len(submissions)
     scores = [s.get('total_score', 0) for s in submissions]
     avg_score = sum(scores) / len(scores) if scores else 0
     max_score = max(scores) if scores else 0
     min_score = min(scores) if scores else 0
-    
+
     materials_attempted = set(str(s.get('material_id')) for s in submissions)
     total_materials = db.materials.count_documents({"is_deleted": {"$ne": True}})
-    
     progress_percentage = (len(materials_attempted) / total_materials * 100) if total_materials > 0 else 0
 
     incorrect_questions = []
     correct_count = 0
     total_questions = 0
-    
+
     for submission in submissions:
         answers = submission.get('answers', [])
         material_id = submission.get('material_id')
-        
+
         for answer in answers:
             total_questions += 1
             is_correct = answer.get('is_correct', False)
-            
+
             if is_correct:
                 correct_count += 1
             else:
                 question_id = answer.get('question_id', '')
                 question_doc = db.questions.find_one({"material_id": material_id})
-                
+
                 if question_doc:
                     question_content = question_doc.get('question_content', {})
                     questions_list = question_content.get('questions', [])
@@ -207,7 +286,7 @@ def calculate_student_statistics_with_questions(submissions, student_name):
                                 })
                         except (ValueError, IndexError):
                             pass
-    
+
     recent_submissions = submissions[:5]
     recent_performance = [
         {
@@ -217,11 +296,10 @@ def calculate_student_statistics_with_questions(submissions, student_name):
         }
         for s in recent_submissions
     ]
-    
+
     if len(scores) >= 2:
         recent_half_avg = sum(scores[:len(scores)//2]) / len(scores[:len(scores)//2])
         older_half_avg = sum(scores[len(scores)//2:]) / len(scores[len(scores)//2:])
-        
         if recent_half_avg > older_half_avg + 5:
             trend = "improving"
         elif recent_half_avg < older_half_avg - 5:
@@ -230,9 +308,9 @@ def calculate_student_statistics_with_questions(submissions, student_name):
             trend = "stable"
     else:
         trend = "insufficient data"
-    
+
     accuracy = (correct_count / total_questions * 100) if total_questions > 0 else 0
-    
+
     return {
         "student_name": student_name,
         "total_submissions": total_submissions,
@@ -255,21 +333,16 @@ def calculate_student_statistics_with_questions(submissions, student_name):
 @analytics_bp.route('/api/analytics/student/<student_id>', methods=['GET'])
 @jwt_required()
 def get_student_detail(student_id):
-    """
-    Get detailed analytics for a specific student
-    """
     try:
         student_obj_id = ObjectId(student_id)
-        
         submissions = list(db.student_answers.find({
             "student_id": student_obj_id
         }).sort("submission_time", -1))
-        
+
         student = db.students.find_one({"_id": student_obj_id}) or db.users.find_one({"_id": student_obj_id})
-        
         if not student:
             return jsonify({"error": "Student not found"}), 404
-        
+
         return jsonify({
             "student": {
                 "id": student_id,
@@ -287,7 +360,7 @@ def get_student_detail(student_id):
                 for s in submissions
             ]
         }), 200
-        
+
     except Exception as e:
         print(f"Error in get_student_detail: {str(e)}")
         return jsonify({"error": "Failed to fetch student details", "details": str(e)}), 500
