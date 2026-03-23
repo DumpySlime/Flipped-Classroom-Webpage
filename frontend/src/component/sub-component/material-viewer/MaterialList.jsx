@@ -131,12 +131,15 @@ function MaterialList(props) {
                             onClick={() => handleViewMaterial(m)}
                         >
                             <div className="material-main">
-                                <div className="material-topic">{m.topic}</div>
+                                <div className="material-topic">{m.attribute?.topic}</div>
                                 <div className="material-meta">
-                                    <span className="material-date">
-                                        {m.created_at 
-                                            ? new Date(m.created_at).toLocaleDateString() 
-                                            : 'N/A'}
+                                    {m.attribute?.subtopic?.length > 0 ? (  
+                                        m.attribute.subtopic.map((sub, idx) => (
+                                            <span key={idx} className="material-date">{sub}</span>
+                                        ))
+                                    ) : <></>}
+                                    <span className="material-date">                                        
+                                    {m.created_at ? new Date(m.created_at).toLocaleDateString() : 'N/A'}
                                     </span>
                                 </div>
                             </div>

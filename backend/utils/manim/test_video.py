@@ -5,7 +5,7 @@ import numpy as np
 class GeneratedScene1(CScene):
     def construct(self):
         # Beat 1: Show right triangle with right angle at A
-        title = self.setup_scene("Right Triangle Ratios")
+        title = self.setup_scene("直角三角形比例")
         
         A = np.array([-2, -1, 0])
         B = np.array([2, -1, 0])
@@ -22,7 +22,7 @@ class GeneratedScene1(CScene):
         
         # Beat 2: Label hypotenuse (BC)
         hyp_line = self.segment(B, C, color=RED, stroke_width=6)
-        hyp_label = self.label_line(hyp_line, "hyp", shape_center)
+        hyp_label = self.label_line(hyp_line, "斜邊", shape_center)
         
         self.pause(0.5)
         
@@ -33,13 +33,13 @@ class GeneratedScene1(CScene):
         
         # Beat 4: Label side opposite to angle B (AC)
         opp_line_B = self.segment(A, C, color=BLUE, stroke_width=6)
-        opp_label_B = self.label_line(opp_line_B, "opp", shape_center)
+        opp_label_B = self.label_line(opp_line_B, "對邊", shape_center)
         
         self.pause(0.5)
         
         # Beat 5: Label side adjacent to angle B (AB)
         adj_line_B = self.segment(A, B, color=GREEN, stroke_width=6)
-        adj_label_B = self.label_line(adj_line_B, "adj", shape_center)
+        adj_label_B = self.label_line(adj_line_B, "鄰邊", shape_center)
         
         self.pause(0.5)
         
@@ -82,13 +82,13 @@ class GeneratedScene1(CScene):
         
         # Beat 9: Label side opposite to angle C (AB)
         opp_line_C = self.segment(A, B, color=BLUE, stroke_width=6)
-        opp_label_C = self.label_line(opp_line_C, "opp", shape_center)
+        opp_label_C = self.label_line(opp_line_C, "對邊", shape_center)
         
         self.pause(0.5)
         
         # Beat 10: Label side adjacent to angle C (AC)
         adj_line_C = self.segment(A, C, color=GREEN, stroke_width=6)
-        adj_label_C = self.label_line(adj_line_C, "adj", shape_center)
+        adj_label_C = self.label_line(adj_line_C, "鄰邊", shape_center)
         
         self.pause(1.0)
 
