@@ -11,10 +11,13 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
     const [topicsError, setTopicsError] = useState(null); // <-- defined
 	
     const [values, setValues] = useState({
+		form: '',
 		topic: '',
+		sub_topics: [],
 		description: '',
 		subject: subject?.subject || '',
 		subject_id: subject?.id || '',
+		language: ''
 	})
 
 	const [error, setError] = useState(null);
@@ -34,6 +37,7 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 		setLoadingTopics(false);
 		setTopicsError(null);
 		setValues({
+			form: '',
 			topic: '',
 			description: '',
 			subject: subject?.subject || '',
@@ -47,7 +51,7 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 		onClose();
 	}
 
-    // Update subject fields and fetch topics
+    // Update subject fields and fetch topics with form
     useEffect(() => {
         const subjectId = subject?._id || subject?.id || '';
         setValues(prev => ({
@@ -56,24 +60,27 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
         subject_id: subjectId
         }));
 
-        if (!subjectId) {
-        setTopics([]);
-        setTopicsError(null);
-        return;
+        if (!subjectId || !values.form) {
+			setTopics([]);
+			setTopicsError(null);
+        	return;
         }
 
         let cancelled = false;
+
         const fetchTopics = async () => {
-        setLoadingTopics(true);
-        setTopicsError(null);
+			setLoadingTopics(true);
+			setTopicsError(null);
+
         try {
         const res = await axios.get('/db/topic', {
-          params: { subject_id: subjectId },
+          params: { subject_id: subjectId,  form: values.form},
         });
 
         const fetched = Array.isArray(res.data?.topics) ? res.data.topics : [];
         if (!cancelled) {
           setTopics(fetched);
+
           // Clear selected topic if it's no longer valid
           setValues(prev => {
             const stillValid = fetched.some(t => t.topic === prev.topic);
@@ -92,7 +99,7 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 
         fetchTopics();
         return () => { cancelled = true; };
-    }, [subject]);
+    }, [subject, values.form]);
 
     // if no subject id, clear topics
     const subjectId = subject?._id || subject?.id;
@@ -107,10 +114,19 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
+		if (!values.form) {
+			setError("Please select a form.");
+			return;
+		}		
 		if (!values.topic) {
 			setError("Please select a topic.");
 			return;
 		}
+		if (!values.language) {
+			setError("Please select a language.");
+			return;
+		}
+
 		setIsGenerating(true);
 		console.log('Form submitted with values:', values);
 		
@@ -152,9 +168,12 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 		const formData = new FormData();
 		formData.append('subject', submittedValues.subject);
 		formData.append('subject_id', submittedValues.subject_id);
+		formData.append('form', submittedValues.form)
 		formData.append('topic', submittedValues.topic);
+		formData.append('sub_topics', JSON.stringify(submittedValues.sub_topics));
 		formData.append('material_id', materialSid);
-		
+		formData.append('language', submittedValues.language);
+
 		console.log('Generating questions with data:', Object.fromEntries(formData));
 		
 		axios.post('/api/ai/generate-question', formData)
@@ -166,7 +185,10 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 			
 			// NOW reset the form values after everything is done
 			setValues({
+				form: '',
 				topic: '',
+				sub_topics: '',
+				language: '',
 				description: '',
 				subject: subject?.subject || '',
 				subject_id: subject?.id || '',
@@ -215,6 +237,7 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
                 ← Back to Materials
                 </button>
 			</div>
+
 			{!generatedMaterial ? (
 				<form onSubmit={handleSubmit} className="form-container">
 					<h2>Generate Material</h2>
@@ -234,20 +257,87 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 					</div>
 
 					<div className="form-group">
-						<label htmlFor="topic">Topic:</label>
-						<select 
-							id="topic"
-							name="topic" 
-							value={values.topic} 
-							onChange={handleChanges}
-							className="form-input">
-                            <option value="">Select a topic</option>
-                                {topics.map(t => (
-                                    <option key={t._id} value={t.topic}>
-                                {t.topic}
-                            </option>
-                            ))}
+						<label htmlFor="form">Form:</label>
+						<select
+						id="form"
+						name="form"
+						value={values.form}
+						onChange={handleChanges}
+						className="form-input"
+						>
+						<option value="">Select a form</option>
+						{[1,2,3,4,5,6].map(f => (
+							<option key={f} value={`form${f}`}>Form {f}</option>
+						))}
 						</select>
+					</div>
+
+					{values.form && (
+						<div className="form-group">
+						<label htmlFor="topic">Topic:</label>
+						<select
+							id="topic"
+							name="topic"
+							value={values.topic}
+							onChange={handleChanges}
+							className="form-input"
+						>
+							<option value="">Select a topic</option>
+							{topics.map(t => (
+							<option key={t._id} value={t.topic}>
+								{t.topic}
+							</option>
+							))}
+						</select>
+						</div>
+					)}
+
+					{values.topic && topics.length > 0 && (
+					<div className="form-group">
+						<label>Subtopics:</label>
+						<div className="checkbox-group">
+						{topics.find(t => t.topic === values.topic)?.sub_topics?.map((sub, idx) => (
+							<div key={idx} className="checkbox-item">
+							<input
+								type="checkbox"
+								id={`sub_${idx}`}
+								value={sub}
+								checked={values.sub_topics.includes(sub)}
+								onChange={(e) => {
+								if (e.target.checked) {
+									setValues(prev => ({
+									...prev,
+									sub_topics: [...prev.sub_topics, sub]
+									}));
+								} else {
+									setValues(prev => ({
+									...prev,
+									sub_topics: prev.sub_topics.filter(s => s !== sub)
+									}));
+								}
+								}}
+							/>
+							<label htmlFor={`sub_${idx}`}>{sub}</label>
+							</div>
+						))}
+						</div>
+					</div>
+					)}
+
+					<div className="form-group">
+					<label htmlFor="language">Language:</label>
+					<select
+						id="language"
+						name="language"
+						value={values.language}
+						onChange={handleChanges}
+						className="form-input"
+					>
+						<option value="">Select a language</option>
+						<option value="English">English</option>
+						<option value="Chinese">Chinese</option>
+						{/* Add more as needed */}
+					</select>
 					</div>
 
 					<div className="form-group">

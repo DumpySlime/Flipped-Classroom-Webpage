@@ -480,10 +480,17 @@ def get_subject():
 def get_topic():
     try:
         subject_id = request.args.get("subject_id")
+        form = request.args.get("form")
+        
         if not subject_id:
             return jsonify({"success": False, "error": "subject_id query parameter required"}), 400
+        
         filt = {}
         filt["subject_id"] = ObjectId(subject_id)
+        
+        if form:  # only add if provided
+            filt["form"] = form
+            
         docs = list(db.topics.find(filt))
         
         topics = []
@@ -491,12 +498,15 @@ def get_topic():
             topics.append({
                 "_id": str(d["_id"]),
                 "subject_id": str(d.get("subject_id")) if d.get("subject_id") is not None else None,
-                "topic": d.get("topic")
+                "topic": d.get("topic"),
+                "form": d.get("form"),
+                "sub_topics": d.get("sub_topics", [])
             })
             
         return jsonify({
             "success": True,
             "subject_id": subject_id,
+            "form": form,
             "topics": topics
         }), 200
     except Exception as e:
