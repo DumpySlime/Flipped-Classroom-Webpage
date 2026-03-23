@@ -784,3 +784,52 @@ Return a JSON object with 'is_correct' (boolean) and 'feedback' (string)."""
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+def translate_report_to_chinese(english_report: str) -> str:
+    """
+    Translate an English markdown report into Traditional Chinese (zh-HK).
+    Preserves all markdown formatting (##, **, -, etc).
+    """
+    if not DEEPSEEK_API_KEY:
+        return "## 翻譯失敗\n\n未設定 DeepSeek API 金鑰。"
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": DEEPSEEK_MODEL,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a professional translator. Translate the following student performance report "
+                        "from English into Traditional Chinese (繁體中文). "
+                        "Keep ALL markdown formatting intact (##, **, -, numbers, etc). "
+                        "Only translate the text content. Do not add or remove any sections."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": english_report
+                }
+            ],
+            "temperature": 0.3,
+            "max_tokens": 2000
+        }
+
+        response = requests.post(
+            "https://api.deepseek.com/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=60
+        )
+        response.raise_for_status()
+        result = response.json()
+        return result['choices'][0]['message']['content']
+
+    except Exception as e:
+        print(f"[AI] Translation error: {str(e)}")
+        return f"## 翻譯失敗\n\n無法將報告翻譯成中文。錯誤：{str(e)}"

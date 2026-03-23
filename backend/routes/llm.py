@@ -237,10 +237,14 @@ def material_create():
         instruction = (data.get("instruction") or data.get("description") or "").strip()
         subject_id = (data.get("subject_id") or "").strip()
         
+        language = (data.get("language") or "en").strip()
+        subtopic = (data.get("subtopic") or "").strip()
+        form = (data.get("form") or "").strip()
+        
         if not subject or not topic:
             return jsonify({"error": "Subject and topic are required"}), 400
 
-        print(f"Generating material for: Subject={subject}, Topic={topic}")
+        print(f"Generating material for: Subject={subject}, Form={form}, Topic={topic}, subtopic={subtopic}, instruction={instruction}, language={language}")
         # Prepare to save material sets into /db/material-add
 
         try:
@@ -264,7 +268,10 @@ def material_create():
             # Prepare file object
             data = {
                 "subject_id": subject_id,
+                "form": form,
                 "topic": topic,
+                "subtopic": subtopic,
+                'language': language,
                 "slides": [],
                 "create_type": "generated",
                 "status": "generating",

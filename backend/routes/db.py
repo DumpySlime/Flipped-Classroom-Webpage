@@ -47,71 +47,63 @@ def getUserById(user_id):
 @jwt_required()
 def add_material():
     try:
-        #if "file" not in request.files:
-        #    return {"error": "No file part in the request"}, 400
-        #f = request.files.get('file')
         subject_id = request.form.get('subject_id')
         topic = request.form.get('topic')
         slides = request.form.get('slides')
         create_type = request.form.get('create_type', 'undefined')  # 'upload' or 'generate'
         status = request.form.get('status', 'generating')  # 'generating' or 'completed'
+        
+        language = request.form.get('language', 'en')
+        subtopic = request.form.get('subtopic', '')
+        form = request.form.get('form', '')
+        
 
         try:
             user_id = ObjectId(request.form.get('user_id'))
         except Exception as e:
             print("No user_id in form, getting from token")
             user_id = getUserById(get_jwt_identity())['_id']  
-        #if not f:
-        #    return {"error": "file is required"}, 400
         if not subject_id:
             return {"error": "subject_id is required"}, 400
         if not topic:
             return {"error": "topic is required"}, 400
-
-        #metadata = {
-        #    'subject_id': ObjectId(subject_id),
-        #    'topic': topic,
-        #    'uploaded_by': user_id,
-        #    'upload_date': datetime.now(),
-        #    'filename': f.filename
-        #}
-
-        #file_id = fs.put(
-        #    f.stream, 
-        #    filename=f.filename,
-        #    content_type=f.mimetype, 
-        #    metadata=metadata)
-        
-        #gf = fs.get(file_id)
+        if not subtopic:
+            return {"error": "subtopic is required"}, 400
+        if not language:
+            return {"error": "language is required"}, 400
+        if not form:
+            return {"error": "form is required"}, 400
 
         mat = {
-        #    'file_id': ObjectId(file_id),
-        #    'filename': gf.filename,
             'subject_id': ObjectId(subject_id),
-            'topic': topic,
-            'slides': slides,
+            'attribute': {
+                'topic': topic,
+                "subtopic": subtopic,
+                'slides': slides,
+                "form": form,
+                'language': language
+            },
             'uploaded_by': user_id,
             'status': status,
             'create_type': create_type,
             'created_at': datetime.now().isoformat(),
-        #    'size_bytes': gf.length,
-        #    'content_type': gf.content_type,
         }
         mat_id = db.materials.insert_one(mat).inserted_id
         if mat_id:
             return jsonify({
                 'result': 'Material uploaded successfully',
                 'material_id': str(mat_id),
-                #    "file_id": str(file_id),
-                #    "filename": gf.filename,
                 "subject_id": subject_id,
-                "topic": topic,
-                "slides": slides,
+                'attribute': {
+                    'topic': topic,
+                    "subtopic": subtopic,
+                    'slides': slides,
+                    "form": form,
+                    'language': language
+                },
                 "uploaded_by": str(user_id),
                 'status': status,
                 "upload_date": datetime.now().isoformat(),
-                #    "size_bytes": 0,
-                #    "content_type": gf.content_type
             }),201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -122,30 +114,44 @@ def add_material():
 def get_material():
     try:
         material_id = request.args.get('material_id')
-        #filename = request.args.get('filename')
         subject_id = request.args.get('subject_id')
         topic = request.args.get('topic')
+        subtopic = request.args.get('subtopic')
+        form = request.args.get('form')
         uploaded_by = request.args.get('uploaded_by')
 
-        print(f'Query params: material_id={material_id}, subject_id={subject_id}, topic={topic}, uploaded_by={uploaded_by}')
-        
+        print(f'Query params: material_id={material_id}, subject_id={subject_id}, topic={topic}, subtopic={subtopic}, form={form}, uploaded_by={uploaded_by}')
+
         filt = {}
         if material_id:
             filt['_id'] = ObjectId(material_id)
-        #if filename:
-        #    filt['filename'] = filename
         if subject_id:
             filt['subject_id'] = ObjectId(subject_id)
         if topic:
-            filt['topic'] = topic
+            filt['attribute.topic'] = topic
         if uploaded_by:
             filt['uploaded_by'] = ObjectId(uploaded_by)
+        if subtopic:
+            filt['attribute.subtopic'] = {"$in": [subtopic]} if isinstance(subtopic, str) else subtopic
+        if form:
+            filt['attribute.form'] = form
 
         print(f'MongoDB filter: {filt}')
 
         mats = list(db.materials.find(filt, {}))
 
         print(f'Found {len(mats)} materials')
+        # double check for old format
+        if len(mats) == 0:
+            filt = {}
+            if material_id:
+                filt['_id'] = ObjectId(material_id)
+            if subject_id:
+                filt['subject_id'] = ObjectId(subject_id)
+            if topic:
+                filt['topic'] = topic
+            if uploaded_by:
+                filt['uploaded_by'] = ObjectId(uploaded_by)
 
         if not mats and not filt:
             all_mats = list(db.materials.find({}))
@@ -155,14 +161,16 @@ def get_material():
         for m in mats:
             materials.append({
                 "id": str(m["_id"]),
-                #"file_id": str(m["file_id"]),
-                #"filename": m.get("filename"),
                 "subject_id": str(m.get("subject_id")),
-                "topic": m.get("topic"),
-                "slides": m.get("slides"),
+                "attribute": {
+                    "topic": m.get("topic"),
+                    "subtopic": m.get("subtopic") or [],
+                    "slides": m.get("slides"),
+                    "form": m.get("form") or "",
+                    "language": m.get("language") or ""
+                },
                 "uploaded_by": str(m.get("uploaded_by")),
                 "created_at": m.get("created_at"),
-                # "content_type": m.get("content_type")
                 "video_url": m.get("video_url"),
                 "video_generated_at": m.get("video_generated_at")
             })
@@ -188,8 +196,6 @@ def delete_material():
         if not mat:
             print(f"Material with id {material_id} not found")
             return {"error": "Material not found"}, 404
-        #print(f"Deleting file with id {mat['file_id']}")
-        #fs.delete(mat['file_id'])
         db.materials.delete_one({'_id': ObjectId(material_id)})
         db.questions.delete_many({'material_id': ObjectId(material_id)})
         print(f"Material with id {material_id} and associated questions deleted successfully")
@@ -224,7 +230,7 @@ def update_material():
         return jsonify({"message": "Material updated successfully"}), 200
     except Exception as e:
         return {"error": str(e)}, 500
-
+"""
 # process ppt
 # create a short-lived signed URL
 @db_bp.route('/material/<file_id>/signed-url', methods=['GET'])
@@ -276,7 +282,7 @@ def display_pptx(token):
         "Cache-Control": "no-store",  # viewer can fetch within token lifetime; tune as needed
     }
     return Response(generate(), headers=headers)
-
+"""
 # User CRUD operations
 # Add User
 @db_bp.route('/user-add', methods=['POST'])

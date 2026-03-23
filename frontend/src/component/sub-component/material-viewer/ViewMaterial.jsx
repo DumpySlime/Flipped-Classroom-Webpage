@@ -157,9 +157,9 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 
 		if (materialData) {
 		console.log('Using AI-generated material data:', materialData);
-		const slidesData = Array.isArray(materialData.slides)
-			? materialData.slides
-			: materialData.slides?.slides || [];
+		const slidesData = Array.isArray(materialData.attribute?.slides)
+			? materialData.attribute.slides
+			: materialData.attribute?.slides?.slides || [];
 
 		const normalizedSlides = slidesData.map(slide => ({
 			...slide,
@@ -200,53 +200,43 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 		}
 
 		if (material) {
-		console.log('Fetching traditional material:', material);
-		setMaterialId(material.id);
-
-		axios.get(`/db/material?material_id=${material?.id}&subject_id=${material?.subject_id}&topic=${material?.topic}&uploaded_by=${material?.uploaded_by}`, {
-			signal: ac.signal,
-		})
-			.then(response => {
-			if (!active) return;
-			const materialObj = response.data.materials[0];
-			const slidesData = response.data.materials[0]?.slides || [];
-			console.log('Fetched slides data:', slidesData);
+			// Show material
+			console.log('Fetching material:', material);
+			setMaterialId(material.id);
+			const slidesData = material?.attribute.slides;
 			const slidesArray = Array.isArray(slidesData) ? slidesData : slidesData?.slides || [];
 			const normalizedSlides = slidesArray.map(slide => ({
-				...slide,
-				slidetype: slide.slideType || slide.slidetype,
-			}));
+					...slide,
+					slidetype: slide.slideType || slide.slidetype,
+				}));
 			setSlides(normalizedSlides);
 			setCurrentSlideIndex(0);
 			// capture video_url
-			if (materialObj?.video_url) { 
-				setVideoUrl(materialObj.video_url); 
+			if (material?.video_url) { 
+				setVideoUrl(material.video_url); 
 			}
-			})
-			.catch(e => {
-			if (active) setErr('Unable to fetch slides');
-			});
 
-		setLoadingQuestions(true);
-		axios.get(`/db/question?material_id=${material?.id}`, {
-			signal: ac.signal
-		})
-			.then(response => {
-			if (!active) return;
-			const questionsList = response.data?.questions || [];
-			setQuestions(questionsList);
-			setLoadingQuestions(false);
+			// show questions
+			setLoadingQuestions(true);
+			axios.get(`/db/question?material_id=${material.id}`, {
+				signal: ac.signal
 			})
-			.catch(e => {
-			console.log('No questions found');
-			setQuestions([]);
-			setLoadingQuestions(false);
-			});
+				.then(response => {
+				if (!active) return;
+				const questionsList = response.data?.questions || [];
+				setQuestions(questionsList);
+				setLoadingQuestions(false);
+				})
+				.catch(e => {
+				console.log('No questions found');
+				setQuestions([]);
+				setLoadingQuestions(false);
+				});
 
-		return () => {
-			active = false;
-			ac.abort();
-		};
+			return () => {
+				active = false;
+				ac.abort();
+			};
 		}
 	}, [material, materialData]);
 
