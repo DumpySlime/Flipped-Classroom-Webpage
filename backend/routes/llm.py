@@ -237,14 +237,13 @@ def material_create():
         instruction = (data.get("description") or data.get("instruction") or "").strip()
         subject_id = (data.get("subject_id") or "").strip()
         
-        language = (data.get("language") or "en").strip()
-        subtopic = (data.get("sub_topics"))
+        language = (data.get("language") or "").strip()
+        subtopic = (data.get("subtopic") or []).strip()
         form = (data.get("form") or "").strip()
         
         if not subject or not topic:
             return jsonify({"error": "Subject and topic are required"}), 400
 
-        print(f"Generating material for: Subject={subject}, Form={form}, Topic={topic}, subtopic={subtopic}, instruction={instruction}, language={language}")
         # Prepare to save material sets into /db/material-add
 
         try:
@@ -258,6 +257,11 @@ def material_create():
             url = f"{base}/db/material-add"
 
             print(f"Preparing to post material via /db/material-add route at {url}")
+            print(f"Topic: {topic}")
+            print(f"Subtopic: {subtopic}")
+            print(f"Language: {language}")
+            print(f"Form: {form}")
+            print(f"Instruction: {instruction}")
         except Exception as e:
             raise Exception(f"Error preparing url: {str(e)}")
         
