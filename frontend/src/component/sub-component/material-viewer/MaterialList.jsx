@@ -135,9 +135,13 @@ function MaterialList(props) {
                                 <div className="material-meta">
                                     {m.attribute?.subtopic?.length > 0 ? (  
                                         m.attribute.subtopic.map((sub, idx) => (
+                                            <>
                                             <span key={idx} className="material-date">{sub}</span>
+                                            <div></div>  
+                                            </>                                          
                                         ))
                                     ) : <></>}
+                                    <br/>
                                     <span className="material-date">                                        
                                     {m.created_at ? new Date(m.created_at).toLocaleDateString() : 'N/A'}
                                     </span>

@@ -37,12 +37,14 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 		setLoadingTopics(false);
 		setTopicsError(null);
 		setValues({
-			form: '',
-			topic: '',
-			description: '',
-			subject: subject?.subject || '',
-			subject_id: subject?.id || '',
-		});
+				form: '',
+				topic: '',
+				sub_topics: [],
+				language: '',
+				description: '',
+				subject: subject?.subject || '',
+				subject_id: subject?.id || '',
+			});
 		setIsGenerating(false);
 		setHasCreatedQuestions(false);
 		setGeneratedQuestionId(null);
@@ -101,6 +103,15 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
         return () => { cancelled = true; };
     }, [subject, values.form]);
 
+	
+	// Clear sub_topics when topic/ form changes
+	useEffect(() => {
+		setValues(prev => ({
+			...prev,
+			sub_topics: []
+		}));
+	}, [values.topic, values.form]);
+
     // if no subject id, clear topics
     const subjectId = subject?._id || subject?.id;
     if (!subjectId) {
@@ -132,8 +143,16 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 		
 		// Store current values before they get reset
 		const submittedValues = { ...values };
-		
-		axios.post('/api/llm/material/create', values, {
+		const formData = new FormData();
+		formData.append('subject', submittedValues.subject);
+		formData.append('subject_id', submittedValues.subject_id);
+		formData.append('form', submittedValues.form);
+		formData.append('topic', submittedValues.topic);
+		formData.append('sub_topics', JSON.stringify(submittedValues.sub_topics))
+		formData.append('language', submittedValues.language);
+		formData.append('description', submittedValues.description);
+
+		axios.post('/api/llm/material/create', formData, {
 			headers: { 'Content-Type': 'multipart/form-data' }
 		})
 		.then(function (response) {
@@ -187,12 +206,11 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 			setValues({
 				form: '',
 				topic: '',
-				sub_topics: '',
+				sub_topics: [],
 				language: '',
 				description: '',
 				subject: subject?.subject || '',
 				subject_id: subject?.id || '',
-				//username: username || '',
 			});
 		})
 		.catch( (error) => {
@@ -213,6 +231,7 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 
     // If showing view
     if (showView) {
+		console.log('Showing generated material in view:', generatedMaterial)
         return (
             <ViewMaterial 
                 materialData={generatedMaterial} 

@@ -230,15 +230,15 @@ def material_create():
         current_user_id = get_jwt_identity()
         print(f"Material create request from user: {current_user_id}")
 
-        data = request.form.to_dict() or request.get_json(silent=True) or {}
+        data = request.form
 
         subject = (data.get("subject") or "").strip()
         topic = (data.get("topic") or "").strip()
-        instruction = (data.get("instruction") or data.get("description") or "").strip()
+        instruction = (data.get("description") or data.get("instruction") or "").strip()
         subject_id = (data.get("subject_id") or "").strip()
         
         language = (data.get("language") or "en").strip()
-        subtopic = (data.get("subtopic") or "").strip()
+        subtopic = (data.get("sub_topics"))
         form = (data.get("form") or "").strip()
         
         if not subject or not topic:
@@ -258,7 +258,6 @@ def material_create():
             url = f"{base}/db/material-add"
 
             print(f"Preparing to post material via /db/material-add route at {url}")
-            print(f"Topic: {topic}")
         except Exception as e:
             raise Exception(f"Error preparing url: {str(e)}")
         
@@ -268,15 +267,15 @@ def material_create():
             # Prepare file object
             data = {
                 "subject_id": subject_id,
-                "form": form,
                 "topic": topic,
-                "subtopic": subtopic,
-                'language': language,
                 "slides": [],
                 "create_type": "generated",
                 "status": "generating",
+                "language": language,
+                "subtopic": subtopic,
+                "form": form,
             }
-
+            print(f"Posting initial material record with data: {data}")
             resp = session.post(
                 url,
                 data=data,
@@ -338,11 +337,15 @@ def material_create():
                 "slides": material_json,
                 "subject_id": subject_id,
                 "subject": subject,
-                "topic": topic,
+                'attribute': {
+                    "topic": topic,
+                    "subtopic": subtopic,
+                    "form": form,
+                    "language": language
+                },
                 "created_at": material_result.get("created_at"),
             },
         }
-
         return jsonify(response), 200
 
     except Exception as e:

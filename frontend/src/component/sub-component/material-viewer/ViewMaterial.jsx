@@ -157,10 +157,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 
 		if (materialData) {
 		console.log('Using AI-generated material data:', materialData);
-		const slidesData = Array.isArray(materialData.attribute?.slides)
-			? materialData.attribute.slides
-			: materialData.attribute?.slides?.slides || [];
-
+		const slidesData = Array.isArray(materialData?.slides?.slides || materialData.slides) ? (materialData.slides.slides || materialData.slides) : [];
 		const normalizedSlides = slidesData.map(slide => ({
 			...slide,
 			slidetype: slide.slideType || slide.slidetype,
@@ -203,7 +200,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 			// Show material
 			console.log('Fetching material:', material);
 			setMaterialId(material.id);
-			const slidesData = material?.attribute.slides;
+			const slidesData = material?.slides;
 			const slidesArray = Array.isArray(slidesData) ? slidesData : slidesData?.slides || [];
 			const normalizedSlides = slidesArray.map(slide => ({
 					...slide,

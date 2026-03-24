@@ -89,7 +89,7 @@ function Overview(props) {
             {sortedMaterials.slice(0, 5).map((material) => (
               <div key={material.id} className="activity-item">
                 <span>
-                  <strong>{material.topic}</strong>
+                  <strong>{material.attribute.topic}</strong>
                   {material.subject && (
                     <span style={{ 
                       marginLeft: '8px', 
