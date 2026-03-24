@@ -415,7 +415,7 @@ function Dashboard(props) {
               className={activeSection === 'chatroom' ? 'active' : ''}
               onClick={() => setActiveSection('chatroom')}
             >
-              💬 {t('navChatroom')}
+              {t('navChatroom')}
             </button>
           )}
         </nav>

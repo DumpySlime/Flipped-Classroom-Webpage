@@ -1,6 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
+import language from 'react-syntax-highlighter/dist/esm/languages/hljs/1c';
 
 const resources = {
   en: {
@@ -73,7 +74,7 @@ const resources = {
       previous: 'Previous',
       next: 'Next',
       slideXofY: 'Slide {{x}} of {{y}}',
-      pageX: 'Page {{x}}:',
+      pageX: 'Page {{x}}',
       subtitle: 'Subtitle',
       question: 'Question',
       solutionSteps: 'Solution Steps',
@@ -82,7 +83,7 @@ const resources = {
       remove: 'Remove',
       noSolutionSteps: 'No solution steps yet. Click "+ Add Point" to add one.',
       noContentPoints: 'No content points yet. Click "+ Add Point" to add one.',
-      questions: '📝 Questions',
+      questions: 'Practice Exercise',
       questionsAvailable: '{{count}} question(s) available',
       questionGroupX: 'Question Group {{x}}',
       addQuestion: '+ Add Question',
@@ -105,6 +106,54 @@ const resources = {
       updatedSuccessfully: 'Material updated successfully!',
       failedToUpdate: 'Failed to update material. Please try again.',
 
+      // SubjectList
+      loadingSubjects: 'Loading subjects...',
+      subjects: 'Subject(s)',
+      noSubjectAvailable: 'No subjects available',
+      contactTeacher: 'Contact your teacher to get started.',
+      clickToViewMaterials: 'Click to view materials',
+
+      // MaterialList
+      backToSubjects: 'Back to Subjects',
+      generateMaterial: 'Generate Material',
+      editButton: 'Edit',
+      deleteButton: 'Delete',
+      emptyMaterial: 'No materials available.',
+
+      // ViewMaterial
+      backToMaterials: 'Back To Materials',
+      submittedOn: 'Submitted on: {{date}}',
+      loadingQuestions: 'Loading questions...',
+      SQPlaceholder: 'Type your answer here...',
+      aiFeedback: 'AI Feedback',
+      submitButton: 'Submit Answer',
+      generatingQuestions: 'Questions are being generated...',
+
+      // SlideExample + SlideExplanation
+      unsupportedVideo: 'Your browser does not support the video tag.',
+    
+      // GenerateMaterial
+      selectFormWarning: 'Please select a form.',
+      selectTopicWarning: 'Please select a topic.',
+      selectLanguageWarning: 'Please select a language.',
+      matGenerateFailed: 'Failed to generate material. Please try again.',
+      questionGenerateFailed: 'Failed to send question generation request.',
+      subjectList: 'Subject:',
+      formList: 'Form:',
+      topicList: 'Topic:',
+      languageList: 'Language:',
+      selectA_: 'Select a ',
+      form: 'form',
+      topic: 'topic',
+      language: 'language',
+      Form: 'Form ',
+      subTopic: 'Subtopic:',
+      english: 'English',
+      chinese: 'Chinese',
+      description: 'Description',
+      descriptionPlaceholder: 'Provide any specific instructions or details for the material generation (optional)...',
+      generating: 'Generating...',
+      generateLoadingMessage: 'Generating your material, please wait...',
     }
   },
   'zh-HK': {
@@ -176,7 +225,7 @@ const resources = {
       previous: '上一頁',
       next: '下一頁',
       slideXofY: '第 {{x}} 張投影片，共 {{y}} 張',
-      pageX: '第 {{x}} 頁：',
+      pageX: '第 {{x}} 頁',
       subtitle: '副標題',
       question: '問題',
       solutionSteps: '解題步驟',
@@ -185,7 +234,7 @@ const resources = {
       remove: '移除',
       noSolutionSteps: '尚未有解題步驟。點擊「+ 新增要點」來新增。',
       noContentPoints: '尚未有內容要點。點擊「+ 新增要點」來新增。',
-      questions: '📝 問題',
+      questions: '練習題目',
       questionsAvailable: '已有 {{count}} 題',
       questionGroupX: '問題組 {{x}}',
       addQuestion: '+ 新增問題',
@@ -207,7 +256,61 @@ const resources = {
       cannotRemoveLastQuestion: '無法移除最後一個問題',
       updatedSuccessfully: '學習材料已成功更新！',
       failedToUpdate: '無法更新學習材料，請重試。',
+      
+      // SubjectList
+      loadingSubjects: '正在載入科目...',
+      subjects: '科目',
+      noSubjectAvailable: '暫無科目',
+      contactTeacher: '聯絡你的老師以開始',
+      clickToViewMaterials: '點擊查看材料',
 
+      // MaterialList
+      backToSubjects: '返回科目列表',
+      generateMaterial: '生成學習材料',
+      editButton: '編輯',
+      deleteButton: '刪除',
+      emptyMaterial: '暫無學習材料。',
+
+      // ViewMaterial
+      backToMaterials: '返回材料列表',
+      submittedOn: '提交日期：{{date}}',
+      loadingQuestions: '正在載入題目...',
+      SQPlaceholder: '請在此輸入你的答案...',
+      aiFeedback: 'AI 反饋',
+      submitButton: '提交答案',
+      generatingQuestions: '題目正在生成中...',
+      
+      // SlideExample + SlideExplanation
+      unsupportedVideo: '您的瀏覽器不支持 video 標籤。',
+    
+      // GenerateMaterial
+      selectFormWarning: '請選擇年級',
+      selectTopicWarning: '請選擇課題',
+      selectLanguageWarning: '請選擇語言',
+      matGenerateFailed: '生成學習材料失敗。請重試。',
+      questionGenerateFailed: '發送問題生成請求失敗。',
+      subjectList: '科目:',
+      formList: '年級:',
+      topicList: '課題:',
+      languageList: '語言:',
+      selectA_: '請選擇',
+      form: '年級',
+      topic: '課題',
+      language: '語言',
+      Form: '中',
+      subTopic: '子課題:',
+      english: '英文',
+      chinese: '繁體中文',
+      description: '教材生成描述',
+      descriptionPlaceholder: '請提供教材生成的具體要求或補充說明（選填）...',
+      generating: '生成中...',
+      generateLoadingMessage: '教材生成中，請稍候...',
+      1: '一',
+      2: '二',
+      3: '三',
+      4: '四',
+      5: '五',
+      6: '六',
     }
   }
 };

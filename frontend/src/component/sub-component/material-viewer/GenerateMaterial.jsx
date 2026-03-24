@@ -4,8 +4,10 @@ import '../../../dashboard.css';
 import axios from 'axios';
 import ViewMaterial from './ViewMaterial';
 import ViewQuestion from './ViewQuestion';
+import { useTranslation } from 'react-i18next';
 
 function GenerateMaterial({subject, onClose, userInfo, userRole}) {
+    const { t } = useTranslation();
 	const [topics, setTopics] = useState([])
     const [loadingTopics, setLoadingTopics] = useState(false); // <-- defined
     const [topicsError, setTopicsError] = useState(null); // <-- defined
@@ -126,15 +128,15 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 	const handleSubmit = (e) => {
 		e.preventDefault();
 		if (!values.form) {
-			setError("Please select a form.");
+			setError(t('selectFormWarning'));
 			return;
 		}		
 		if (!values.topic) {
-			setError("Please select a topic.");
+			setError(t('selectTopicWarning'));
 			return;
 		}
 		if (!values.language) {
-			setError("Please select a language.");
+			setError(t('selectLanguageWarning'));
 			return;
 		}
 
@@ -177,7 +179,7 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 		})
 		.catch(function (error) {
 			console.log(`Error sending material generation parameters: ${error}`);
-			setError("Failed to generate material. Please try again.");
+			setError(t('matGenerateFailed'));
 			setIsGenerating(false);
 		})
 	}
@@ -216,7 +218,7 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 		.catch( (error) => {
 			console.log(`Error sending question generation request: ${error}`);
 			console.log('Error details:', error.response?.data);
-			setError("Failed to send question generation request.");
+			setError(t('questionGenerateFailed'));
 		})
 		.finally(() => setIsGenerating(false) )
 	}
@@ -253,18 +255,18 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
                 className="back-button"
                 aria-label="Back to subjects list"
                 >
-                ← Back to Materials
+                ← {t('backToMaterials')}
                 </button>
 			</div>
 
 			{!generatedMaterial ? (
 				<form onSubmit={handleSubmit} className="form-container">
-					<h2>Generate Material</h2>
+					<h2>{t('generateMaterial')}</h2>
 					
 					{error && <div className="error-message">{error}</div>}
 
 					<div className="form-group">
-						<label htmlFor="subject">Subject:</label>
+						<label htmlFor="subject">{t('subjectList')}</label>
 						<input 
 							type="text" 
 							id="subject"
@@ -276,7 +278,7 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 					</div>
 
 					<div className="form-group">
-						<label htmlFor="form">Form:</label>
+						<label htmlFor="form">{t('formList')}</label>
 						<select
 						id="form"
 						name="form"
@@ -284,16 +286,16 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 						onChange={handleChanges}
 						className="form-input"
 						>
-						<option value="">Select a form</option>
-						{[1,2,3,4,5,6].map(f => (
-							<option key={f} value={`form${f}`}>Form {f}</option>
+						<option value="">{t('selectA_')} {t('form')}</option>
+						{[t('1'), t('2'), t('3'), t('4'), t('5'), t('6')].map(f => (
+							<option key={f} value={`form${f}`}>{t('Form')}{f}</option>
 						))}
 						</select>
 					</div>
 
 					{values.form && (
 						<div className="form-group">
-						<label htmlFor="topic">Topic:</label>
+						<label htmlFor="topic">{t('topicList')}</label>
 						<select
 							id="topic"
 							name="topic"
@@ -301,7 +303,7 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 							onChange={handleChanges}
 							className="form-input"
 						>
-							<option value="">Select a topic</option>
+							<option value="">{t('selectA_')} {t('topic')}</option>
 							{topics.map(t => (
 							<option key={t._id} value={t.topic}>
 								{t.topic}
@@ -313,7 +315,7 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 
 					{values.topic && topics.length > 0 && (
 					<div className="form-group">
-						<label>Subtopics:</label>
+						<label>{t('subTopic')}</label>
 						<div className="checkbox-group">
 						{topics.find(t => t.topic === values.topic)?.sub_topics?.map((sub, idx) => (
 							<div key={idx} className="checkbox-item">
@@ -344,7 +346,7 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 					)}
 
 					<div className="form-group">
-					<label htmlFor="language">Language:</label>
+					<label htmlFor="language">{t('languageList')}</label>
 					<select
 						id="language"
 						name="language"
@@ -352,21 +354,21 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 						onChange={handleChanges}
 						className="form-input"
 					>
-						<option value="">Select a language</option>
-						<option value="English">English</option>
-						<option value="Chinese">Chinese</option>
+						<option value="">{t('selectA_')} {t('language')}</option>
+						<option value="English">{t('english')}</option>
+						<option value="Chinese">{t('chinese')}</option>
 						{/* Add more as needed */}
 					</select>
 					</div>
 
 					<div className="form-group">
-						<label htmlFor="description">Description:</label>
+						<label htmlFor="description">{t('description')}:</label>
 						<textarea 
 							id="description"
 							name="description" 
 							value={values.description} 
 							onChange={handleChanges}
-							placeholder="Enter additional details for material generation"
+							placeholder={t('descriptionPlaceholder')}
 							className="form-textarea"
 							rows="4"
 						/>
@@ -377,12 +379,12 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
 						disabled={isGenerating}
 						className="submit-button"
 					>
-						{isGenerating ? 'Generating...' : 'Generate Material'}
+						{isGenerating ? t('generating') : t('generateMaterial')}
 					</button>
 				</form>
 			) : isGenerating ? (
 				<div className="loading-container">
-					<p>Generating your material, please wait...</p>
+					<p>{t('generateLoadingMessage')}</p>
 				</div>
 			) : (
 				<div className="result-container">

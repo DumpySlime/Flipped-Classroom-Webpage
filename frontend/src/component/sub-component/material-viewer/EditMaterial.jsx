@@ -745,7 +745,7 @@ function EditMaterial({ material, onClose }) {
                         fontWeight: 'bold',
                         margin: 0
                     }}>
-                        📝 Questions
+                        📝 {t('questions')}
                     </h2>
                 </div>
 

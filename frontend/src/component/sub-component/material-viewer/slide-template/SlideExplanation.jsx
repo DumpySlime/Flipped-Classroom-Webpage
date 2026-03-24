@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import '../../../../styles.css';
 import '../../../../dashboard.css';
 import axios from 'axios'
+import { useTranslation } from 'react-i18next';
 
 /*  slide: {subtitle: conclusion,
             content: conclusion point form,
@@ -9,6 +10,7 @@ import axios from 'axios'
             page: 4,
             url: video url} */
 function SlideExplanation ({ slide }) {
+  const { t } = useTranslation();
   // ensure content is in array format
   const contentList = Array.isArray(slide.content) ? slide.content : [slide.content];
   
@@ -23,11 +25,11 @@ function SlideExplanation ({ slide }) {
       <div className="slide-video" style={{ display: slide.url ? 'block' : 'none' }}>
         <video controls>
           <source src={slide.url} type="video/mp4" />
-          Your browser does not support the video tag.
+          {t('unsupportedVideo')}
         </video>
       </div>
       <div className="slide-footer">
-        <p>Page {slide.page}</p>
+        <p>{t('pageX', { x: slide.page })}</p>
       </div>
     </div>
   );

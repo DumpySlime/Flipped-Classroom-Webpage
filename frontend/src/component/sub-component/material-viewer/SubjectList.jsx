@@ -2,9 +2,11 @@ import { useState } from 'react';
 import '../../../styles.css';
 import '../../../dashboard.css';
 import MaterialList from './MaterialList';
+import { useTranslation } from 'react-i18next';
 
 function SubjectList({ subjects, materials, userRole, userInfo, activeSection, ...props }) {
   const [selectedSubject, setSelectedSubject] = useState(null);
+  const { t } = useTranslation();
 
   // Early return for loading state
   if (!subjects || subjects.length === 0) {
@@ -13,7 +15,7 @@ function SubjectList({ subjects, materials, userRole, userInfo, activeSection, .
         <div className="section-header">
           <div className="loading-container">
             <div className="loading-spinner"></div>
-            <p>Loading subjects...</p>
+            <p>t('loadingSubjects')</p>
           </div>
         </div>
       </div>
@@ -43,9 +45,9 @@ function SubjectList({ subjects, materials, userRole, userInfo, activeSection, .
     <div className="subject-section">
       <div className="section-header">
         <div className="header-content">
-          <h3 className="section-title">📚 Subjects</h3>
+          <h3 className="section-title">📚 {t('subjects')}</h3>
           <div className="subject-stats">
-            <span className="stat-badge">{subjects.length} subjects</span>
+            <span className="stat-badge">{subjects.length} {t('subjects')}</span>
           </div>
         </div>
       </div>
@@ -66,8 +68,8 @@ function SubjectList({ subjects, materials, userRole, userInfo, activeSection, .
       {subjects.length === 0 && (
         <div className="empty-state">
           <div className="empty-icon">📂</div>
-          <h4>No subjects available</h4>
-          <p>Contact your teacher to get started.</p>
+          <h4>{t('noSubjectAvailable')}</h4>
+          <p>{t('contactTeacher')}</p>
         </div>
       )}
     </div>
@@ -75,6 +77,7 @@ function SubjectList({ subjects, materials, userRole, userInfo, activeSection, .
 }
 
 function SubjectCard({ subject, onClick, materialsCount }) {
+  const { t } = useTranslation();
   return (
     <div 
       className="subject-card"
@@ -87,11 +90,7 @@ function SubjectCard({ subject, onClick, materialsCount }) {
         <div className="card-header">
           <div className="subject-icon">📖</div>
           <div className="subject-count">
-            {materialsCount > 0 ? (
-              <span className="count-badge">{materialsCount}</span>
-            ) : (
-              <span className="count-empty">Empty</span>
-            )}
+            <span className="count-badge">{materialsCount}</span>
           </div>
         </div>
         <div className="card-content">
@@ -107,7 +106,7 @@ function SubjectCard({ subject, onClick, materialsCount }) {
         </div>
         <div className="card-footer">
           <div className="action-prompt">
-            <span>Click to view materials</span>
+            <span>{t('clickToViewMaterials')}</span>
             <span className="arrow-right">→</span>
           </div>
         </div>

@@ -6,8 +6,10 @@ import SlideExplanation from './slide-template/SlideExplanation';
 import SlideExample from './slide-template/SlideExample';
 import VideoGenerator from "./VideoGenerator";
 import EditMaterial from './EditMaterial';
+import { useTranslation } from 'react-i18next';
 
 function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
+	const { t } = useTranslation();
 	const [slides, setSlides] = useState(null);
 	const [questions, setQuestions] = useState([]);
 	const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -329,7 +331,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
                 className="back-button"
                 aria-label="Back to material list"
                 >
-                ← Back to Materials
+                ← {t('backToMaterials')}
                 </button>
 				{userRole !== 'student' && (
                     <button 
@@ -337,7 +339,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
                     className="button primary"
                     aria-label="Edit current material"
                     >
-                    ✏️ Edit Material
+                    ✏️ {t('editButton')}
                     </button>
                 )}
             </div>
@@ -374,11 +376,11 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 				fontWeight: 'bold'
 				}}
 			>
-				← Previous
+				← {t('previous')}
 			</button>
 
 			<div style={{ fontSize: '16px', fontWeight: 'bold' }}>
-				Slide {currentSlideIndex + 1} of {totalSlides}
+				{t('slideXofY', { x: currentSlideIndex + 1, y: totalSlides })}
 			</div>
 
 			<button
@@ -395,7 +397,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 				fontWeight: 'bold'
 				}}
 			>
-				Next →
+				{t('next')} →
 			</button>
 			</div>
 
@@ -516,18 +518,18 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 			borderBottom: '3px solid #4CAF50',
 			paddingBottom: '10px'
 			}}>
-			📝 Practice Exercises
+			📝 {t('questions')}
 			</h2>
 
 			{submitted && savedSubmissionTime && (
 			<div style={{ marginBottom: '12px', color: '#666' }}>
-				Submitted on: {new Date(savedSubmissionTime).toLocaleString()}
+				{t('submittedOn', { date: new Date(savedSubmissionTime).toLocaleString() })}
 			</div>
 			)}
 
 			{loadingQuestions ? (
 			<div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-				<p>Loading questions...</p>
+				<p>{t('loadingQuestions')}</p>
 			</div>
 			) : questions.length > 0 ? (
 			<div>
@@ -537,7 +539,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 				color: '#4CAF50',
 				fontSize: '16px'
 				}}>
-				✓ {(questions?.[0]?.question_content?.questions?.length ?? 0)} question(s) available
+				✓ {t('questionsAvailable', { count: questions?.[0]?.question_content?.questions?.length ?? 0 })}
 				</p>
 
 			{userRole === "teacher" && (
@@ -574,7 +576,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 						fontSize: '16px',
 						color: '#333'
 						}}>
-						Question {qIndex + 1}: {question.questionText}
+						{t('question')} {qIndex + 1}: {question.questionText}
 						{submitted && userRole === 'student' && (
 							<span style={{
 							marginLeft: '10px',
@@ -582,7 +584,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 							fontWeight: 'normal',
 							color: isCorrect ? '#4CAF50' : '#f44336'
 							}}>
-							{isCorrect ? '✅ Correct' : '❌ Incorrect'}
+							{isCorrect ? '✅ ' + t('correctAnswer') : '❌ ' + t('incorrectAnswer')}
 							</span>
 						)}
 						</div>
@@ -665,7 +667,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 									}));
 								}
 								}}
-								placeholder="Type your answer here..."
+								placeholder={t('SQPlaceholder')}
 							/>
 							</div>
 						</div>
@@ -680,7 +682,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 							borderLeft: '5px solid #2196F3',
 							fontSize: '14px'
 						}}>
-							<strong>✅ Correct Answer:</strong> {question.correctAnswer}
+							<strong>✅ {t('correctAnswer')}:</strong> {question.correctAnswer}
 						</div>
 						)}
 
@@ -694,7 +696,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 							fontSize: '13px',
 							lineHeight: '1.4'
 						}}>
-							<strong>🤖 AI Feedback:</strong> {gradedAnswers[questionKey].feedback.length > 150 ? gradedAnswers[questionKey].feedback.substring(0, 150) + '...' : gradedAnswers[questionKey].feedback}
+							<strong>🤖 {t('aiFeedback')}:</strong> {gradedAnswers[questionKey].feedback.length > 150 ? gradedAnswers[questionKey].feedback.substring(0, 150) + '...' : gradedAnswers[questionKey].feedback}
 						</div>
 						)}
 
@@ -707,7 +709,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 							borderLeft: '5px solid #ff9800',
 							fontSize: '14px'
 						}}>
-							<strong>📝 Explanation:</strong> {question.explanation}
+							<strong>📝 {t('explanationLabel')}:</strong> {question.explanation}
 						</div>
 						)}
 
@@ -720,7 +722,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 							fontSize: '14px',
 							color: '#1976d2'
 						}}>
-							<strong>💡 Learning Objective:</strong> {question.learningObjective}
+							<strong>💡 {t('learningObjective')}:</strong> {question.learningObjective}
 						</div>
 						)}
 					</div>
@@ -843,7 +845,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 						}
 					}}
 					>
-					Submit Answers
+					{t('submitButton')}
 					</button>
 				</div>
 				)}
@@ -874,9 +876,9 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 				color: '#999',
 				fontSize: '16px'
 			}}>
-				<p>⏳ No questions available yet.</p>
+				<p>⏳ {t('noQuestionsAvailable')}</p>
 				<p style={{ fontSize: '14px', marginTop: '10px' }}>
-				Questions are being generated...
+				{t('generatingQuestions')}
 				</p>
 			</div>
 			)}
