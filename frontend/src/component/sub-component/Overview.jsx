@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import '../../styles.css';
 import '../../dashboard.css';
 import MaterialList from './material-viewer/MaterialList';
+import { useTranslation } from 'react-i18next';
 
 function Overview(props) {
+  const { t } = useTranslation();
+  
   // Destructure props with default values
   const {
     materials = [],
@@ -50,13 +53,13 @@ function Overview(props) {
 
   return (
     <div className="dashboard-main">
-      <h2>Dashboard Overview</h2>
+      <h2>{t('dashboardOverview')}</h2>
       
       {/* Stats Cards */}
       <div className="stats-grid">
         {userRole !== 'student' && (
           <div className="stat-card">
-            <h3>Total Students</h3>
+            <h3>{t('totalStudents')}</h3>
             <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '10px 0' }}>
               {totalStudents || safeStudents.length}
             </p>
@@ -64,14 +67,14 @@ function Overview(props) {
         )}
 
         <div className="stat-card">
-          <h3>Total Materials</h3>
+          <h3>{t('totalMaterials')}</h3>
           <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '10px 0' }}>
             {safeMaterials.length}
           </p>
         </div>
 
         <div className="stat-card">
-          <h3>Total Subjects</h3>
+          <h3>{t('totalSubjects')}</h3>
           <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '10px 0' }}>
             {safeSubjects.length}
           </p>
@@ -81,7 +84,7 @@ function Overview(props) {
       {/* Recent Materials - Using sorted materials */}
       {sortedMaterials.length > 0 && (
         <div className="recent-activity">
-          <h4>Recent Materials</h4>
+          <h4>{t('recentMaterials')}</h4>
           <div className="activity-list">
             {sortedMaterials.slice(0, 5).map((material) => (
               <div key={material.id} className="activity-item">
@@ -114,12 +117,12 @@ function Overview(props) {
       {/* Subjects List */}
       {safeSubjects.length > 0 && (
         <div className="recent-activity">
-          <h4>Your Subjects</h4>
+          <h4>{t('yourSubjects')}</h4>
           <div className="courses-list">
             {safeSubjects.map((subject) => (
               <div key={subject.id} className="course-card" onClick={() => handleViewMaterialList(subject)}>
                 <h3>{subject.subject}</h3>
-                <p>{subject.topics?.length || 0} topics</p>
+                <p>{t('topicCount', { count: subject.topics?.length || 0 })}</p>
               </div>
             ))}
           </div>
@@ -129,8 +132,8 @@ function Overview(props) {
       {/* Empty State */}
       {safeMaterials.length === 0 && safeSubjects.length === 0 && (
         <div className="activity-list" style={{ textAlign: 'center', padding: '40px' }}>
-          <h3>📭 No Data Available</h3>
-          <p>Start by adding subjects and materials to get started!</p>
+          <h3>{t('noDataAvailable')}</h3>
+          <p>{t('getStarted')}</p>
         </div>
       )}
     </div>
