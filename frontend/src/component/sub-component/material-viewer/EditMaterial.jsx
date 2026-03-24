@@ -4,8 +4,10 @@ import '../../../dashboard.css';
 import axios from 'axios';
 import SlideExplanation from './slide-template/SlideExplanation';
 import SlideExample from './slide-template/SlideExample';
+import { useTranslation } from 'react-i18next';
 
 function EditMaterial({ material, onClose }) {
+    const { t } = useTranslation();
     const [slides, setSlides] = useState(null);
     const [questions, setQuestions] = useState([]);
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -43,7 +45,7 @@ function EditMaterial({ material, onClose }) {
             setQuestions(questionsList);
         } catch (error) {
             console.error('Error loading material:', error);
-            setErr('Failed to load material');
+            setErr(t('failedToLoad'));
         } finally {
             setLoading(false);
         }
@@ -88,7 +90,7 @@ function EditMaterial({ material, onClose }) {
             if (sIndex !== slideIndex) return slide;
             const content = slide.content || [];
             if (content.length <= 1) {
-                alert('Cannot remove the last point');
+                alert(t('cannotRemoveLastPoint'));
                 return slide;
             }
             return {
@@ -207,7 +209,7 @@ function EditMaterial({ material, onClose }) {
             if (gIndex !== qIndex) return group;
             const questionContent = group.question_content?.questions || [];
             if (questionContent.length <= 1) {
-                alert('Cannot remove the last question');
+                alert(t('cannotRemoveLastQuestion'));
                 return group;
             }
             return {
@@ -239,12 +241,12 @@ function EditMaterial({ material, onClose }) {
             }
 
             console.log('Material and questions updated successfully');
-            alert('Material updated successfully!');
+            alert(t('updatedSuccessfully'));
             onClose();
         } catch (error) {
             console.error('Error updating material:', error);
-            setErr('Failed to update material. Please try again.');
-            alert('Failed to update material. Please try again.');
+            setErr(t('failedToUpdate'));
+            alert(t('failedToUpdate'));
         } finally {
             setSaving(false);
         }
@@ -253,13 +255,13 @@ function EditMaterial({ material, onClose }) {
     if (err) return (
         <div style={{ padding: '20px', color: 'red' }}>
             <p>{err}</p>
-            <button type="button" className="button primary" onClick={onClose}>Close</button>
+            <button type="button" className="button primary" onClick={onClose}>{t('close')}</button>
         </div>
     );
 
     if (!slides || slides.length === 0) return (
         <div style={{ padding: '20px', textAlign: 'center' }}>
-            <p>Loading slides...</p>
+            <p>{t('loadingSlides')}</p>
         </div>
     );
 
@@ -302,7 +304,7 @@ function EditMaterial({ material, onClose }) {
             <div style={{ padding: '20px' }}>
                 <div style={{ marginBottom: '15px' }}>
                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                        Subtitle:
+                        {t('subtitle')}
                     </label>
                     <input
                         type="text"
@@ -321,7 +323,7 @@ function EditMaterial({ material, onClose }) {
                     <>
                         <div style={{ marginBottom: '15px' }}>
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                Question:
+                                {t('question')}
                             </label>
                             <textarea
                                 value={question}
@@ -348,7 +350,7 @@ function EditMaterial({ material, onClose }) {
                         <div style={{ marginBottom: '15px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', margin: 0 }}>
-                                    Solution Steps:
+                                    {t('solutionSteps')}
                                 </label>
                                 <button
                                     type="button"
@@ -356,7 +358,7 @@ function EditMaterial({ material, onClose }) {
                                     onClick={() => handleAddPoint(currentSlideIndex)}
                                     style={{ padding: '5px 10px', fontSize: '14px' }}
                                 >
-                                    + Add Point
+                                    {t('addPoint')}
                                 </button>
                             </div>
                             {solutionSteps.map((step, stepIndex) => (
@@ -387,13 +389,13 @@ function EditMaterial({ material, onClose }) {
                                         onClick={() => handleRemovePoint(currentSlideIndex, stepIndex + 1)}
                                         style={{ padding: '5px 10px', fontSize: '12px' }}
                                     >
-                                        Remove
+                                        {t('remove')}
                                     </button>
                                 </div>
                             ))}
                             {solutionSteps.length === 0 && (
                                 <div style={{ padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '5px', textAlign: 'center' }}>
-                                    No solution steps yet. Click "+ Add Point" to add one.
+                                    {t('noSolutionSteps')}
                                 </div>
                             )}
                         </div>
@@ -403,7 +405,7 @@ function EditMaterial({ material, onClose }) {
                         <div style={{ marginBottom: '15px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', margin: 0 }}>
-                                    Content Points:
+                                    {t('contentPoints')}
                                 </label>
                                 <button
                                     type="button"
@@ -411,7 +413,7 @@ function EditMaterial({ material, onClose }) {
                                     onClick={() => handleAddPoint(currentSlideIndex)}
                                     style={{ padding: '5px 10px', fontSize: '14px' }}
                                 >
-                                    + Add Point
+                                    {t('addPoint')}
                                 </button>
                             </div>
                             {contentArray.map((point, pointIndex) => (
@@ -442,13 +444,13 @@ function EditMaterial({ material, onClose }) {
                                         onClick={() => handleRemovePoint(currentSlideIndex, pointIndex)}
                                         style={{ padding: '5px 10px', fontSize: '12px' }}
                                     >
-                                        Remove
+                                        {t('remove')}
                                     </button>
                                 </div>
                             ))}
                             {contentArray.length === 0 && (
                                 <div style={{ padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '5px', textAlign: 'center' }}>
-                                    No content points yet. Click "+ Add Point" to add one.
+                                    {t('noContentPoints')}
                                 </div>
                             )}
                         </div>
@@ -477,7 +479,7 @@ function EditMaterial({ material, onClose }) {
                                 color: '#4CAF50',
                                 fontSize: '16px'
                             }}>
-                                ✓ Question Group {index + 1}
+                                ✓ {t('questionGroupX', { x: index + 1 })}
                             </p>
 
                             {questionContent.map((question, qIndex) => {
@@ -497,7 +499,7 @@ function EditMaterial({ material, onClose }) {
                                             fontSize: '16px',
                                             color: '#333'
                                         }}>
-                                            Question {qIndex + 1}: {question.questionText}
+                                            {t('questionXWithText', { x: qIndex + 1, text: question.questionText })}
                                         </div>
 
                                         {question.questionType === 'multiple_choice' && question.options ? (
@@ -540,7 +542,7 @@ function EditMaterial({ material, onClose }) {
                                                     border: '1px solid #ddd',
                                                     fontSize: '14px'
                                                 }}>
-                                                    {question.correctAnswer || 'No correct answer set'}
+                                                    {question.correctAnswer || t('noCorrectAnswer')}
                                                 </div>
                                             </div>
                                         )}
@@ -554,7 +556,7 @@ function EditMaterial({ material, onClose }) {
                                                 borderLeft: '5px solid #ff9800',
                                                 fontSize: '14px'
                                             }}>
-                                                <strong>📝 Explanation:</strong> {question.explanation}
+                                                <strong>📝 {t('explanationLabel')}:</strong> {question.explanation}
                                             </div>
                                         )}
 
@@ -588,14 +590,14 @@ function EditMaterial({ material, onClose }) {
                 alignItems: 'center',
                 marginBottom: '20px'
             }}>
-                <h2 style={{ margin: 0 }}>Edit Material</h2>
+                <h2 style={{ margin: 0 }}>{t('editMaterial')}</h2>
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <button
                         type="button"
                         className="button subtle"
                         onClick={() => setEditMode(!editMode)}
                     >
-                        {editMode ? 'Preview Mode' : 'Edit Mode'}
+                        {editMode ? t('previewMode') : t('editMode')}
                     </button>
                     <button
                         type="button"
@@ -603,9 +605,9 @@ function EditMaterial({ material, onClose }) {
                         onClick={handleSave}
                         disabled={saving}
                     >
-                        {saving ? 'Saving...' : 'Save Changes'}
+                        {saving ? t('saving') : t('saveChanges')}
                     </button>
-                    <button type="button" className="button subtle" onClick={onClose}>Close</button>
+                    <button type="button" className="button subtle" onClick={onClose}>{t('close')}</button>
                 </div>
             </div>
 
@@ -639,11 +641,11 @@ function EditMaterial({ material, onClose }) {
                             fontWeight: 'bold'
                         }}
                     >
-                        ← Previous
+                        ← {t('previous')}
                     </button>
 
                     <div style={{ fontSize: '16px', fontWeight: 'bold' }}>
-                        Slide {currentSlideIndex + 1} of {totalSlides}
+                        {t('slideXofY', { x: currentSlideIndex + 1, y: totalSlides })}
                     </div>
 
                     <button
@@ -661,7 +663,7 @@ function EditMaterial({ material, onClose }) {
                             fontWeight: 'bold'
                         }}
                     >
-                        Next →
+                        {t('next')} →
                     </button>
                 </div>
 
@@ -755,7 +757,7 @@ function EditMaterial({ material, onClose }) {
                             color: '#4CAF50',
                             fontSize: '16px'
                         }}>
-                            ✓ {questions.length} question(s) available
+                            ✓ {t('questionsAvailable', { count: questions.length })}
                         </p>
 
                         {editMode ? (
@@ -776,14 +778,14 @@ function EditMaterial({ material, onClose }) {
                                                 alignItems: 'center',
                                                 marginBottom: '15px'
                                             }}>
-                                                <h3 style={{ margin: 0 }}>Question Group {index + 1}</h3>
+                                                <h3 style={{ margin: 0 }}>{t('questionGroupX', { x: index + 1 })}</h3>
                                                 <button
                                                     type="button"
                                                     className="button primary"
                                                     onClick={() => handleAddQuestion(index)}
                                                     style={{ padding: '5px 10px', fontSize: '14px' }}
                                                 >
-                                                    + Add Question
+                                                    {t('addQuestion')}
                                                 </button>
                                             </div>
 
@@ -801,20 +803,20 @@ function EditMaterial({ material, onClose }) {
                                                         alignItems: 'center',
                                                         marginBottom: '15px'
                                                     }}>
-                                                        <h4 style={{ margin: 0 }}>Question {qIndex + 1}</h4>
+                                                        <h4 style={{ margin: 0 }}>{t('questionX', { x: qIndex + 1 })}</h4>
                                                         <button
                                                             type="button"
                                                             className="button danger subtle"
                                                             onClick={() => handleRemoveQuestion(index, qIndex)}
                                                             style={{ padding: '5px 10px', fontSize: '12px' }}
                                                         >
-                                                            Remove
+                                                            {t('remove')}
                                                         </button>
                                                     </div>
 
                                                     <div style={{ marginBottom: '15px' }}>
                                                         <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                                            Question Text:
+                                                            {t('questionText')}
                                                         </label>
                                                         <textarea
                                                             value={question.questionText || ''}
@@ -838,9 +840,9 @@ function EditMaterial({ material, onClose }) {
                                                     {(question.options && question.options.length > 0) && (
                                                         <div style={{ marginBottom: '15px' }}>
                                                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                                                Options:
+                                                                {t('options')}
                                                                 <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#666', marginLeft: '10px' }}>
-                                                                    (Select radio button on the left to set as correct answer)
+                                                                    {t('selectRadioHint')}
                                                                 </span>
                                                             </label>
                                                             {(question.options || []).map((option, optIndex) => (
@@ -880,7 +882,7 @@ function EditMaterial({ material, onClose }) {
                                                                         onClick={() => handleRemoveOption(index, qIndex, optIndex)}
                                                                         style={{ padding: '5px 10px', fontSize: '12px' }}
                                                                     >
-                                                                        Remove
+                                                                        {t('remove')}
                                                                     </button>
                                                                 </div>
                                                             ))}
@@ -890,7 +892,7 @@ function EditMaterial({ material, onClose }) {
                                                                 onClick={() => handleAddOption(index, qIndex)}
                                                                 style={{ padding: '5px 10px', fontSize: '14px' }}
                                                             >
-                                                                + Add Option
+                                                                {t('addOption')}
                                                             </button>
                                                         </div>
                                                     )}
@@ -898,7 +900,7 @@ function EditMaterial({ material, onClose }) {
                                                     {(!question.options || question.options.length === 0) && (
                                                         <div style={{ marginBottom: '15px' }}>
                                                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                                                Correct Answer:
+                                                                {t('correctAnswer')}
                                                             </label>
                                                             <textarea
                                                                 value={question.correctAnswer || ''}
@@ -922,7 +924,7 @@ function EditMaterial({ material, onClose }) {
 
                                                     <div style={{ marginBottom: '15px' }}>
                                                         <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                                            Explanation:
+                                                            {t('explanation')}
                                                         </label>
                                                         <textarea
                                                             value={question.explanation || ''}
@@ -945,7 +947,7 @@ function EditMaterial({ material, onClose }) {
 
                                                     <div style={{ marginBottom: '15px' }}>
                                                         <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                                            Learning Objective:
+                                                            {t('learningObjective')}
                                                         </label>
                                                         <textarea
                                                             value={question.learningObjective || ''}
@@ -982,7 +984,7 @@ function EditMaterial({ material, onClose }) {
                         color: '#999',
                         fontSize: '16px'
                     }}>
-                        <p>⏳ No questions available yet.</p>
+                        <p>⏳ {t('noQuestionsAvailable')}</p>
                     </div>
                 )}
             </div>
