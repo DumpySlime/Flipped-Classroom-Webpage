@@ -142,6 +142,11 @@ def generate_question():
 
     topic = request.form.get('topic')
     material_id = request.form.get('material_id')
+    subject = request.form.get('subject', '')
+    subject_id = request.form.get('subject_id', '')
+    form = request.form.get('form', '')
+    sub_topics = request.form.get('sub_topics', '[]')
+    language = request.form.get('language', 'zh-HK')
 
     print(f"Content-Type: {request.content_type}")
     print(f"Form fields: {dict(request.form)}")
@@ -150,8 +155,24 @@ def generate_question():
     if not material_id or not topic:
         return jsonify({'error': 'material_id and topic are required'}), 400
 
+    try:
+        sub_topics_list = json.loads(sub_topics)
+        if isinstance(sub_topics_list, list):
+            sub_topics_text = ', '.join(sub_topics_list)
+        else:
+            sub_topics_text = str(sub_topics_list)
+    except json.JSONDecodeError:
+        sub_topics_text = sub_topics if sub_topics else 'None specified'
+
+    if language == 'en':
+        language_instruction = "Output all content in English."
+    elif language == 'zh-HK':
+        language_instruction = "輸出所有內容使用繁體中文（香港）。"
+    else:
+        language_instruction = "輸出所有內容使用繁體中文（香港）。"
+
     uploaded_by = get_jwt_identity()
-    print(f"Generating questions for material:{material_id} , topic: {topic}")
+    print(f"Generating questions for material:{material_id} , topic: {topic}, subject: {subject}, form: {form}")
 
     content = None
     
@@ -160,6 +181,13 @@ def generate_question():
             "role": "system",
             "content": f'''
                 You are an expert educational content creator.
+
+                Generate educational questions based on the following parameters:
+                - Subject: {subject if subject else 'General'}
+                - Form: {form if form else 'Beginner'}
+                - Topic: {topic}
+                - Subtopics: {sub_topics_text}
+                - Language: {language_instruction}
 
                 Format your response as a JSON object with this structure:
                 {{
@@ -175,29 +203,34 @@ def generate_question():
                             "points": 5
                         }}
                     ],
-                    "topic": "{{topic}}"
+                    "topic": "{topic}"
                 }}
 
                 IMPORTANT: For multiple choice questions, correctAnswer must be an index (0, 1, 2, or 3) corresponding to the position in the options array.
                 Do NOT include your thinking process, reasoning steps, or any references in the output. Only return the required fields in the specified JSON format.
-                Make sure questions are educational, accurate, and appropriate for the beginning level.
+                Make sure questions are educational, accurate, and appropriate for the specified form level.
                 '''
         }
 
         user_prompt = {
             "role": "user",
             "content": f'''
-                Generate 3 educational questions with detailed solutions on the topic: {topic}.
-                
+                Generate 3 educational questions with detailed solutions.
+
+                Subject: {subject if subject else 'General'}
+                Form/Level: {form if form else 'Beginner'}
+                Topic: {topic}
+                Subtopics: {sub_topics_text}
+                Language: {language_instruction}
+
                 Requirements:
-                - Main topic: {topic}
-                - Difficulty level: easy
-                - Learning objectives: introduction to the topic
+                - Difficulty level: appropriate for {form if form else 'Beginner'} level
                 - Question types to include: Multiple Choice and Short Answer
                 - Number of questions: 3
+                - All content must be in the specified language
 
                 For each question, provide:
-                1. Clear, well-formulated question text
+                1. Clear question text related to the subject and subtopics
                 2. If multiple choice: 4 options with one correct answer
                 3. Detailed step-by-step solution/explanation
                 4. Learning objective addressed
