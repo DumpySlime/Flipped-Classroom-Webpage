@@ -1,3 +1,7 @@
+Slide title:
+
+{SLIDE_TITLE}
+
 Slide explanation:
 
 {SLIDE_TEXT}

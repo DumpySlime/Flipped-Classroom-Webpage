@@ -16,6 +16,7 @@ from urllib3.util import Retry
 from dotenv import load_dotenv
 from logger import setup_logging
 from token_usage import get_token_usage
+import time
 
 load_dotenv()
 
@@ -102,20 +103,22 @@ def call_deepseek(system_prompt: str, user_prompt: str, temperature: float = 0.7
         f"{DEEPSEEK_BASE_URL}/v1/chat/completions", 
         headers=headers, 
         json=payload,
-        timeout=6000
+        timeout=600
     )
     response.raise_for_status()
 
     return response.json()
 
-def call_storyboard(slide_text: str):
+def call_storyboard(title: str, slide_text: str, language: str):
     storyboard_system_prompt = load_prompt(PROMPT_DIR / "storyboard_system_prompt.txt")
-    storyboard_user_prompt_template = load_prompt(PROMPT_DIR / "storyboard_user_prompt.txt")
+    storyboard_user_prompt = load_prompt(PROMPT_DIR / "storyboard_user_prompt.txt")
 
-    if not storyboard_system_prompt or not storyboard_user_prompt_template:
+    if not storyboard_system_prompt or not storyboard_user_prompt:
         raise Exception("Could not load prompt files")
     
-    storyboard_user_prompt = storyboard_user_prompt_template.replace("{SLIDE_TEXT}", slide_text)
+    storyboard_user_prompt = storyboard_user_prompt.replace("{SLIDE_TEXT}", slide_text)
+    storyboard_user_prompt = storyboard_user_prompt.replace("{SLIDE_TITLE}", title)
+    storyboard_system_prompt = storyboard_system_prompt.replace("{LANGUAGE}", language)
 
     try:
         logger.info(f"Generating storyboard...")
@@ -136,17 +139,19 @@ def call_storyboard(slide_text: str):
         logger.error(f"Storyboard generation failed: {e}")
         return None, None
 
-def call_animation(storyboard):    
+def call_animation(storyboard, language: str, title: str):    
     system_prompt = load_prompt(PROMPT_DIR / "manim_code_system_prompt.txt")
     boilerplate = load_boilerplate()
-    user_prompt_template = load_prompt(PROMPT_DIR / "manim_code_user_prompt.txt")
+    user_prompt = load_prompt(PROMPT_DIR / "manim_code_user_prompt.txt")
 
-    if not system_prompt or not boilerplate or not user_prompt_template:
+    if not system_prompt or not boilerplate or not user_prompt:
         logger.error("Could not load system prompt file for animation generation")
         raise Exception("Could not load prompt files")
     
     system_prompt = system_prompt.replace("{boilerplate_api_doc.txt}", boilerplate)
-    user_prompt = user_prompt_template.replace("{STORYBOARD}", json.dumps(storyboard))
+    system_prompt = user_prompt.replace("{LANGUAGE}", language)
+    system_prompt = system_prompt.replace("{SLIDE_TITLE}", title)
+    user_prompt = user_prompt.replace("{STORYBOARD}", json.dumps(storyboard))
 
     try:
         logger.info(f"Generating animation code...")
@@ -166,11 +171,13 @@ def call_animation(storyboard):
         logger.error(f"Animation generation failed: {e}")
         return None, None
 
-def review_animation_code(manim_code: str, storyboard):
+def review_animation_code(manim_code: str, storyboard, title: str, language: str):
     """Review generated Manim code against storyboard."""
     system_prompt = load_prompt(PROMPT_DIR / "code_review_system_prompt.txt")
     boilerplate = load_boilerplate()
     system_prompt = system_prompt.replace("{boilerplate_api_doc.txt}", boilerplate)
+    system_prompt = system_prompt.replace("{LANGUAGE}", language)
+    system_prompt = system_prompt.replace("{SLIDE_TITLE}", title)
     user_prompt = load_prompt(PROMPT_DIR / "code_review_user_prompt.txt")
     user_prompt = user_prompt.replace("{MANIM_CODE}", manim_code)
     user_prompt = user_prompt.replace("{STORYBOARD}", json.dumps(storyboard))
@@ -188,41 +195,88 @@ def review_animation_code(manim_code: str, storyboard):
     except Exception as e:
         logger.error(f"Code review failed: {e}")
         return None, None
+    
+def validate_code(cscene_code: str) -> bool:
+    with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as tf:
+        logger.info(f"Validating code by writing to temporary file: {tf.name}\n Code content:\n{cscene_code}")
+        tf.write(cscene_code.encode('utf-8'))
+        tf.flush()
+        try:
+            cmd = [
+                sys.executable, "-m", "manim", "render",
+                tf.name,
+                "--dry_run",
+                "--disable_caching",
+                "-v", "WARNING",  # Minimal logs
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            
+            if result.returncode != 0:
+                logger.error(f"Manim dry-run failed:\n{result.stderr}")
+                return False
+                
+            logger.info("Dry-run passed - code is safe!")
+            return True
 
-def generate_animation(slide_text: str, review_code: bool = True):
-    print("DEBUG in generate_animation, full slide_text:\n", slide_text)
+            
+        except subprocess.TimeoutExpired:
+            logger.error("Manim dry-run timed out")
+            return False
+        except Exception as e:
+            logger.error(f"Validation error: {traceback.format_exc()}")
+            return False
+    
+def generate_animation(title: str, slide_text: str, language: str):
+    print(f"DEBUG in generate_animation, slide title:\n{title}\nfull slide_text:\n{slide_text}\nLanguage: {language}")
     if not slide_text:
         logger.warning("Empty slide text provided")
         return None
-
-    storyboard, storyboard_tokens = call_storyboard(slide_text)
+    start_time = time.time()
+    storyboard, storyboard_tokens = call_storyboard(title, slide_text, language)
     if storyboard is None:
         logger.error("Failed to generate storyboard, skipping animation generation")
         return None
 
-    manim_code, manim_tokens = call_animation(storyboard)
+    manim_code, manim_tokens = call_animation(storyboard, language, title)
     if manim_code is None:
         logger.error("Failed to generate manim code from storyboard")
         return None
 
-    review_tokens = 0
-    if review_code:
-        reviewed_code, review_tokens = review_animation_code(manim_code, storyboard)
-        if reviewed_code is None:
-            logger.error("Code review failed, using unreviewed manim_code")
-        else:
-            manim_code = reviewed_code
+    total_review_tokens = 0
+    for i in range(4):  # Retry up to 3 times if validation fails
+        logger.info(f"Validating generated code.")
+        reviewed_code, review_tokens = review_animation_code(manim_code, storyboard, title, language)
+        validation = validate_code(reviewed_code)
+        total_review_tokens += review_tokens
+        if validation:
+            break
+        logger.warning(f"Validation failed, Attempt {i+1}/3")
+        if i == 3:  # If all retries failed, return error code
+            logger.error("Failed to generate valid animation code after 3 attempts")
+            reviewed_code = """
+            from scene import CScene
+            import numpy as np
 
-    total = storyboard_tokens + manim_tokens + (review_tokens or 0)
-    logger.info(f"Animation generated with total tokens: {total}")
-    return manim_code
+            class GeneratedScene(CScene):
+                def construct(self):
+                    title = self.setup_scene("Failed Animation")
+            """
+
+    total_time = time.time() - start_time
+    total_token = storyboard_tokens + manim_tokens + total_review_tokens
+    logger.info(f"Animation generated with total tokens: {total_token}")
+    logger.info(f"Total generation time: {total_time:.2f}s")
+    return reviewed_code, total_token, total_time
 
 
 if __name__ == "__main__":
     # Example usage
     test_slide = """
-        A polygon is a closed shape with straight sides
-        All sides connect end-to-end to form a single closed path
-        Polygons are named by how many sides they have
+對於任意銳角θ，可構造直角三角形：對邊/斜邊 = sinθ，鄰邊/斜邊 = cosθ，對邊/鄰邊 = tanθ
+已知一邊一角時，可用畢氏定理求其他邊長
+例如：若sinθ = 3/5，則可設對邊=3，斜邊=5，計算鄰邊=4
+從而得到cosθ = 4/5，tanθ = 3/4
     """
-    generate_animation(test_slide)
+
+    test_title = "利用直角三角形推導三角比"
+    reviewed_code, total_token, time = generate_animation(test_title, test_slide, language='Chinese')

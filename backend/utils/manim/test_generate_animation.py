@@ -5,99 +5,133 @@ Uses advanced Manim config for production-quality output.
 """
 
 code_sample = """
-from manim import *                                                                                                                                                                                                           
-from scene import CScene                                                                                                                                                                                                      
-import numpy as np                                                                                                                                                                                                            
-                                                                                                                                                                                                                            
-class GeneratedScene(CScene):                                                                                                                                                                                                 
-    def construct(self):                                                                                                                                                                                                      
-        # Beat 1: Show pentagon with vertex labels                                                                                                                                                                            
-        title = self.setup_scene("Polygons")                                                                                                                                                                                  
-                                                                                                                                                                                                                            
-        # Pentagon vertices (centered)                                                                                                                                                                                        
-        A = np.array([0, 1.5, 0])                                                                                                                                                                                             
-        B = np.array([-1.2, 0.5, 0])                                                                                                                                                                                          
-        C = np.array([-0.8, -1.2, 0])                                                                                                                                                                                         
-        D = np.array([0.8, -1.2, 0])                                                                                                                                                                                          
-        E = np.array([1.2, 0.5, 0])                                                                                                                                                                                           
-                                                                                                                                                                                                                            
-        pentagon = self.polygon(A, B, C, D, E)                                                                                                                                                                                
-        shape_center = self.get_shape_center(A, B, C, D, E)                                                                                                                                                                   
-                                                                                                                                                                                                                            
-        # Label vertices                                                                                                                                                                                                      
-        A_label = self.label_point(A, "A", shape_center)                                                                                                                                                                      
-        B_label = self.label_point(B, "B", shape_center)                                                                                                                                                                      
-        C_label = self.label_point(C, "C", shape_center)                                                                                                                                                                      
-        D_label = self.label_point(D, "D", shape_center)                                                                                                                                                                      
-        E_label = self.label_point(E, "E", shape_center)                                                                                                                                                                      
-                                                                                                                                                                                                                            
-        self.pause(0.5)                                                                                                                                                                                                       
-                                                                                                                                                                                                                            
-        # Beat 2: Highlight all sides (closed path)                                                                                                                                                                           
-        # Create all sides with highlight color                                                                                                                                                                               
-        AB = self.segment(A, B, color=YELLOW, stroke_width=6)                                                                                                                                                                 
-        BC = self.segment(B, C, color=YELLOW, stroke_width=6)                                                                                                                                                                 
-        CD = self.segment(C, D, color=YELLOW, stroke_width=6)                                                                                                                                                                 
-        DE = self.segment(D, E, color=YELLOW, stroke_width=6)                                                                                                                                                                 
-        EA = self.segment(E, A, color=YELLOW, stroke_width=6)                                                                                                                                                                 
-                                                                                                                                                                                                                            
-        self.pause(0.5)                                                                                                                                                                                                       
-                                                                                                                                                                                                                            
-        # Beat 3: Transform pentagon to triangle                                                                                                                                                                              
-        # First fade vertex labels                                                                                                                                                                                            
-        self.fade_out_group([A_label, B_label, C_label, D_label, E_label])                                                                                                                                                    
-                                                                                                                                                                                                                            
-        # Triangle vertices                                                                                                                                                                                                   
-        T1 = np.array([-2, -1, 0])                                                                                                                                                                                            
-        T2 = np.array([2, -1, 0])                                                                                                                                                                                             
-        T3 = np.array([0, 2, 0])                                                                                                                                                                                              
-                                                                                                                                                                                                                            
-        triangle = self.transform_focus(                                                                                                                                                                                      
-            pentagon,                                                                                                                                                                                                         
-            self.polygon(T1, T2, T3),                                                                                                                                                                                         
-            fade_out=[AB, BC, CD, DE, EA]                                                                                                                                                                                     
-        )                                                                                                                                                                                                                     
-                                                                                                                                                                                                                            
-        triangle_center = self.get_shape_center(T1, T2, T3)                                                                                                                                                                   
-        self.pause(0.5)                                                                                                                                                                                                       
-                                                                                                                                                                                                                            
-        # Beat 4: Label triangle as "3 sides"                                                                                                                                                                                 
-        side_label = self.label_line(                                                                                                                                                                                         
-            self.segment(T1, T2, color=WHITE),                                                                                                                                                                                
-            "3 sides",                                                                                                                                                                                                        
-            triangle_center                                                                                                                                                                                                   
-        )                                                                                                                                                                                                                     
-        side_label.shift(UP * 1.5)                                                                                                                                                                                            
-        self.pause(0.5)                                                                                                                                                                                                       
-                                                                                                                                                                                                                            
-        # Beat 5: Transform triangle to hexagon                                                                                                                                                                               
-        self.fade_out_group([side_label])                                                                                                                                                                                     
-                                                                                                                                                                                                                            
-        # Hexagon vertices (regular hexagon)                                                                                                                                                                                  
-        H1 = np.array([-2, 0, 0])                                                                                                                                                                                             
-        H2 = np.array([-1, 1.732, 0])                                                                                                                                                                                         
-        H3 = np.array([1, 1.732, 0])                                                                                                                                                                                          
-        H4 = np.array([2, 0, 0])                                                                                                                                                                                              
-        H5 = np.array([1, -1.732, 0])                                                                                                                                                                                         
-        H6 = np.array([-1, -1.732, 0])                                                                                                                                                                                        
-                                                                                                                                                                                                                            
-        hexagon = self.transform_focus(                                                                                                                                                                                       
-            triangle,                                                                                                                                                                                                         
-            self.polygon(H1, H2, H3, H4, H5, H6),                                                                                                                                                                             
-            fade_out=[]                                                                                                                                                                                                       
-        )                                                                                                                                                                                                                     
-                                                                                                                                                                                                                            
-        hexagon_center = self.get_shape_center(H1, H2, H3, H4, H5, H6)                                                                                                                                                        
-        self.pause(0.5)                                                                                                                                                                                                       
-                                                                                                                                                                                                                            
-        # Beat 6: Label hexagon as "6 sides"                                                                                                                                                                                  
-        hex_side_label = self.label_line(                                                                                                                                                                                     
-            self.segment(H1, H2, color=WHITE),                                                                                                                                                                                
-            "6 sides",                                                                                                                                                                                                        
-            hexagon_center                                                                                                                                                                                                    
-        )                                                                                                                                                                                                                     
-        hex_side_label.shift(UP * 2.0)                                                                                                                                                                                        
-        self.pause(1.0)   
+from scene import CScene
+import numpy as np
+
+class TrigonometryRatios(CScene):
+    def construct(self):
+        # Beat 1: Show right triangle with angle θ
+        title = self.setup_scene("Trig Ratios")
+
+        # Create right triangle vertices
+        A = np.array([-2, -1, 0])  # Right angle vertex
+        B = np.array([2, -1, 0])   # Bottom right
+        C = np.array([2, 1, 0])    # Top right (acute angle θ at B)
+
+        triangle = self.polygon(A, B, C)
+        shape_center = self.get_shape_center(A, B, C)
+
+        # Right angle at A
+        right_mark = self.right_angle_mark(B, A, C, size=0.25, color=YELLOW)
+
+        # Angle θ at B (acute angle)
+        angle_theta = self.angle_mark(A, B, C, color=YELLOW, label="θ")
+
+        # Labels for vertices
+        A_label = self.label_point(A, "A", shape_center)
+        B_label = self.label_point(B, "B", shape_center)
+        C_label = self.label_point(C, "C", shape_center)
+
+        self.pause(0.5)
+
+        # Beat 2: Label sides
+        # Opposite side to θ (AC)
+        opp_line = self.segment(A, C, color=RED, stroke_width=6)
+        opp_label = self.label_line(opp_line, "對", shape_center)
+
+        # Adjacent side to θ (BC)
+        adj_line = self.segment(B, C, color=GREEN, stroke_width=6)
+        adj_label = self.label_line(adj_line, "鄰", shape_center)
+
+        # Hypotenuse (AB)
+        hyp_line = self.segment(A, B, color=ORANGE, stroke_width=6)
+        hyp_label = self.label_line(hyp_line, "斜", shape_center)
+
+        self.pause(0.5)
+
+        # Beat 3: Show sin ratio
+        sin_eq = self.mtex(r"\sin\theta = \frac{\text{對}}{\text{斜}}")
+        sin_eq.to_corner(UR)
+        self.play_steps(Write(sin_eq))
+        self.pause(0.5)
+
+        # Beat 4: Show cos ratio
+        cos_eq = self.mtex(r"\cos\theta = \frac{\text{鄰}}{\text{斜}}")
+        cos_eq.next_to(sin_eq, DOWN, buff=0.3)
+        self.play_steps(Write(cos_eq))
+        self.pause(0.5)
+
+        # Beat 5: Show tan ratio
+        tan_eq = self.mtex(r"\tan\theta = \frac{\text{對}}{\text{鄰}}")
+        tan_eq.next_to(cos_eq, DOWN, buff=0.3)
+        self.play_steps(Write(tan_eq))
+        self.pause(0.5)
+
+        # Beat 6: Fade helpers (prepare for transformation)
+        self.fade_out_group([opp_label, adj_label, hyp_label, sin_eq, cos_eq, tan_eq])
+        self.pause(0.5)
+
+        # Beat 7: Transform to example triangle (3-4-5 triangle)
+        # New triangle vertices for 3-4-5 triangle
+        A2 = np.array([-2, -1, 0])  # Same right angle vertex
+        B2 = np.array([2, -1, 0])   # Same bottom right
+        C2 = np.array([2, 2, 0])    # New height for 3-4-5 (opposite=3, adjacent=4)
+
+        # Transform main triangle
+        new_triangle = self.transform_focus(
+            triangle,
+            self.polygon(A2, B2, C2),
+            fade_out=[title, right_mark, angle_theta, A_label, B_label, C_label]
+        )
+
+        # New shape center
+        shape_center2 = self.get_shape_center(A2, B2, C2)
+
+        # New right angle
+        new_right_mark = self.right_angle_mark(B2, A2, C2, size=0.25, color=YELLOW)
+
+        # New angle θ
+        new_angle_theta = self.angle_mark(A2, B2, C2, color=YELLOW, label="θ")
+
+        self.pause(0.5)
+
+        # Beat 8: Label sides with numbers
+        # Opposite side = 3 (A2C2)
+        opp_line2 = self.segment(A2, C2, color=RED, stroke_width=6)
+        opp_label2 = self.label_line(opp_line2, "3", shape_center2)
+
+        # Hypotenuse = 5 (A2B2)
+        hyp_line2 = self.segment(A2, B2, color=ORANGE, stroke_width=6)
+        hyp_label2 = self.label_line(hyp_line2, "5", shape_center2)
+
+        self.pause(0.5)
+
+        # Beat 9: Show Pythagorean theorem calculation
+        pythagoras_eq = self.mtex(r"\text{鄰}^2 = 5^2 - 3^2 = 16")
+        pythagoras_eq.to_corner(UL)
+        self.play_steps(Write(pythagoras_eq))
+
+        pythagoras_result = self.mtex(r"\text{鄰} = 4")
+        pythagoras_result.next_to(pythagoras_eq, DOWN, buff=0.3)
+        self.play_steps(Write(pythagoras_result))
+        self.pause(0.5)
+
+        # Beat 10: Label adjacent side = 4
+        adj_line2 = self.segment(B2, C2, color=GREEN, stroke_width=6)
+        adj_label2 = self.label_line(adj_line2, "4", shape_center2)
+        self.pause(0.5)
+
+        # Beat 11: Show cosθ = 4/5
+        cos_calc = self.mtex(r"\cos\theta = \frac{4}{5}")
+        cos_calc.next_to(pythagoras_result, DOWN, buff=0.5)
+        self.play_steps(Write(cos_calc))
+        self.pause(0.5)
+
+        # Beat 12: Show tanθ = 3/4
+        tan_calc = self.mtex(r"\tan\theta = \frac{3}{4}")
+        tan_calc.next_to(cos_calc, DOWN, buff=0.3)
+        self.play_steps(Write(tan_calc))
+        self.pause(1.0)
 """
 
 sample_slide_text = """
