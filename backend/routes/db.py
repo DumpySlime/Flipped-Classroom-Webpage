@@ -1,9 +1,9 @@
-from flask import Blueprint, jsonify, request, Response
+from flask import Blueprint, json, jsonify, request, Response
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
 from flask_bcrypt import Bcrypt
-import os
+import ast
 from datetime import datetime
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 db = None
@@ -47,6 +47,7 @@ def getUserById(user_id):
 @jwt_required()
 def add_material():
     try:
+        print("Received request to add material with form data:", request.form)
         subject_id = request.form.get('subject_id')
         topic = request.form.get('topic')
         slides = request.form.get('slides')
@@ -54,7 +55,7 @@ def add_material():
         status = request.form.get('status', 'generating')  # 'generating' or 'completed'
         
         language = request.form.get('language', 'en')
-        subtopic = request.form.get('subtopic', '')
+        subtopic = request.form.get('subtopic', [])
         form = request.form.get('form', '')
         
 
@@ -74,15 +75,17 @@ def add_material():
         if not form:
             return {"error": "form is required"}, 400
 
+        subtopic_list = ast.literal_eval(subtopic) if isinstance(subtopic, str) else subtopic
+
         mat = {
             'subject_id': ObjectId(subject_id),
             'attribute': {
                 'topic': topic,
-                "subtopic": subtopic,
-                'slides': slides,
+                "subtopic": subtopic_list,
                 "form": form,
                 'language': language
             },
+            'slides': slides,
             'uploaded_by': user_id,
             'status': status,
             'create_type': create_type,
@@ -97,10 +100,10 @@ def add_material():
                 'attribute': {
                     'topic': topic,
                     "subtopic": subtopic,
-                    'slides': slides,
                     "form": form,
                     'language': language
                 },
+                'slides': slides,
                 "uploaded_by": str(user_id),
                 'status': status,
                 "upload_date": datetime.now().isoformat(),
@@ -127,31 +130,31 @@ def get_material():
             filt['_id'] = ObjectId(material_id)
         if subject_id:
             filt['subject_id'] = ObjectId(subject_id)
-        if topic:
-            filt['attribute.topic'] = topic
         if uploaded_by:
             filt['uploaded_by'] = ObjectId(uploaded_by)
+        # check for new and old format
+        if topic:
+            filt["$or"] = [{"topic": topic}, {"attribute.topic": topic}]
         if subtopic:
-            filt['attribute.subtopic'] = {"$in": [subtopic]} if isinstance(subtopic, str) else subtopic
+            filt.setdefault("$and", []).append({"$or": [
+                    {"subtopic": {"$in": [subtopic] if isinstance(subtopic, str) else subtopic}},
+                    {"attribute.subtopic": {"$in": [subtopic] if isinstance(subtopic, str) else subtopic}}
+                ]
+            })
         if form:
-            filt['attribute.form'] = form
+            filt.setdefault("$and", []).append({
+                "$or": [
+                    {"form": form},
+                    {"attribute.form": form}
+                ]
+            })
 
         print(f'MongoDB filter: {filt}')
 
         mats = list(db.materials.find(filt, {}))
 
         print(f'Found {len(mats)} materials')
-        # double check for old format
-        if len(mats) == 0:
-            filt = {}
-            if material_id:
-                filt['_id'] = ObjectId(material_id)
-            if subject_id:
-                filt['subject_id'] = ObjectId(subject_id)
-            if topic:
-                filt['topic'] = topic
-            if uploaded_by:
-                filt['uploaded_by'] = ObjectId(uploaded_by)
+        
 
         if not mats and not filt:
             all_mats = list(db.materials.find({}))
@@ -159,22 +162,23 @@ def get_material():
 
         materials = []
         for m in mats:
+            attr = m.get("attribute", {})  
             materials.append({
                 "id": str(m["_id"]),
                 "subject_id": str(m.get("subject_id")),
                 "attribute": {
-                    "topic": m.get("topic"),
-                    "subtopic": m.get("subtopic") or [],
-                    "slides": m.get("slides"),
-                    "form": m.get("form") or "",
-                    "language": m.get("language") or ""
+                    "topic": attr.get("topic") or m.get("topic"),
+                    "subtopic": attr.get("subtopic") or m.get("subtopic"),
+                    "form": attr.get("form") or m.get("form"),
+                    "language": attr.get("language") or m.get("language")
                 },
+                "slides": m.get("slides"),
                 "uploaded_by": str(m.get("uploaded_by")),
                 "created_at": m.get("created_at"),
                 "video_url": m.get("video_url"),
                 "video_generated_at": m.get("video_generated_at")
             })
-        print(f'Materials of {subject_id}:', materials)
+            print(f'Material found: {json.dumps(materials[-1], indent=2, default=str)}')  # Print each material as it's processed
         if not materials:
             return jsonify({"message": "No materials found"}), 404
         return jsonify({"materials": materials}), 200

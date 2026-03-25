@@ -7,8 +7,10 @@ import EditMaterial from './EditMaterial';
 import ViewMaterial from './ViewMaterial';
 import GenerateMaterial from './GenerateMaterial';
 import { materialAPI } from '../../../services/api';
+import { useTranslation } from 'react-i18next';
 
 function MaterialList(props) {
+    const { t } = useTranslation();
     const [materials, setMaterials] = useState([]);    
     const [showUpload, setShowUpload] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
@@ -109,7 +111,7 @@ function MaterialList(props) {
                 className="back-button"
                 aria-label="Back to subjects list"
                 >
-                ← Back to Subjects
+                ← {t('backToSubjects')}
                 </button>
             </div>
             )}
@@ -117,7 +119,7 @@ function MaterialList(props) {
                 <h3>{props.subject?.subject || 'Materials'}</h3>
                 {props.userRole !== 'student' && (
                     <button className="button primary" onClick={() => setShowGenerate(true)}>
-                        Generate Material
+                        {t('generateMaterial')}
                     </button>
                 )}
             </div>
@@ -135,9 +137,13 @@ function MaterialList(props) {
                                 <div className="material-meta">
                                     {m.attribute?.subtopic?.length > 0 ? (  
                                         m.attribute.subtopic.map((sub, idx) => (
+                                            <>
                                             <span key={idx} className="material-date">{sub}</span>
+                                            <div></div>  
+                                            </>                                          
                                         ))
                                     ) : <></>}
+                                    <br/>
                                     <span className="material-date">                                        
                                     {m.created_at ? new Date(m.created_at).toLocaleDateString() : 'N/A'}
                                     </span>
@@ -154,7 +160,7 @@ function MaterialList(props) {
                                             handleEditMaterial(m);
                                         }}
                                     >
-                                        Edit
+                                        {t('editButton')}
                                     </button>
                                     <button
                                         className="button danger subtle"
@@ -164,7 +170,7 @@ function MaterialList(props) {
                                             deleteMaterial(m.id);
                                         }}
                                     >
-                                        Delete
+                                        {t('deleteButton')}
                                     </button>
                                 </div>
                             )}
@@ -172,7 +178,7 @@ function MaterialList(props) {
                     ))
                 ) : (
                     <div className="materials-empty">
-                        No materials yet for this subject.
+                        t{('emptyMaterial')}
                     </div>
                 )}
             </div>

@@ -62,7 +62,7 @@ import numpy as np
 
 class GeneratedScene(CScene):
     def construct(self):
-        title = self.setup_scene("Animation Title")  # STORE TITLE FOR FADING!
+        title = self.setup_scene("{SLIDE_TITLE}")  # STORE TITLE FOR FADING! and use this title
         
         # Beat 1: Build triangle + labels
         A = np.array([-2,0,0])
@@ -116,3 +116,6 @@ transform_main → self.transform_focus(old_main, new_main, fade_out=[helpers])
 fade_helpers → self.fade_out_group([label1, guide_line])
 
 Use storyboard "params" for coordinates, roles, text. Make reasonable assumptions if underspecified.
+
+Language Specification:
+- String values that is for display must be in {LANGUAGE}

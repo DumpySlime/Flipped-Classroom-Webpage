@@ -5,8 +5,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 
-from datetime import datetime
-import time
+import ast
 
 # --- Global DB/FS Handlers ---
 
@@ -72,7 +71,7 @@ def get_session(
 # --- DeepSeek AI Helper Functions ---
 
 
-def call_deepseek_api(subject: str, topic: str, instruction: str) -> dict:
+def call_deepseek_api(subject: str, topic: str, subtopic: list, form: str, instruction: str, language: str) -> dict:
     """
     Call DeepSeek API to generate teaching material in JSON format.
     Returns a JSON object with slides structure.
@@ -81,13 +80,37 @@ def call_deepseek_api(subject: str, topic: str, instruction: str) -> dict:
         raise Exception("DeepSeek API key is not configured")
 
     # Construct the prompt for DeepSeek
-    prompt = f"""You are an expert teacher creating educational material.
+    user_prompt = f"""Create teaching slides for a Hong Kong secondary school student.
 
-Subject: {subject}
-Topic: {topic}
-Additional Instructions: {instruction}
+Requirements:
+- Subject: {subject}
+- Topic: {topic}
+- Subtopics: {', '.join(subtopic) if subtopic else 'None'}
+- Secondary Year: {form}
+- Additional Instructions: {instruction if instruction else 'None'}
 
-Generate teaching slides in the following JSON format ONLY. Do not include any other text or explanations outside the JSON:
+Instructions:
+- Generate 4 to 10 slides depending on the complexity of the topic.
+- Use clear, concise, student-friendly language suitable for the specified secondary year.
+- If subtopics are provided, make sure the slides cover them naturally.
+- Include explanation slides and at least 1 worked example slide when appropriate.
+- Keep each slide focused on one main idea.
+- Avoid generic placeholder text.
+"""
+    system_prompt = f"""
+You are a expert HKDSE educational content creator.
+
+You must return valid JSON only.
+Do not translate JSON keys.
+Keep the JSON structure exactly as shown.
+Only translate the educational text content.
+Specifically:
+- "subtitle" values must be in {language}
+- each string inside "content" must be in {language}
+- keys such as "slides", "subtitle", "content", "slideType", and "page" must remain exactly in English
+- values of "slideType" must remain exactly "explanation" or "example"
+
+Generate teaching slides in the following JSON format:
 
 {{
   "slides": [
@@ -98,7 +121,7 @@ Generate teaching slides in the following JSON format ONLY. Do not include any o
       "page": 1
     }},
     {{
-      "subtitle": "{topic}",
+      "subtitle": "{subtopic[0] if subtopic else topic}",
       "content": ["Key concept 1", "Key concept 2", "Key concept 3"],
       "slideType": "explanation",
       "page": 2
@@ -117,8 +140,7 @@ Generate teaching slides in the following JSON format ONLY. Do not include any o
     }}
   ]
 }}
-
-Generate 4-6 slides appropriate for the topic. Use clear, student-friendly language."""
+"""
 
     try:
         session = get_session()
@@ -132,11 +154,11 @@ Generate 4-6 slides appropriate for the topic. Use clear, student-friendly langu
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are an expert educational content creator. You always respond with valid JSON only, no additional text."
+                    "content": system_prompt
                 },
                 {
                     "role": "user",
-                    "content": prompt
+                    "content": user_prompt
                 }
             ],
             "temperature": 0.7,
@@ -230,21 +252,23 @@ def material_create():
         current_user_id = get_jwt_identity()
         print(f"Material create request from user: {current_user_id}")
 
-        data = request.form.to_dict() or request.get_json(silent=True) or {}
+        data = request.form
 
         subject = (data.get("subject") or "").strip()
         topic = (data.get("topic") or "").strip()
-        instruction = (data.get("instruction") or data.get("description") or "").strip()
+        instruction = (data.get("description") or data.get("instruction") or "").strip()
         subject_id = (data.get("subject_id") or "").strip()
         
-        language = (data.get("language") or "en").strip()
-        subtopic = (data.get("subtopic") or "").strip()
+        language = (data.get("language") or "").strip()
+        raw_subtopic = (data.get("sub_topics") or "")
         form = (data.get("form") or "").strip()
-        
+
+        # update raw_subtopic from string to array
+        subtopic = ast.literal_eval(raw_subtopic) if isinstance(raw_subtopic, str) else raw_subtopic
+
         if not subject or not topic:
             return jsonify({"error": "Subject and topic are required"}), 400
 
-        print(f"Generating material for: Subject={subject}, Form={form}, Topic={topic}, subtopic={subtopic}, instruction={instruction}, language={language}")
         # Prepare to save material sets into /db/material-add
 
         try:
@@ -258,7 +282,6 @@ def material_create():
             url = f"{base}/db/material-add"
 
             print(f"Preparing to post material via /db/material-add route at {url}")
-            print(f"Topic: {topic}")
         except Exception as e:
             raise Exception(f"Error preparing url: {str(e)}")
         
@@ -268,15 +291,15 @@ def material_create():
             # Prepare file object
             data = {
                 "subject_id": subject_id,
-                "form": form,
                 "topic": topic,
-                "subtopic": subtopic,
-                'language': language,
                 "slides": [],
                 "create_type": "generated",
                 "status": "generating",
+                "language": language,
+                "subtopic": raw_subtopic,
+                "form": form,
             }
-
+            print(f"Posting initial material record with data: {data}")
             resp = session.post(
                 url,
                 data=data,
@@ -293,7 +316,7 @@ def material_create():
 
         # Try to call DeepSeek AI, fall back to template if API fails
         try:
-            material_json = call_deepseek_api(subject, topic, instruction)
+            material_json = call_deepseek_api(subject, topic, subtopic, form, instruction, language)
             print("Material generated successfully using DeepSeek AI")
             print(f"Material JSON: {material_json}")
         except Exception as e:
@@ -338,64 +361,20 @@ def material_create():
                 "slides": material_json,
                 "subject_id": subject_id,
                 "subject": subject,
-                "topic": topic,
+                'attribute': {
+                    "topic": topic,
+                    "subtopic": subtopic,
+                    "form": form,
+                    "language": language
+                },
                 "created_at": material_result.get("created_at"),
             },
         }
-
         return jsonify(response), 200
 
     except Exception as e:
         print(f"Error creating material JSON: {e}")
         return jsonify({"error": f"Internal Server Error: {str(e)}"}), 500
-
-'''
-@llm_bp.route('/material/progress', methods=['GET'])
-@jwt_required()
-def material_progress():
-    """
-    Progress endpoint for JSON material.
-    Since generation is synchronous in material_create, this retrieves saved material by SID.
-    """
-    try:
-        sid = (request.args.get("sid") or "").strip()
-        if not sid:
-            return jsonify({"error": "sid is required"}), 400
-
-        current_user_id = get_jwt_identity()
-
-        # Try to retrieve from database
-        if db is not None:
-            material_doc = db.materials.find_one({"sid": sid, "created_by": current_user_id})
-            if material_doc:
-                return jsonify({
-                    "code": 0,
-                    "message": "success",
-                    "data": {
-                        "sid": sid,
-                        "status": material_doc.get("status", "done"),
-                        "material": material_doc.get("content"),
-                        "subject_id": material_doc.get("subject_id"),
-                        "subject": material_doc.get("subject"),
-                        "topic": material_doc.get("topic"),
-                    }
-                }), 200
-
-        # If not found in database, return generic 'done' status
-        return jsonify({
-            "code": 0,
-            "message": "success",
-            "data": {
-                "sid": sid,
-                "status": "done",
-                "material": None
-            }
-        }), 200
-
-    except Exception as e:
-        print(f"Error querying material progress: {e}")
-        return jsonify({"error": f"Error querying material progress: {str(e)}"}), 500
-'''
 
 # --- Test/Debug Endpoints ---
 

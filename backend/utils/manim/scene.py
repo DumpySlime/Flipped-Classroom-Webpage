@@ -9,6 +9,7 @@ Each lesson can subclass this and override the `construct` method to create the 
 '''
 from manim import *
 import numpy as np
+import re
 
 
 # ========= Base Scene for HKDSE Geometry =========
@@ -96,8 +97,25 @@ class CScene(Scene):
 
     # ---------- Text & labels ----------
 
-    def mtex(self, s: str, scale: float = 0.9, color=None) -> MathTex:
+    '''def mtex(self, s: str, scale: float = 0.9, color=None) -> MathTex:
         m = SingleStringMathTex(s)
+        m.scale(scale)
+        if color:
+            m.set_color(color)
+        else:
+            m.set_color(self.CONFIG_COLOR_TEXT)
+        return m'''
+
+    def mtex(self, s: str, scale: float = 0.9, color=None) -> MathTex:
+        ctex_template = TexTemplate(
+            tex_compiler="xelatex",
+            output_format=".xdv",
+        )
+        ctex_template.add_to_preamble(r"""
+    \usepackage{ctex}
+    \usepackage{amsmath}
+    """)
+        m = SingleStringMathTex(s, tex_template=ctex_template)
         m.scale(scale)
         if color:
             m.set_color(color)
