@@ -149,11 +149,18 @@ const resources = {
       Form: 'Form ',
       subTopic: 'Subtopic:',
       english: 'English',
-      chinese: 'Chinese',
+      chinese: 'Traditional Chinese',
       description: 'Description',
       descriptionPlaceholder: 'Provide any specific instructions or details for the material generation (optional)...',
       generating: 'Generating...',
       generateLoadingMessage: 'Generating your material, please wait...',
+      formOne: 'Form 1',
+      formTwo: 'Form 2',
+      formThree: 'Form 3',
+      formFour: 'Form 4',
+      formFive: 'Form 5',
+      formSix: 'Form 6',
+      generatingVideo: 'Generating video please wait...',
     }
   },
   'zh-HK': {
@@ -305,12 +312,13 @@ const resources = {
       descriptionPlaceholder: '請提供教材生成的具體要求或補充說明（選填）...',
       generating: '生成中...',
       generateLoadingMessage: '教材生成中，請稍候...',
-      1: '一',
-      2: '二',
-      3: '三',
-      4: '四',
-      5: '五',
-      6: '六',
+      formOne: '中一',
+      formTwo: '中二',
+      formThree: '中三',
+      formFour: '中四',
+      formFive: '中五',
+      formSix: '中六',
+      generatingVideo: '影片生成中，請稍候...',
     }
   }
 };
@@ -329,7 +337,9 @@ i18n
       caches: ['localStorage'],
       lookupLocalStorage: 'i18nextLng',
     },
-    interpolation: { escapeValue: false }
+    interpolation: { escapeValue: false },
+    returnObjects: false,
+    returnNull: false,  
   });
 
 export default i18n;
