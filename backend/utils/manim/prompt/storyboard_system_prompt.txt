@@ -84,7 +84,7 @@ You may reuse and combine these types for different contexts; keep them generic 
 
 Language Specification:
 - "description" values must be in {LANGUAGE}
-- values inside "params" must be in {LANGUAGE}
+- values inside "params" must be in {LANGUAGE}, except single alphabet
 - keys such as "beat", "description", "actions", "type", "params", and keys inside "params" must remain exactly in English
 - values of "type" must remain exactly in English
 

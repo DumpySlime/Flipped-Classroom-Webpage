@@ -427,7 +427,7 @@ class GeneratedScene4(CScene):
         self.play_steps(Indicate(conclusion_text))
         self.pause(1.0)
 
-class TrigonometryRatios(CScene):
+class TrigonometryRatios1(CScene):
     def construct(self):
         # Beat 1: Show right triangle with angle θ
         title = self.setup_scene("Trig Ratios")
@@ -607,6 +607,186 @@ class TrigonometryRatios(CScene):
         self.play_steps(Create(sin_box), Create(cos_box), Create(tan_box))
         self.pause(1.5)
 
+class TrigonometryRatios2(CScene):
+    def construct(self):
+        # Beat 1: Show right triangle with angle θ
+        title = self.setup_scene("利用直角三角形推導三角比")
+
+        # Define triangle vertices (right angle at A)
+        A = np.array([-2, -1, 0])  # Right angle
+        B = np.array([1, -1, 0])   # Angle θ
+        C = np.array([-2, 2, 0])   # Top vertex
+
+        triangle = self.polygon(A, B, C)
+        shape_center = self.get_shape_center(A, B, C)
+
+        # Label vertices
+        A_label = self.label_point(A, "A", shape_center)
+        B_label = self.label_point(B, "B", shape_center)
+        C_label = self.label_point(C, "C", shape_center)
+
+        # Right angle at A
+        right_mark = self.right_angle_mark(B, A, C, size=0.3, color=YELLOW)
+
+        # Angle θ at B
+        angle_theta = self.angle_mark(A, B, C, color=YELLOW)
+        theta_label = self.mtex(r"\theta")
+        theta_label.next_to(angle_theta, RIGHT * 0.3 + UP * 0.1)
+
+        self.play_steps(
+            Create(triangle),
+            Create(right_mark),
+            Create(angle_theta),
+            Write(theta_label)
+        )
+        self.pause(1.0)
+
+        # Beat 2: Label sides
+        # Opposite side (AC)
+        opp_line = self.segment(A, C, color=GREEN, stroke_width=6)
+        opp_label = self.label_line(opp_line, "對", shape_center)
+
+        # Adjacent side (BA)
+        adj_line = self.segment(B, A, color=GREEN, stroke_width=6)
+        adj_label = self.label_line(adj_line, "鄰", shape_center)
+
+        # Hypotenuse (BC)
+        hyp_line = self.segment(B, C, color=GREEN, stroke_width=6)
+        hyp_label = self.label_line(hyp_line, "斜", shape_center)
+
+        self.pause(0.5)
+
+        # Beat 3: Show sinθ ratio
+        sin_eq = self.mtex(r"\frac{\text{對}}{\text{斜}} = \sin\theta")
+        sin_eq.to_edge(RIGHT).shift(UP * 2)
+        self.play_steps(Write(sin_eq))
+        self.pause(1.0)
+
+        # Beat 4: Show cosθ ratio
+        cos_eq = self.mtex(r"\frac{\text{鄰}}{\text{斜}} = \cos\theta")
+        cos_eq.to_edge(RIGHT).shift(UP * 1)
+        self.play_steps(Write(cos_eq))
+        self.pause(1.0)
+
+        # Beat 5: Show tanθ ratio
+        tan_eq = self.mtex(r"\frac{\text{對}}{\text{鄰}} = \tan\theta")
+        tan_eq.to_edge(RIGHT).shift(UP * 0)
+        self.play_steps(Write(tan_eq))
+        self.pause(1.0)
+
+        # Beat 6: Fade out ratio labels
+        self.fade_out_group([sin_eq, cos_eq, tan_eq])
+        self.pause(0.5)
+
+        # Beat 7: Transform to specific triangle with sinθ = 3/5
+        # Fade out old labels first
+        self.fade_out_group([
+            title, opp_label, adj_label, hyp_label,
+            A_label, B_label, C_label, theta_label,
+            right_mark, angle_theta
+        ])
+
+        # New triangle with opposite=3, hypotenuse=5
+        A_new = np.array([-2, -1, 0])
+        B_new = np.array([2, -1, 0])  # Extended for adjacent=4
+        C_new = np.array([-2, 2, 0])   # opposite=3
+
+        # Transform main triangle
+        new_triangle = self.transform_focus(
+            triangle,
+            self.polygon(A_new, B_new, C_new),
+            fade_out=[opp_line, adj_line, hyp_line]
+        )
+
+        # New labels
+        new_shape_center = self.get_shape_center(A_new, B_new, C_new)
+        A_label_new = self.label_point(A_new, "A", new_shape_center)
+        B_label_new = self.label_point(B_new, "B", new_shape_center)
+        C_label_new = self.label_point(C_new, "C", new_shape_center)
+
+        # New right angle
+        right_mark_new = self.right_angle_mark(B_new, A_new, C_new, size=0.3, color=YELLOW)
+
+        # New angle θ
+        angle_theta_new = self.angle_mark(A_new, B_new, C_new, color=YELLOW)
+        theta_label_new = self.mtex(r"\theta")
+        theta_label_new.next_to(angle_theta_new, RIGHT * 0.5 + UP * 0.2)
+
+        # Show sinθ = 3/5
+        sin_value = self.mtex(r"\sin\theta = \frac{3}{5}")
+        sin_value.to_edge(RIGHT).shift(UP * 1)
+
+        # Label opposite=3, hypotenuse=5
+        opp_line_new = self.segment(A_new, C_new, color=GREEN, stroke_width=6)
+        opp_label_new = self.label_line(opp_line_new, "3", new_shape_center)
+
+        hyp_line_new = self.segment(B_new, C_new, color=GREEN, stroke_width=6)
+        hyp_label_new = self.label_line(hyp_line_new, "5", new_shape_center)
+
+        self.play_steps(
+            Write(sin_value),
+            Write(opp_label_new),
+            Write(hyp_label_new)
+        )
+        self.pause(1.0)
+
+        # Beat 8: Show Pythagorean theorem calculation
+        pythagoras_eq = self.mtex(r"\text{鄰} = \sqrt{5^2 - 3^2} = 4")
+        pythagoras_eq.to_edge(DOWN).shift(UP * 0.5)
+        self.play_steps(Write(pythagoras_eq))
+        self.pause(1.0)
+
+        # Beat 9: Show adjacent=4
+        adj_line_new = self.segment(B_new, A_new, color=GREEN, stroke_width=6)
+        adj_label_new = self.label_line(adj_line_new, "4", new_shape_center)
+        self.play_steps(Write(adj_label_new))
+        self.pause(1.0)
+
+        # Beat 10: Fade out Pythagorean equation
+        self.fade_out_group([pythagoras_eq])
+        self.pause(0.5)
+
+        # Beat 11: Show cosθ = 4/5
+        cos_value = self.mtex(r"\cos\theta = \frac{4}{5}")
+        cos_value.to_edge(RIGHT).shift(UP * 0)
+        self.play_steps(Write(cos_value))
+        self.pause(1.0)
+
+        # Beat 12: Show tanθ = 3/4
+        tan_value = self.mtex(r"\tan\theta = \frac{3}{4}")
+        tan_value.to_edge(RIGHT).shift(UP * -1)
+        self.play_steps(Write(tan_value))
+        self.pause(1.0)
+
+        # Beat 13: Emphasize final results
+        results_group = VGroup(sin_value, cos_value, tan_value)
+
+        # Create emphasis box
+        result_box = SurroundingRectangle(
+            results_group,
+            color=RED,
+            buff=0.2,
+            stroke_width=3
+        )
+
+        self.play_steps(
+            Create(result_box),
+            results_group.animate.set_color(RED)
+        )
+
+        # Pulse animation
+        for _ in range(2):
+            self.play_steps(
+                result_box.animate.set_stroke(width=5),
+                results_group.animate.scale(1.05)
+            )
+            self.play_steps(
+                result_box.animate.set_stroke(width=3),
+                results_group.animate.scale(1/1.05)
+            )
+
+        self.pause(2.0)
+
 class TrigonometryStoryboard(CScene):
     def construct(self):
         # Beat 1: Show acute angle with θ label
@@ -722,3 +902,179 @@ class TrigonometryStoryboard(CScene):
             opp_label2, adj_label2, hyp_label2,
             sin_eq2, pythagoras, cos_eq2, tan_eq2
         ])
+
+class TrigonometryExplanation(CScene):
+    def construct(self):
+        # Beat 1: Show right triangle with angle θ
+        title = self.setup_scene("利用直角三角形推導三角比")
+
+        # Create right triangle vertices
+        A = np.array([-2, -1, 0])  # left-bottom
+        B = np.array([2, -1, 0])   # right-bottom
+        C = np.array([2, 1, 0])    # right-top
+
+        triangle = self.polygon(A, B, C)
+        shape_center = self.get_shape_center(A, B, C)
+
+        # Right angle at A (left-bottom)
+        right_mark = self.right_angle_mark(B, A, C, size=0.3, color=YELLOW)
+
+        # Angle θ at B (right-bottom)
+        angle_theta = self.angle_mark(A, B, C, color=YELLOW)
+        theta_label = self.mtex(r"\theta")
+        theta_label.scale(0.8)
+        theta_label.move_to(B + np.array([0.3, -0.3, 0]))
+
+        self.play_steps(Create(triangle), Create(right_mark), Create(angle_theta), Write(theta_label))
+        self.pause(0.5)
+
+        # Beat 2: Label sides
+        # Opposite side (B to C)
+        opp_line = self.segment(B, C, color=WHITE)
+        opp_label = self.label_line(opp_line, "對", shape_center)
+
+        # Adjacent side (A to B)
+        adj_line = self.segment(A, B, color=WHITE)
+        adj_label = self.label_line(adj_line, "鄰", shape_center)
+
+        # Hypotenuse (A to C)
+        hyp_line = self.segment(A, C, color=WHITE)
+        hyp_label = self.label_line(hyp_line, "斜", shape_center)
+
+        self.play_steps(Create(opp_line), Create(adj_line), Create(hyp_line),
+                       Write(opp_label), Write(adj_label), Write(hyp_label))
+        self.pause(0.5)
+
+        # Beat 3: Show ratio: opposite/hypotenuse = sinθ
+        self.play_steps(opp_line.animate.set_color(RED), hyp_line.animate.set_color(RED))
+
+        sin_eq = self.mtex(r"\sin\theta = \frac{\text{對}}{\text{斜}}")
+        sin_eq.scale(0.8)
+        sin_eq.to_edge(UP)
+        self.play_steps(Write(sin_eq))
+        self.pause(0.5)
+
+        # Beat 4: Show ratio: adjacent/hypotenuse = cosθ
+        self.play_steps(opp_line.animate.set_color(WHITE),
+                       adj_line.animate.set_color(RED))
+
+        cos_eq = self.mtex(r"\cos\theta = \frac{\text{鄰}}{\text{斜}}")
+        cos_eq.scale(0.8)
+        cos_eq.to_edge(UP)
+        self.play_steps(Transform(sin_eq, cos_eq))
+        self.pause(0.5)
+
+        # Beat 5: Show ratio: opposite/adjacent = tanθ
+        self.play_steps(hyp_line.animate.set_color(WHITE),
+                       opp_line.animate.set_color(RED))
+
+        tan_eq = self.mtex(r"\tan\theta = \frac{\text{對}}{\text{鄰}}")
+        tan_eq.scale(0.8)
+        tan_eq.to_edge(UP)
+        self.play_steps(Transform(sin_eq, tan_eq))
+        self.pause(0.5)
+
+        # Beat 6: Fade helpers
+        self.fade_out_group([opp_label, adj_label, hyp_label, sin_eq])
+        self.play_steps(opp_line.animate.set_color(WHITE),
+                       adj_line.animate.set_color(WHITE))
+        self.pause(0.5)
+
+        # Beat 7: Transform to specific 3-4-5 triangle
+        # New triangle with opposite=3, hypotenuse=5, adjacent=4
+        A_new = np.array([-2, -1, 0])  # left-bottom
+        B_new = np.array([2, -1, 0])   # right-bottom
+        C_new = np.array([2, 0.5, 0])  # right-top (height = 1.5 for 3:4:5 ratio)
+
+        new_triangle = self.transform_focus(
+            triangle,
+            self.polygon(A_new, B_new, C_new),
+            fade_out=[title, right_mark, angle_theta, theta_label, opp_line, adj_line, hyp_line]
+        )
+
+        # Recreate angle markers
+        new_right_mark = self.right_angle_mark(B_new, A_new, C_new, size=0.3, color=YELLOW)
+        new_angle_theta = self.angle_mark(A_new, B_new, C_new, color=YELLOW)
+        new_theta_label = self.mtex(r"\theta")
+        new_theta_label.scale(0.8)
+        new_theta_label.move_to(B_new + np.array([0.3, -0.3, 0]))
+
+        self.play_steps(Create(new_right_mark), Create(new_angle_theta), Write(new_theta_label))
+        self.pause(0.5)
+
+        # Beat 8: Label known sides
+        new_shape_center = self.get_shape_center(A_new, B_new, C_new)
+
+        # Opposite = 3
+        new_opp_line = self.segment(B_new, C_new, color=WHITE)
+        opp_value = self.mtex("3")
+        opp_value.scale(0.8)
+        opp_value.next_to(new_opp_line, RIGHT, buff=0.1)
+
+        # Hypotenuse = 5
+        new_hyp_line = self.segment(A_new, C_new, color=WHITE)
+        hyp_value = self.mtex("5")
+        hyp_value.scale(0.8)
+        hyp_value.move_to((A_new + C_new) / 2 + np.array([-0.3, 0.3, 0]))
+
+        self.play_steps(Create(new_opp_line), Create(new_hyp_line),
+                       Write(opp_value), Write(hyp_value))
+        self.pause(0.5)
+
+        # Beat 9: Apply Pythagorean theorem
+        pythagoras_eq = self.mtex(r"\text{鄰} = \sqrt{5^2 - 3^2} = 4")
+        pythagoras_eq.scale(0.8)
+        pythagoras_eq.to_edge(DOWN)
+
+        # Adjacent = 4
+        new_adj_line = self.segment(A_new, B_new, color=WHITE)
+        adj_value = self.mtex("4")
+        adj_value.scale(0.8)
+        adj_value.next_to(new_adj_line, DOWN, buff=0.1)
+
+        self.play_steps(Write(pythagoras_eq))
+        self.pause(0.5)
+        self.play_steps(Create(new_adj_line), Write(adj_value))
+        self.pause(0.5)
+
+        # Beat 10: Show cosθ = 4/5
+        self.fade_out_group([pythagoras_eq])
+        self.play_steps(new_adj_line.animate.set_color(RED), new_hyp_line.animate.set_color(RED))
+
+        cos_result = self.mtex(r"\cos\theta = \frac{4}{5}")
+        cos_result.scale(0.8)
+        cos_result.to_edge(UP)
+        self.play_steps(Write(cos_result))
+        self.pause(0.5)
+
+        # Beat 11: Show tanθ = 3/4
+        self.play_steps(new_hyp_line.animate.set_color(WHITE),
+                       new_opp_line.animate.set_color(RED))
+
+        tan_result = self.mtex(r"\tan\theta = \frac{3}{4}")
+        tan_result.scale(0.8)
+        tan_result.to_edge(UP)
+        self.play_steps(Transform(cos_result, tan_result))
+        self.pause(0.5)
+
+        # Beat 12: Emphasize all three results
+        self.play_steps(new_adj_line.animate.set_color(WHITE),
+                       new_opp_line.animate.set_color(WHITE))
+
+        results = VGroup(
+            self.mtex(r"\sin\theta = \frac{3}{5}"),
+            self.mtex(r"\cos\theta = \frac{4}{5}"),
+            self.mtex(r"\tan\theta = \frac{3}{4}")
+        ).arrange(DOWN, buff=0.3).scale(0.8).to_edge(RIGHT)
+
+        self.play_steps(FadeOut(cos_result), Write(results))
+        self.pause(1.0)
+
+        # Highlight results
+        boxes = VGroup()
+        for result in results:
+            box = SurroundingRectangle(result, color=YELLOW, stroke_width=2, buff=0.1)
+            boxes.add(box)
+
+        self.play_steps(Create(boxes))
+        self.pause(1.0)

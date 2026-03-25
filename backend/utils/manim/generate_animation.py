@@ -101,7 +101,7 @@ def call_deepseek(system_prompt: str, user_prompt: str, temperature: float = 0.7
         f"{DEEPSEEK_BASE_URL}/v1/chat/completions", 
         headers=headers, 
         json=payload,
-        timeout=60
+        timeout=600
     )
     response.raise_for_status()
 
@@ -193,8 +193,38 @@ def review_animation_code(manim_code: str, storyboard, title: str, language: str
     except Exception as e:
         logger.error(f"Code review failed: {e}")
         return None, None
+    
+def validate_code(cscene_code: str) -> bool:
+    with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as tf:
+        logger.info(f"Validating code by writing to temporary file: {tf.name}\n Code content:\n{cscene_code}")
+        tf.write(cscene_code.encode('utf-8'))
+        tf.flush()
+        try:
+            cmd = [
+                sys.executable, "-m", "manim", "render",
+                tf.name,
+                "--dry_run",
+                "--disable_caching",
+                "-v", "WARNING",  # Minimal logs
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            
+            if result.returncode != 0:
+                logger.error(f"Manim dry-run failed:\n{result.stderr}")
+                return False
+                
+            logger.info("Dry-run passed - code is safe!")
+            return True
 
-def generate_animation(title: str, slide_text: str, language: str, review_code: bool = True):
+            
+        except subprocess.TimeoutExpired:
+            logger.error("Manim dry-run timed out")
+            return False
+        except Exception as e:
+            logger.error(f"Validation error: {traceback.format_exc()}")
+            return False
+    
+def generate_animation(title: str, slide_text: str, language: str):
     print(f"DEBUG in generate_animation, slide title:\n{title}\nfull slide_text:\n{slide_text}\nLanguage: {language}")
     if not slide_text:
         logger.warning("Empty slide text provided")
@@ -210,17 +240,29 @@ def generate_animation(title: str, slide_text: str, language: str, review_code: 
         logger.error("Failed to generate manim code from storyboard")
         return None
 
-    review_tokens = 0
-    if review_code:
+    total_review_tokens = 0
+    for i in range(4):  # Retry up to 3 times if validation fails
+        logger.info(f"Validating generated code. Attempt {i+1}/3")
         reviewed_code, review_tokens = review_animation_code(manim_code, storyboard, title, language)
-        if reviewed_code is None:
-            logger.error("Code review failed, using unreviewed manim_code")
-        else:
-            manim_code = reviewed_code
+        validation = validate_code(reviewed_code)
+        total_review_tokens += review_tokens
+        if validation:
+            break
+        logger.warning(f"Validation failed, Attempt {i+1}/3")
+        if i == 3:  # If all retries failed, return error code
+            logger.error("Failed to generate valid animation code after 3 attempts")
+            reviewed_code = """
+            from scene import CScene
+            import numpy as np
 
-    total = storyboard_tokens + manim_tokens + (review_tokens or 0)
+            class GeneratedScene(CScene):
+                def construct(self):
+                    title = self.setup_scene("Failed Animation")
+            """
+
+    total = storyboard_tokens + manim_tokens + total_review_tokens
     logger.info(f"Animation generated with total tokens: {total}")
-    return manim_code
+    return reviewed_code
 
 
 if __name__ == "__main__":
