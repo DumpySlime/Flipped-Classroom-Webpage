@@ -189,22 +189,8 @@ def generate_video():
                 }), 500
 
             # sanitize
-            safe_code = manim_code
-            safe_code = re.sub(r"```.*?```", "", safe_code, flags=re.IGNORECASE)
-            safe_code = safe_code.encode("utf-8", errors="replace").decode(
-                "utf-8", errors="replace"
-            )
-            safe_code = safe_code.replace("MathTex", "Text")
-            safe_code = "\n".join(line.rstrip() for line in safe_code.splitlines()).lstrip()
-            safe_code = re.sub(r"\.RightAngle", "", safe_code)
-            
-            for bad, good in {
-                "→": "->",
-                "←": "<-",
-                "⇒": "=>",
-            }.items():
-                safe_code = safe_code.replace(bad, good)
-
+            safe_code = manim_code.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+            safe_code = "\n".join(line.rstrip() for line in safe_code.splitlines()).lstrip()           
             try:
                 compile(safe_code, f"generated-manim-{slide_number}", "exec")
             except SyntaxError as e:

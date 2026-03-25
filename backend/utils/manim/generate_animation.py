@@ -29,7 +29,8 @@ logger = setup_logging(current_file=Path(__file__).stem)
 def get_session(
     retries=3,
     backoff_factor=0.3,
-    status_forcelist=(500, 502, 504, 429),
+    status_forcelist=(500, 502, 504),
+    respect_retry_after_header=False,
     session=None,
 ) -> requests.Session:
     """Custom retry logic for API calls."""
@@ -44,7 +45,7 @@ def get_session(
     adapter = HTTPAdapter(max_retries=retry)
     session.mount('http://', adapter)
     session.mount('https://', adapter)
-    return session
+    return session 
 
 def clean_code(content: str) -> str:
     # Remove ```python ... ``` blocks, keeping only the code inside
@@ -101,7 +102,7 @@ def call_deepseek(system_prompt: str, user_prompt: str, temperature: float = 0.7
         f"{DEEPSEEK_BASE_URL}/v1/chat/completions", 
         headers=headers, 
         json=payload,
-        timeout=60
+        timeout=600
     )
     response.raise_for_status()
 
