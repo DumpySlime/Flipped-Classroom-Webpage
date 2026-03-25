@@ -102,7 +102,7 @@ def call_deepseek(system_prompt: str, user_prompt: str, temperature: float = 0.7
         f"{DEEPSEEK_BASE_URL}/v1/chat/completions", 
         headers=headers, 
         json=payload,
-        timeout=600
+        timeout=6000
     )
     response.raise_for_status()
 
