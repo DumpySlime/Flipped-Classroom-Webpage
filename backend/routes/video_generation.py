@@ -161,6 +161,7 @@ def generate_video():
             return jsonify({"error": "Material not found"}), 404
 
         all_slides = get_all_slides(material)
+        language = material.get('attribute').get('language')
         if len(all_slides) < 6:
             return jsonify({
                 "error": "Need at least 6 slides (intro, 4 content, conclusion)"
@@ -182,7 +183,7 @@ def generate_video():
             print(f"DEBUG slide {slide_number} text length:", len(slide_text))
             print(f"DEBUG slide {slide_number} text first 300 chars:\n", slide_text[:300])
 
-            manim_code = generate_animation(slide_text)
+            manim_code = generate_animation(title, slide_text, language)
             if not manim_code:
                 return jsonify({
                     "error": f"Failed to generate animation code for slide {slide_number}"

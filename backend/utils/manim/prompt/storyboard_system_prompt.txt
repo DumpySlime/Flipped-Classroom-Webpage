@@ -82,6 +82,12 @@ Allowed `"type"` values (examples you should use):
 
 You may reuse and combine these types for different contexts; keep them generic but geometry-aware.
 
+Language Specification:
+- "description" values must be in {LANGUAGE}
+- values inside "params" must be in {LANGUAGE}
+- keys such as "beat", "description", "actions", "type", "params", and keys inside "params" must remain exactly in English
+- values of "type" must remain exactly in English
+
 #### Example of a valid storyboard (for internal understanding)
 
 [

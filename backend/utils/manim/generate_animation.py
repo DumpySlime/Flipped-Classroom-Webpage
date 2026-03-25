@@ -107,14 +107,16 @@ def call_deepseek(system_prompt: str, user_prompt: str, temperature: float = 0.7
 
     return response.json()
 
-def call_storyboard(slide_text: str):
+def call_storyboard(title: str, slide_text: str, language: str):
     storyboard_system_prompt = load_prompt(PROMPT_DIR / "storyboard_system_prompt.txt")
-    storyboard_user_prompt_template = load_prompt(PROMPT_DIR / "storyboard_user_prompt.txt")
+    storyboard_user_prompt = load_prompt(PROMPT_DIR / "storyboard_user_prompt.txt")
 
-    if not storyboard_system_prompt or not storyboard_user_prompt_template:
+    if not storyboard_system_prompt or not storyboard_user_prompt:
         raise Exception("Could not load prompt files")
     
-    storyboard_user_prompt = storyboard_user_prompt_template.replace("{SLIDE_TEXT}", slide_text)
+    storyboard_user_prompt = storyboard_user_prompt.replace("{SLIDE_TEXT}", slide_text)
+    storyboard_user_prompt = storyboard_user_prompt.replace("{SLIDE_TITLE}", title)
+    storyboard_system_prompt = storyboard_system_prompt.replace("{LANGUAGE}", language)
 
     try:
         logger.info(f"Generating storyboard...")
@@ -135,17 +137,19 @@ def call_storyboard(slide_text: str):
         logger.error(f"Storyboard generation failed: {e}")
         return None, None
 
-def call_animation(storyboard):    
+def call_animation(storyboard, language: str, title: str):    
     system_prompt = load_prompt(PROMPT_DIR / "manim_code_system_prompt.txt")
     boilerplate = load_boilerplate()
-    user_prompt_template = load_prompt(PROMPT_DIR / "manim_code_user_prompt.txt")
+    user_prompt = load_prompt(PROMPT_DIR / "manim_code_user_prompt.txt")
 
-    if not system_prompt or not boilerplate or not user_prompt_template:
+    if not system_prompt or not boilerplate or not user_prompt:
         logger.error("Could not load system prompt file for animation generation")
         raise Exception("Could not load prompt files")
     
     system_prompt = system_prompt.replace("{boilerplate_api_doc.txt}", boilerplate)
-    user_prompt = user_prompt_template.replace("{STORYBOARD}", json.dumps(storyboard))
+    system_prompt = user_prompt.replace("{LANGUAGE}", language)
+    system_prompt = system_prompt.replace("{SLIDE_TITLE}", title)
+    user_prompt = user_prompt.replace("{STORYBOARD}", json.dumps(storyboard))
 
     try:
         logger.info(f"Generating animation code...")
@@ -165,11 +169,13 @@ def call_animation(storyboard):
         logger.error(f"Animation generation failed: {e}")
         return None, None
 
-def review_animation_code(manim_code: str, storyboard):
+def review_animation_code(manim_code: str, storyboard, title: str, language: str):
     """Review generated Manim code against storyboard."""
     system_prompt = load_prompt(PROMPT_DIR / "code_review_system_prompt.txt")
     boilerplate = load_boilerplate()
     system_prompt = system_prompt.replace("{boilerplate_api_doc.txt}", boilerplate)
+    system_prompt = system_prompt.replace("{LANGUAGE}", language)
+    system_prompt = system_prompt.replace("{SLIDE_TITLE}", title)
     user_prompt = load_prompt(PROMPT_DIR / "code_review_user_prompt.txt")
     user_prompt = user_prompt.replace("{MANIM_CODE}", manim_code)
     user_prompt = user_prompt.replace("{STORYBOARD}", json.dumps(storyboard))
@@ -188,25 +194,25 @@ def review_animation_code(manim_code: str, storyboard):
         logger.error(f"Code review failed: {e}")
         return None, None
 
-def generate_animation(slide_text: str, review_code: bool = True):
-    print("DEBUG in generate_animation, full slide_text:\n", slide_text)
+def generate_animation(title: str, slide_text: str, language: str, review_code: bool = True):
+    print(f"DEBUG in generate_animation, slide title:\n{title}\nfull slide_text:\n{slide_text}\nLanguage: {language}")
     if not slide_text:
         logger.warning("Empty slide text provided")
         return None
 
-    storyboard, storyboard_tokens = call_storyboard(slide_text)
+    storyboard, storyboard_tokens = call_storyboard(title, slide_text, language)
     if storyboard is None:
         logger.error("Failed to generate storyboard, skipping animation generation")
         return None
 
-    manim_code, manim_tokens = call_animation(storyboard)
+    manim_code, manim_tokens = call_animation(storyboard, language, title)
     if manim_code is None:
         logger.error("Failed to generate manim code from storyboard")
         return None
 
     review_tokens = 0
     if review_code:
-        reviewed_code, review_tokens = review_animation_code(manim_code, storyboard)
+        reviewed_code, review_tokens = review_animation_code(manim_code, storyboard, title, language)
         if reviewed_code is None:
             logger.error("Code review failed, using unreviewed manim_code")
         else:
@@ -220,8 +226,11 @@ def generate_animation(slide_text: str, review_code: bool = True):
 if __name__ == "__main__":
     # Example usage
     test_slide = """
-        A polygon is a closed shape with straight sides
-        All sides connect end-to-end to form a single closed path
-        Polygons are named by how many sides they have
+對於任意銳角θ，可構造直角三角形：對邊/斜邊 = sinθ，鄰邊/斜邊 = cosθ，對邊/鄰邊 = tanθ
+已知一邊一角時，可用畢氏定理求其他邊長
+例如：若sinθ = 3/5，則可設對邊=3，斜邊=5，計算鄰邊=4
+從而得到cosθ = 4/5，tanθ = 3/4
     """
-    generate_animation(test_slide)
+
+    test_title = "利用直角三角形推導三角比"
+    generate_animation(test_title, test_slide, language='Chinese')

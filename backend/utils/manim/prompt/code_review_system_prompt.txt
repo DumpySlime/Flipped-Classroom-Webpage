@@ -49,8 +49,12 @@ side_AB = self.segment(A,B)         # Visual clutter!
 
 ✓ Use: self.play_steps(Indicate(pentagon))
 
+
+6. Language Specification:
+- String values that is for display must be in {LANGUAGE}
+
 RULES TO ENFORCE
-✓ title = self.setup_scene("Title")  # ALWAYS store!
+✓ title = self.setup_scene({SLIDE_TITLE})  # ALWAYS store and ALWAYS use this as the title!
 ✓ shape_center = self.get_shape_center(A,B,C) before ALL labels
 ✓ fade_out includes: title + ALL previous labels + helpers
 ✓ transform_focus(old→new): old_shape DISAPPEARS completely
@@ -73,7 +77,7 @@ import numpy as np
 
 class RightTriangleSidesScene(CScene):
     def construct(self):
-        title = self.setup_scene("Trig Ratios")  # STORE TITLE FOR FADING!
+        title = self.setup_scene("{SLIDE_TITLE}")  # STORE TITLE FOR FADING! and use this title
         
         # Beat 1: Build triangle + labels
         A = np.array([-2,0,0])
