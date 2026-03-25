@@ -3,15 +3,12 @@ import axios from "axios";
 import "../../../styles.css";
 import "../../../dashboard.css";
 
-const API_BASE_URL = "http://localhost:5000"; // adjust if needed
+const API_BASE_URL = "http://localhost:5000";
 
 function VideoGenerator({ materialId, onVideoGenerated }) {
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState("");
-  const [slides, setSlides] = useState([]);
-  const [storyboard, setStoryboard] = useState("");
-  const [manimCode, setManimCode] = useState("");
-  const [videoUrl, setVideoUrl] = useState("");
+  const [videos, setVideos] = useState([]);
   const [error, setError] = useState(null);
 
   const handleGenerate = async () => {
@@ -29,30 +26,28 @@ function VideoGenerator({ materialId, onVideoGenerated }) {
 
     setIsLoading(true);
     setError(null);
-    setSlides([]);
-    setStoryboard("");
-    setManimCode("");
-    setVideoUrl("");
-    setStep("Generating Manim video (this may take a few minutes)...");
+    setVideos([]);
+    setStep("Generating videos for slides 2–5 (this may take several minutes)...");
 
     try {
       const res = await axios.post(
         `${API_BASE_URL}/api/generate-video/generate`,
         { material_id: materialId, quality: "medium" },
-        { headers: authHeaders, timeout: 6 * 60 * 9000 } 
+        { headers: authHeaders, timeout: 10 * 6000 * 1000 } 
       );
 
-      const url = res.data.videoUrl || res.data.video_path || res.data.videoURL;
-      if (!url) {
-        throw new Error("Backend did not return videoUrl.");
+      const generatedVideos = res.data.videos;
+      if (!generatedVideos || generatedVideos.length === 0) {
+        throw new Error("Backend did not return any videos.");
       }
 
-      setVideoUrl(url);
-      setStep("Completed!");
+      setVideos(generatedVideos);
+      setStep("Generation complete!");
 
       if (onVideoGenerated) {
-        onVideoGenerated(url);
+        onVideoGenerated(generatedVideos);
       }
+
     } catch (err) {
       console.error("Video generation error:", err);
       if (err.response) {
@@ -61,8 +56,9 @@ function VideoGenerator({ materialId, onVideoGenerated }) {
       }
       const msg =
         err.response?.data?.error ||
+        err.response?.data?.details ||
         err.message ||
-        "Failed to generate Manim video.";
+        "Failed to generate video.";
       setError(msg);
       setStep("");
     } finally {
@@ -70,10 +66,9 @@ function VideoGenerator({ materialId, onVideoGenerated }) {
     }
   };
 
-
   return (
     <div className="card" style={{ marginTop: "1rem" }}>
-      <div className="card-header">🎬 Generate Manim Video</div>
+      <div className="card-header"> Generate Manim Video</div>
       <div className="card-body">
         <button
           className="btn btn-primary"
@@ -90,43 +85,6 @@ function VideoGenerator({ materialId, onVideoGenerated }) {
             {error}
           </div>
         )}
-
-        {slides.length > 0 && (
-          <details style={{ marginTop: "0.5rem" }}>
-            <summary>Preview slides used</summary>
-            <pre style={{ whiteSpace: "pre-wrap" }}>
-              {slides
-                .map(
-                  (s) =>
-                    `Slide ${s.slide_number}: ${s.title}\n${s.content}\n\n`
-                )
-                .join("")}
-            </pre>
-          </details>
-        )}
-
-        {storyboard && (
-          <details style={{ marginTop: "0.5rem" }}>
-            <summary>Generated storyboard</summary>
-            <pre style={{ whiteSpace: "pre-wrap" }}>{storyboard}</pre>
-          </details>
-        )}
-
-        {manimCode && (
-          <details style={{ marginTop: "0.5rem" }}>
-            <summary>Generated Manim code</summary>
-            <pre style={{ whiteSpace: "pre-wrap" }}>{manimCode}</pre>
-          </details>
-        )}
-
-        {/* {videoUrl && (
-          <div style={{ marginTop: "0.5rem" }}>
-            <p>Generated video:</p>
-            <video controls width="100%">
-              <source src={videoUrl} type="video/mp4" />
-            </video>
-          </div>
-        )} */}
       </div>
     </div>
   );

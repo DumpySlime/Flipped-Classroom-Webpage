@@ -10,21 +10,17 @@ import sys
 from pathlib import Path
 from utils.manim.generate_animation import generate_animation
 
-
 video_gen_bp = Blueprint("video_generation", __name__)
-
 db = None
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 MANIM_DIR = BASE_DIR / "utils" / "manim"
 SCENE_PATH = MANIM_DIR / "scene.py"
 
-
 def init_video_generation(database, app):
     global db
     db = database
     print("VIDEOGEN: Video generation module initialized")
-
 
 def get_manim_command() -> str:
     if sys.platform == "darwin":
@@ -32,7 +28,6 @@ def get_manim_command() -> str:
         if os.path.exists(homebrew_path):
             return homebrew_path
     return "manim"
-
 
 def find_video_file(root_dir: str, material_id: str) -> str | None:
     expected_name = f"video_{material_id}.mp4"
@@ -53,14 +48,12 @@ def find_video_file(root_dir: str, material_id: str) -> str | None:
 
     return max(candidates, key=lambda x: x[0])[1] if candidates else None
 
-
 def save_video_to_static(video_path: str, material_id_str: str) -> str:
     out_dir = os.path.join("static", "generated_videos")
     os.makedirs(out_dir, exist_ok=True)
     dest = os.path.join(out_dir, f"video_{material_id_str}.mp4")
     shutil.copy(video_path, dest)
     return f"static/generated_videos/video_{material_id_str}.mp4"
-
 
 def get_all_slides(material: dict) -> list[dict]:
     raw = material.get("slides", [])
@@ -86,7 +79,6 @@ def get_all_slides(material: dict) -> list[dict]:
             content_text = str(s)
         all_slides.append({"title": subtitle, "content": content_text})
     return all_slides
-
 
 @video_gen_bp.route("/api/generate-video/generate", methods=["POST"])
 # @jwt_required()
@@ -115,13 +107,20 @@ def generate_video():
             return jsonify({"error": "Material not found"}), 404
 
         all_slides = get_all_slides(material)
-        language = material.get('attribute').get('language')
-        if len(all_slides) < 6:
+        
+        # Get language safely
+        language = "English"
+        try:
+            language = material.get('attribute', {}).get('language', 'English')
+        except:
+            pass
+        
+        if len(all_slides) < 3:
             return jsonify({
-                "error": "Need at least 6 slides (intro, 4 content, conclusion)"
+                "error": "Need at least 3 slides (intro, content, conclusion)"
             }), 400
 
-        content_slides = all_slides[1:5]  # slides index 1,2,3,4 → slide numbers 2,3,4,5
+        content_slides = all_slides[1:-1]
         topic = material.get("topic") or material.get("title") or "Educational Topic"
 
         quality = data.get("quality", "medium")
@@ -129,13 +128,20 @@ def generate_video():
 
         videos = []
 
-        for offset, slide in enumerate(content_slides, start=2):
-            slide_number = offset  # 2, 3, 4, 5
+        for idx, slide in enumerate(content_slides):
+            slide_number = idx + 2 
+            slide_title = slide['title'] 
             slide_text = f"Topic: {topic}\n\n{slide['title']}\n{slide['content']}"
             print(f"DEBUG slide {slide_number} text length:", len(slide_text))
             print(f"DEBUG slide {slide_number} text first 300 chars:\n", slide_text[:300])
 
-            manim_code, token, time = generate_animation(title, slide_text, language)
+            result = generate_animation(slide_title, slide_text, language)
+            if result is None or len(result) < 1:
+                return jsonify({
+                    "error": f"Failed to generate animation code for slide {slide_number}"
+                }), 500
+            
+            manim_code = result[0] if isinstance(result, tuple) else result
             if not manim_code:
                 return jsonify({
                     "error": f"Failed to generate animation code for slide {slide_number}"
@@ -144,6 +150,10 @@ def generate_video():
             # UTF-8 sanitize and strip trailing whitespace
             safe_code = manim_code.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
             safe_code = "\n".join(line.rstrip() for line in safe_code.splitlines()).lstrip()
+
+            # Force replace Tex/MathTex with Text for Chinese content
+            safe_code = safe_code.replace("MathTex(", "Text(")
+            safe_code = safe_code.replace("Tex(", "Text(")
 
             # Early syntax check before spending time on Manim subprocess
             try:
@@ -193,11 +203,11 @@ def generate_video():
                     text=True,
                     encoding="utf-8",
                     errors="ignore",
-                    timeout=600,
+                    timeout=60000,
                 )
                 print(f"MANIM RETURN CODE (slide {slide_number}):", proc.returncode)
-                print(f"MANIM STDOUT (slide {slide_number}):", proc.stdout[-3000:])
-                print(f"MANIM STDERR (slide {slide_number}):", proc.stderr[-3000:])
+                print(f"MANIM STDOUT (slide {slide_number}):", proc.stdout[-3000:] if proc.stdout else "")
+                print(f"MANIM STDERR (slide {slide_number}):", proc.stderr[-3000:] if proc.stderr else "")
 
                 video_path = find_video_file(out_dir, output_id)
 
@@ -232,7 +242,7 @@ def generate_video():
         if isinstance(raw, dict) and "slides" in raw:
             slides_doc = raw.get("slides") or []
             for part in videos:
-                idx = part["slide"] - 1  # slide 2 → index 1, slide 3 → index 2, etc.
+                idx = part["slide"] - 1
                 if 0 <= idx < len(slides_doc):
                     slides_doc[idx]["video_url"] = part["videoUrl"]
 
