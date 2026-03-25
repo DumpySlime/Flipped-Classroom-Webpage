@@ -16,6 +16,7 @@ from urllib3.util import Retry
 from dotenv import load_dotenv
 from logger import setup_logging
 from token_usage import get_token_usage
+import time
 
 load_dotenv()
 
@@ -229,7 +230,7 @@ def generate_animation(title: str, slide_text: str, language: str):
     if not slide_text:
         logger.warning("Empty slide text provided")
         return None
-
+    start_time = time.time()
     storyboard, storyboard_tokens = call_storyboard(title, slide_text, language)
     if storyboard is None:
         logger.error("Failed to generate storyboard, skipping animation generation")
@@ -242,7 +243,7 @@ def generate_animation(title: str, slide_text: str, language: str):
 
     total_review_tokens = 0
     for i in range(4):  # Retry up to 3 times if validation fails
-        logger.info(f"Validating generated code. Attempt {i+1}/3")
+        logger.info(f"Validating generated code.")
         reviewed_code, review_tokens = review_animation_code(manim_code, storyboard, title, language)
         validation = validate_code(reviewed_code)
         total_review_tokens += review_tokens
@@ -260,9 +261,11 @@ def generate_animation(title: str, slide_text: str, language: str):
                     title = self.setup_scene("Failed Animation")
             """
 
-    total = storyboard_tokens + manim_tokens + total_review_tokens
-    logger.info(f"Animation generated with total tokens: {total}")
-    return reviewed_code
+    total_time = time.time() - start_time
+    total_token = storyboard_tokens + manim_tokens + total_review_tokens
+    logger.info(f"Animation generated with total tokens: {total_token}")
+    logger.info(f"Total generation time: {total_time:.2f}s")
+    return reviewed_code, total_token, total_time
 
 
 if __name__ == "__main__":
@@ -275,4 +278,4 @@ if __name__ == "__main__":
     """
 
     test_title = "利用直角三角形推導三角比"
-    generate_animation(test_title, test_slide, language='Chinese')
+    reviewed_code, total_token, time = generate_animation(test_title, test_slide, language='Chinese')
