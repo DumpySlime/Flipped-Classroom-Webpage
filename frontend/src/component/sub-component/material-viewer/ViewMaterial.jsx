@@ -4,7 +4,6 @@ import '../../../dashboard.css';
 import axios from 'axios';
 import SlideExplanation from './slide-template/SlideExplanation';
 import SlideExample from './slide-template/SlideExample';
-import VideoGenerator from "./VideoGenerator";
 import EditMaterial from './EditMaterial';
 import { useTranslation } from 'react-i18next';
 
@@ -254,6 +253,31 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 		}
 	}, [loadingQuestions, questions, materialId, userInfo?.id, userRole]);
 	
+	// Re-fetch material from DB to get video_url fields populated by backend
+	useEffect(() => {
+		if (!materialData?.sid) return;
+
+		axios.get(`/db/material/${materialData.sid}`)
+			.then((res) => {
+				const freshMaterial = res.data?.material || res.data;
+				if (!freshMaterial) return;
+
+				const slidesData = Array.isArray(freshMaterial?.slides?.slides || freshMaterial?.slides)
+					? (freshMaterial?.slides?.slides || freshMaterial?.slides)
+					: [];
+
+				const normalizedSlides = slidesData.map(slide => ({
+					...slide,
+					slidetype: slide.slideType || slide.slidetype,
+				}));
+
+				setSlides(normalizedSlides);
+			})
+			.catch((err) => {
+				console.warn("Could not re-fetch material for video URLs:", err);
+			});
+	}, [materialData?.sid]);
+
 	// If showing edit
     if (showEdit && selectedMaterial) {
         return (
@@ -308,17 +332,21 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 			</div>
 			 
 			{/* Right side: Manim video if available */} 
-			{currentSlide.video_url && ( 
-				<div style={{ flex: 1 }}> 
-				<video
-					key={currentSlideIndex} // re-render when slide changes
-					controls 
-					width="100%"
-				> 
-					<source src={currentSlide.video_url} type="video/mp4" /> 
-				</video> 
-				</div> 
-			)} 
+			{currentSlide.video_url && (
+				<div style={{ flex: 1 }}>
+					<video
+						key={currentSlideIndex}
+						controls
+						width="100%"
+						style={{ borderRadius: '8px', border: '1px solid #ddd' }}
+					>
+						<source
+							src={`http://localhost:5000/${currentSlide.video_url}`}
+							type="video/mp4"
+						/>
+					</video>
+				</div>
+			)}
 			</div> 
 			);
 	};
@@ -542,13 +570,6 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 				✓ {t('questionsAvailable', { count: questions?.[0]?.question_content?.questions?.length ?? 0 })}
 				</p>
 
-			{userRole === "teacher" && (
-			<VideoGenerator
-				materialId={materialId}
-				onVideoGenerated={(url) => setVideoUrl(url)}
-			/>
-			)}
-			
 				{questions.map((q, index) => {
 				const questionContent = q.question_content?.questions || [];
 				return questionContent.map((question, qIndex) => {

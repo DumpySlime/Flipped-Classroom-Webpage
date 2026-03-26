@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import React from 'react';
 import '../../../styles.css';
 import '../../../dashboard.css';
 
@@ -137,10 +138,10 @@ function MaterialList(props) {
                                 <div className="material-meta">
                                     {m.attribute?.subtopic?.length > 0 ? (  
                                         m.attribute.subtopic.map((sub, idx) => (
-                                            <>
-                                            <span key={idx} className="material-date">{sub}</span>
-                                            <div></div>  
-                                            </>                                          
+                                            <React.Fragment key={idx}>
+                                                <span className="material-date">{sub}</span>
+                                                <div></div>
+                                            </React.Fragment>
                                         ))
                                     ) : <></>}
                                     <br/>
@@ -178,7 +179,7 @@ function MaterialList(props) {
                     ))
                 ) : (
                     <div className="materials-empty">
-                        t{('emptyMaterial')}
+                        {t('emptyMaterial')}
                     </div>
                 )}
             </div>
