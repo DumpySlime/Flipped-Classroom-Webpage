@@ -48,22 +48,6 @@ const resources = {
       navUsers: '👥 Users',
       navChatroom: '💬 AI Chatroom',
 
-      // GenerateMaterial
-      subject: "Subject",
-      form: "Form",
-      topic: "Topic",
-      sub_topics: "Subtopics",
-      language: "Language",
-      description: "Description",
-      generateMaterial: "Generate Material",
-      backToMaterials: "← Back to Materials",
-      selectForm: "Select a form",
-      selectTopic: "Select a topic",
-      selectLanguage: "Select a language",
-      english: "English",
-      chinese: "Chinese",
-      descriptionPlaceholder: "Enter additional details for material generation",
-
       // Overview
       dashboardOverview: 'Dashboard Overview',
       totalStudents: 'Total Students',

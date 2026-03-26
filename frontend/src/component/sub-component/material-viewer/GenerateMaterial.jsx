@@ -255,7 +255,7 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
                     className="back-button"
                     aria-label="Back to subjects list"
                 >
-                {t('backToMaterials')}
+                {getText('backToMaterials')}
                 </button>
             </div>
 
