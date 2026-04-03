@@ -7,19 +7,15 @@ from urllib3.util import Retry
 
 import ast
 
-# --- Global DB/FS Handlers ---
+# --- Global DB Handlers ---
 
 db = None
-fs = None
 
 
-def init_db(db_instance, fs_instance):
-    """Initializes the global database and GridFS connections."""
+def init_db(db_instance):
+    """Initializes the global database connections."""
     global db
     db = db_instance
-    global fs
-    fs = fs_instance
-
 
 # --- Configuration & Blueprint Setup ---
 

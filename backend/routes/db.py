@@ -7,7 +7,6 @@ import ast
 from datetime import datetime
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 db = None
-fs = None
 SIGNER = None
 PUBLIC_BASE_URL = None
 
@@ -23,11 +22,9 @@ def register_signer(setup_state):
     )
     PUBLIC_BASE_URL = app.config["PUBLIC_BASE_URL"]
 
-def init_db(db_instance, fs_instance):
+def init_db(db_instance):
     global db
     db = db_instance
-    global fs
-    fs = fs_instance
 
 def getUserById(user_id):
     try:
@@ -234,59 +231,7 @@ def update_material():
         return jsonify({"message": "Material updated successfully"}), 200
     except Exception as e:
         return {"error": str(e)}, 500
-"""
-# process ppt
-# create a short-lived signed URL
-@db_bp.route('/material/<file_id>/signed-url', methods=['GET'])
-@jwt_required()
-def get_signed_url(file_id):
-    user_id = get_jwt_identity()
 
-    # authorize file
-    mat = db.materials.find_one({'file_id': ObjectId(file_id)}, {'_id': 1, 'subject_id': 1, 'uploaded_by': 1})
-    if not mat:
-        return jsonify({'error': 'Forbidden'}), 403
-
-    token = SIGNER.dumps({"f_id": file_id, "u_id": str(user_id)})
-    
-    base_url = os.environ.get('PUBLIC_BASE_URL', request.host_url.rstrip('/'))
-    public_url = base_url + f"/db/public/pptx/{token}"
-    
-    print(f"Generated signed URL: {public_url}")
-
-    return jsonify({"url": public_url}), 200
-
-
-# public route for office web viewer
-@db_bp.route("/public/pptx/<token>", methods=['GET'])
-def display_pptx(token):
-    try:
-        data = SIGNER.loads(token, max_age=600) # 10 minutes of access
-    except SignatureExpired:
-        return jsonify({"error": "Powerpoint link expired"}), 410
-    except BadSignature:
-        return jsonify({"error": "Invalid link"}), 400
-    
-    fid = data.get("f_id")
-    try: 
-        file = fs.get(ObjectId(fid))
-    except Exception:
-        return jsonify({"error": "File not found"}), 404
-
-# stream in chunks so large files don’t load into memory
-    def generate():
-        chunk = file.read(8192)
-        while chunk:
-            yield chunk
-            chunk = file.read(8192)
-
-    headers = {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        "Content-Disposition": f'inline; filename="{file.filename or "slide.pptx"}"',
-        "Cache-Control": "no-store",  # viewer can fetch within token lifetime; tune as needed
-    }
-    return Response(generate(), headers=headers)
-"""
 # User CRUD operations
 # Add User
 @db_bp.route('/user-add', methods=['POST'])

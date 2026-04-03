@@ -110,11 +110,13 @@ const resources = {
 
       // MaterialList
       backToSubjects: 'Back to Subjects',
+      generateMaterial: 'Generate Material',
       editButton: 'Edit',
       deleteButton: 'Delete',
       emptyMaterial: 'No materials available.',
 
-      // ViewMaterial
+      // ViewMaterial      
+      backToMaterials: 'Back to Materials',
       submittedOn: 'Submitted on: {{date}}',
       loadingQuestions: 'Loading questions...',
       SQPlaceholder: 'Type your answer here...',

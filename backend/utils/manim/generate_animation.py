@@ -64,15 +64,44 @@ def call_deepseek(system_prompt: str, user_prompt: str, temperature: float = 0.7
         "max_tokens": max_tokens
     }
 
-    response = requests.post(
-        f"{DEEPSEEK_BASE_URL}/v1/chat/completions",
-        headers=headers,
-        json=payload,
-        timeout=120
-    )
-    response.raise_for_status()
-    return response.json()
+    max_retries = 3
+    last_exception = None
 
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(
+                f"{DEEPSEEK_BASE_URL}/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=300
+            )
+            response.raise_for_status()
+            return response.json()
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            last_exception = e
+            if attempt == max_retries:
+                logger.error(f"All {max_retries} attempts failed due to network error: {e}")
+                raise
+            wait = 2 ** (attempt - 1)  # 1s, 2s, 4s
+            logger.warning(f"Network error on attempt {attempt}/{max_retries}: {e}. Retrying in {wait}s...")
+            time.sleep(wait)
+
+        except requests.exceptions.HTTPError as e:
+            status = e.response.status_code
+            last_exception = e
+
+            # Retry only on transient/server-side errors
+            if status in [429, 500, 502, 503, 504] and attempt < max_retries:
+                wait = 2 ** (attempt - 1)
+                logger.warning(f"HTTP {status} on attempt {attempt}/{max_retries}. Retrying in {wait}s...")
+                time.sleep(wait)
+            else:
+                logger.error(f"Non-retryable HTTP error {status}: {e.response.text}")
+                raise
+
+    # Should not reach here, but just in case
+    logger.error(f"All {max_retries} attempts failed")
+    raise last_exception
 
 def call_storyboard(title: str, slide_text: str, language: str):
     storyboard_system_prompt = load_prompt(PROMPT_DIR / "storyboard_system_prompt.txt")

@@ -2,7 +2,6 @@ from flask import Flask, jsonify
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from flask_pymongo import PyMongo
-from gridfs import GridFS
 from config import Config
 from routes.video_generation import video_gen_bp, init_video_generation
 
@@ -11,12 +10,10 @@ app.config.from_object(Config)
 jwt = JWTManager(app)
 
 db = None
-fs = None
 
 try:
     mongo = PyMongo(app)
     db = mongo.db
-    fs = GridFS(db)
     print("Database connected:", db.name)
 except Exception as e:
     print("Database connection error:", e)
@@ -42,8 +39,8 @@ from routes.analytics import analytics_bp, init_analytics
 
 init_admin_db(db)
 init_auth_db(db)
-init_db_db(db, fs)
-init_llm_db(db, fs)
+init_db_db(db)
+init_llm_db(db)
 init_analytics(db) 
 init_video_generation(db, app)
 
