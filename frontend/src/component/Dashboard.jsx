@@ -33,6 +33,7 @@ function Dashboard(props) {
   const [error, setError] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState(null);
   const { t, i18n } = useTranslation();
+  const [currentLang, setCurrentLang] = useState(i18n.language);
 
   useEffect(() => {
     loadDashboardData();
@@ -420,8 +421,24 @@ function Dashboard(props) {
           )}
         </nav>
         <div className="sidebar-language">
-          <button onClick={() => i18n.changeLanguage('en')} className="lang-btn">EN</button>
-          <button onClick={() => i18n.changeLanguage('zh-HK')} className="lang-btn">繁體中文(香港)</button>
+          <button 
+            onClick={() => {
+              i18n.changeLanguage('en');
+              setCurrentLang('en');
+            }} 
+            className={`lang-btn ${currentLang === 'en' ? 'lang-active' : ''}`}
+          >
+            EN
+          </button>
+          <button 
+            onClick={() => {
+              i18n.changeLanguage('zh-HK');
+              setCurrentLang('zh-HK');
+            }} 
+            className={`lang-btn ${currentLang === 'zh-HK' ? 'lang-active' : ''}`}
+          >
+            繁體中文(香港)
+          </button>
         </div>
       </aside>
       <main className="main-content">
