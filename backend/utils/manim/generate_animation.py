@@ -9,6 +9,7 @@ import time
 import subprocess
 import tempfile
 import traceback
+import time
 
 PROMPT_DIR = Path(__file__).parent / "prompt"
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -19,6 +20,7 @@ load_dotenv()
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL")
+DEEPSEEK_MODEL = "deepseek-chat" 
 
 logger = setup_logging(current_file=Path(__file__).stem)
 
@@ -43,7 +45,7 @@ def load_boilerplate() -> str:
     return load_prompt(PROMPT_DIR / "boilerplate_api_doc.txt")
 
 
-def call_deepseek(system_prompt: str, user_prompt: str, temperature: float = 0.7, max_tokens: int = 2000):
+def call_deepseek(system_prompt: str, user_prompt: str, temperature: float = 0.7, max_tokens: int = 2500):
     if not DEEPSEEK_API_KEY:
         raise Exception("DEEPSEEK_API_KEY environment variable is not set")
     if not DEEPSEEK_BASE_URL:
@@ -55,14 +57,19 @@ def call_deepseek(system_prompt: str, user_prompt: str, temperature: float = 0.7
     }
 
     payload = {
-        "model": "deepseek-chat",
+        "model": DEEPSEEK_MODEL,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
         ],
-        "temperature": temperature,
-        "max_tokens": max_tokens
     }
+
+    # Enable temperature for chat models
+    if "chat" in DEEPSEEK_MODEL.lower():
+        payload["temperature"] = temperature
+        payload["max_tokens"] = max_tokens
+    if "reasoning" in DEEPSEEK_MODEL.lower():
+        payload["max_tokens"] = 8000
 
     max_retries = 3
     last_exception = None
@@ -116,7 +123,7 @@ def call_storyboard(title: str, slide_text: str, language: str):
 
     try:
         logger.info("Generating storyboard...")
-        result = call_deepseek(storyboard_system_prompt, storyboard_user_prompt, 0.7, 2000)
+        result = call_deepseek(storyboard_system_prompt, storyboard_user_prompt, 0.7, 2500)
         content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
         token_usage, total_tokens = get_token_usage(result)
         storyboard = json.loads(content)
@@ -249,13 +256,13 @@ def generate_animation(title: str, slide_text: str, language: str):
     Generate a Manim animation for a single slide.
     Returns (manim_code, total_tokens, total_time) or None on failure.
     """
+
+    start_time = time.time()
     print(f"DEBUG in generate_animation\nTitle: {title}\nLanguage: {language}\nSlide text:\n{slide_text}")
 
     if not slide_text:
         logger.warning("Empty slide text provided")
         return None
-
-    start_time = time.time()
 
     # Step 1: Storyboard
     storyboard, storyboard_tokens = call_storyboard(title, slide_text, language)
@@ -293,11 +300,10 @@ def generate_animation(title: str, slide_text: str, language: str):
                 logger.error("All 3 validation attempts failed, using fallback code")
                 final_code = FALLBACK_CODE
 
-    total_time = time.time() - start_time
     total_tokens = (storyboard_tokens or 0) + (manim_tokens or 0) + total_review_tokens
-
-    logger.info(f"Animation generated — total tokens: {total_tokens}, time: {total_time:.2f}s")
-    return (final_code, total_tokens, total_time)
+    end_time = time.time()
+    logger.info(f"Animation generated — total tokens: {total_tokens}, time: {end_time - start_time:.2f}s")
+    return (final_code, total_tokens, end_time - start_time)
 
 
 if __name__ == "__main__":
@@ -312,5 +318,5 @@ if __name__ == "__main__":
     if result:
         code, tokens, elapsed = result
         print(f"\nTokens used: {tokens}")
-        print(f"Time taken: {elapsed:.2f}s")
+        print(f"\nTime taken: {elapsed:.2f}s")
         print(f"\nGenerated code:\n{code}")

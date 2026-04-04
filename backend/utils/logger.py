@@ -16,8 +16,9 @@ def setup_logging(log_level=logging.INFO, current_file=None):
     log_dir.mkdir(parents=True, exist_ok=True)
     
     # Create logger
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger(current_file + "_logger")
     logger.setLevel(log_level)
+    logger.propagate = False  # Prevent log messages from being propagated to the root logger
     
     # Remove existing handlers to avoid duplicates
     logger.handlers.clear()
