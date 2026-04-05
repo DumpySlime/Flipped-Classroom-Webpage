@@ -84,8 +84,10 @@ def get_all_slides(material: dict) -> list[dict]:
 # @jwt_required()
 def generate_video():
     """
-    For a material with at least 6 slides (intro + 4 content + conclusion),
-    generate 4 separate videos, one for each of slides 2–5.
+    Generates separate videos for content slides.
+    Rules:
+    1. Ignores the first slide (Intro) and the last slide (Conclusion).
+    2. Ignores any slide where slideType == "example".
     """
     quality_flag = "-qm"
     try:
@@ -106,21 +108,24 @@ def generate_video():
         if not material:
             return jsonify({"error": "Material not found"}), 404
 
-        all_slides = get_all_slides(material)
-        
-        # Get language safely
+        # 1. Get raw slides to check for slideType
+        raw_data = material.get("slides", [])
+        if isinstance(raw_data, dict) and "slides" in raw_data:
+            raw_slides_list = raw_data.get("slides") or []
+        else:
+            raw_slides_list = raw_data if isinstance(raw_data, list) else []
+
+        if len(raw_slides_list) < 3:
+            return jsonify({
+                "error": "Need at least 3 slides (intro, content, conclusion) to process"
+            }), 400
+
+        # 2. Extract language and topic
         language = "English"
         try:
             language = material.get('attribute', {}).get('language', 'English')
         except:
             pass
-        
-        if len(all_slides) < 3:
-            return jsonify({
-                "error": "Need at least 3 slides (intro, content, conclusion)"
-            }), 400
-
-        content_slides = all_slides[1:-1]
         topic = material.get("topic") or material.get("title") or "Educational Topic"
 
         quality = data.get("quality", "medium")
@@ -128,136 +133,87 @@ def generate_video():
 
         videos = []
 
-        for idx, slide in enumerate(content_slides):
-            slide_number = idx + 2 
-            slide_title = slide['title'] 
-            slide_text = f"Topic: {topic}\n\n{slide['title']}\n{slide['content']}"
-            print(f"DEBUG slide {slide_number} text length:", len(slide_text))
-            print(f"DEBUG slide {slide_number} text first 300 chars:\n", slide_text[:300])
+        # 3. Iterate through slides, skipping first [0] and last [-1]
+        for idx in range(1, len(raw_slides_list) - 1):
+            slide_doc = raw_slides_list[idx]
+            slide_number = idx + 1 # 1-based index for UI/logging
 
-            result = generate_animation(slide_title, slide_text, language)
-            if result is None or len(result) < 1:
-                return jsonify({
-                    "error": f"Failed to generate animation code for slide {slide_number}"
-                }), 500
+            # RULE: Skip if slideType is 'example'
+            if isinstance(slide_doc, dict) and slide_doc.get("slideType") == "example":
+                print(f"VIDEOGEN: Skipping slide {slide_number} because type is 'example'")
+                continue
+
+            # Prep slide content for Manim
+            subtitle = slide_doc.get("subtitle", f"Slide {slide_number}")
+            contents = slide_doc.get("content", "")
+            content_text = " ".join(str(c) for c in contents) if isinstance(contents, list) else str(contents)
+            
+            slide_text = f"Topic: {topic}\n\n{subtitle}\n{content_text}"
+
+            # Generate Manim code
+            result = generate_animation(subtitle, slide_text, language)
+            if not result:
+                continue # Or handle as error
             
             manim_code = result[0] if isinstance(result, tuple) else result
-            if not manim_code:
-                return jsonify({
-                    "error": f"Failed to generate animation code for slide {slide_number}"
-                }), 500
-
-            # UTF-8 sanitize and strip trailing whitespace
+            
+            # Sanitize and format code
             safe_code = manim_code.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
             safe_code = "\n".join(line.rstrip() for line in safe_code.splitlines()).lstrip()
+            safe_code = safe_code.replace("MathTex(", "Text(").replace("Tex(", "Text(")
 
-            # Force replace Tex/MathTex with Text for Chinese content
-            safe_code = safe_code.replace("MathTex(", "Text(")
-            safe_code = safe_code.replace("Tex(", "Text(")
-
-            # Early syntax check before spending time on Manim subprocess
+            # Early syntax check
             try:
-                compile(safe_code, f"generated-manim-{slide_number}", "exec")
+                compile(safe_code, f"gen-{slide_number}", "exec")
             except SyntaxError as e:
-                return jsonify({
-                    "error": f"Generated Manim code has a syntax error for slide {slide_number}",
-                    "details": f"{e.__class__.__name__}: {e}",
-                }), 400
+                print(f"Syntax Error in slide {slide_number}: {e}")
+                continue
 
             script_path = None
             out_dir = None
             try:
-                with tempfile.NamedTemporaryFile(
-                    mode="w", suffix=".py", delete=False, encoding="utf-8"
-                ) as f:
+                with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, encoding="utf-8") as f:
                     f.write(safe_code)
                     script_path = f.name
 
                 script_dir = os.path.dirname(script_path)
                 out_dir = tempfile.mkdtemp()
 
-                # Copy scene.py boilerplate to both dirs
                 scene_src = MANIM_DIR / "scene.py"
                 if scene_src.exists():
                     shutil.copy(scene_src, os.path.join(script_dir, "scene.py"))
                     shutil.copy(scene_src, os.path.join(out_dir, "scene.py"))
-                else:
-                    print("WARNING: scene.py NOT FOUND at", scene_src)
 
                 output_id = f"{material_id_str}_slide{slide_number}"
-                print(f"VIDEOGEN: Rendering video for material {material_id_str}, slide {slide_number}...")
+                cmd = [get_manim_command(), quality_flag, script_path, "EducationalVideo", "-o", f"video_{output_id}"]
 
-                cmd = [
-                    get_manim_command(),
-                    quality_flag,
-                    script_path,
-                    "EducationalVideo",
-                    "-o",
-                    f"video_{output_id}",
-                ]
-
-                proc = subprocess.run(
-                    cmd,
-                    cwd=out_dir,
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="ignore",
-                    timeout=60000,
-                )
-                print(f"MANIM RETURN CODE (slide {slide_number}):", proc.returncode)
-                print(f"MANIM STDOUT (slide {slide_number}):", proc.stdout[-3000:] if proc.stdout else "")
-                print(f"MANIM STDERR (slide {slide_number}):", proc.stderr[-3000:] if proc.stderr else "")
+                proc = subprocess.run(cmd, cwd=out_dir, capture_output=True, text=True, encoding="utf-8", errors="ignore", timeout=600)
 
                 video_path = find_video_file(out_dir, output_id)
-
-                if proc.returncode != 0 and not video_path:
-                    combined = ((proc.stdout or "") + (proc.stderr or "")).strip()
-                    return jsonify({
-                        "error": f"Manim rendering failed for slide {slide_number}",
-                        "details": combined[:4000],
-                    }), 500
-
-                if not video_path:
-                    return jsonify({
-                        "error": f"Rendered video not found for slide {slide_number}"
-                    }), 500
-
-                video_url = save_video_to_static(video_path, output_id)
-                videos.append({
-                    "slide": slide_number,
-                    "videoUrl": video_url,
-                })
-
+                if video_path:
+                    video_url = save_video_to_static(video_path, output_id)
+                    videos.append({
+                        "slide": slide_number,
+                        "videoUrl": video_url,
+                    })
             finally:
-                if script_path and os.path.exists(script_path):
-                    os.unlink(script_path)
-                if out_dir and os.path.isdir(out_dir):
-                    shutil.rmtree(out_dir, ignore_errors=True)
+                if script_path and os.path.exists(script_path): os.unlink(script_path)
+                if out_dir and os.path.isdir(out_dir): shutil.rmtree(out_dir, ignore_errors=True)
 
-        # Re-fetch fresh material to avoid stale slide data
-        material = db.materials.find_one({"_id": material_obj_id})
-        raw = material.get("slides", {})
-
-        if isinstance(raw, dict) and "slides" in raw:
-            slides_doc = raw.get("slides") or []
+        # 4. Update Database
+        if isinstance(raw_data, dict) and "slides" in raw_data:
+            slides_doc = raw_data.get("slides") or []
             for part in videos:
                 idx = part["slide"] - 1
                 if 0 <= idx < len(slides_doc):
                     slides_doc[idx]["video_url"] = part["videoUrl"]
-
+            
             db.materials.update_one(
                 {"_id": material_obj_id},
-                {
-                    "$set": {
-                        "slides.slides": slides_doc,
-                        "videoParts": videos,
-                        "videoGeneratedAt": datetime.utcnow(),
-                    }
-                },
+                {"$set": {"slides.slides": slides_doc, "videoParts": videos, "videoGeneratedAt": datetime.utcnow()}}
             )
         else:
-            slides_list = raw if isinstance(raw, list) else []
+            slides_list = raw_data if isinstance(raw_data, list) else []
             for part in videos:
                 idx = part["slide"] - 1
                 if 0 <= idx < len(slides_list):
@@ -265,19 +221,13 @@ def generate_video():
 
             db.materials.update_one(
                 {"_id": material_obj_id},
-                {
-                    "$set": {
-                        "slides": slides_list,
-                        "videoParts": videos,
-                        "videoGeneratedAt": datetime.utcnow(),
-                    }
-                },
+                {"$set": {"slides": slides_list, "videoParts": videos, "videoGeneratedAt": datetime.utcnow()}}
             )
 
         return jsonify({
             "success": True,
             "videos": videos,
-            "message": "Videos generated for slides 2–5",
+            "message": f"Generated {len(videos)} videos (skipped intro, conclusion, and examples)",
         }), 200
 
     except subprocess.TimeoutExpired:
