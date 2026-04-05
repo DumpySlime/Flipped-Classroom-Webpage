@@ -9,6 +9,7 @@ import shutil
 import sys
 from pathlib import Path
 from utils.manim.generate_animation import generate_animation
+from utils.token_usage import token_tracker
 
 video_gen_bp = Blueprint("video_generation", __name__)
 db = None
@@ -94,6 +95,14 @@ def generate_video():
         if db is None:
             return jsonify({"error": "Database not initialized"}), 500
 
+        try:
+            token_tracker.start_session_tracking()
+            print("[TOKEN_TRACKER] Session tracking continued for video generation")
+        except Exception as te:
+            print(f"[TOKEN_TRACKER] Warning: {te}")
+            import traceback
+            traceback.print_exc()
+
         data = request.get_json(silent=True) or {}
         material_id_str = data.get("material_id")
         if not material_id_str:
@@ -154,6 +163,19 @@ def generate_video():
             result = generate_animation(subtitle, slide_text, language)
             if not result:
                 continue # Or handle as error
+            result, token_usage, time = generate_animation(slide_title, slide_text, language)
+            
+            # Track token usage for this slide
+            try:
+                token_tracker.add_usage(token_usage, f"Slide {slide_number} Video Generation", endpoint="/api/generate-video/generate")
+                print(f"[TOKEN_TRACKER] Token usage for slide {slide_number}: {token_usage}")
+            except Exception as track_err:
+                print(f"[TOKEN_TRACKER] Warning: Could not track usage: {track_err}")
+            
+            if result is None or len(result) < 1:
+                return jsonify({
+                    "error": f"Failed to generate animation code for slide {slide_number}"
+                }), 500
             
             manim_code = result[0] if isinstance(result, tuple) else result
             
@@ -223,7 +245,14 @@ def generate_video():
                 {"_id": material_obj_id},
                 {"$set": {"slides": slides_list, "videoParts": videos, "videoGeneratedAt": datetime.utcnow()}}
             )
-
+        
+        # End tracking after all videos are generated
+        try:
+            token_tracker.end_tracking()
+            print("[TOKEN_TRACKER] Session ended after video generation")
+        except Exception as e:
+            print(f"[TOKEN_TRACKER] Warning: Could not end session: {e}")
+            
         return jsonify({
             "success": True,
             "videos": videos,

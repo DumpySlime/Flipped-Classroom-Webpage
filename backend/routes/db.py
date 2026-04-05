@@ -175,7 +175,12 @@ def get_material():
                 "video_url": m.get("video_url"),
                 "video_generated_at": m.get("video_generated_at")
             })
-            print(f'Material found: {json.dumps(materials[-1], indent=2, default=str)}')  # Print each material as it's processed
+            
+            material_json = json.dumps(materials[-1], indent=2, default=str)
+            if len(material_json) > 200:
+                material_json = material_json[:200] + "..."
+            print(f'Material found: {material_json}')  # Print each material as it's processed
+            
         if not materials:
             return jsonify({"message": "No materials found"}), 404
         return jsonify({"materials": materials}), 200
@@ -423,7 +428,7 @@ def get_subject():
                 "created_at": s.get("created_at").isoformat(),
                 "updated_at": s.get("updated_at").isoformat()
             })
-        print("Subject search results:", results)
+        print("Subject search results:", results[:5])
         return jsonify({"subjects": results}), 200
     
     except Exception as e:
@@ -630,7 +635,7 @@ def update_question():
         if not question_content:
             return jsonify({"error": "question_content is required"}), 400
 
-        print(f"Updating question {question_id} with content: {question_content}")
+        print(f"Updating question {question_id} with content: {question_content[:100]}...")
 
         db.questions.update_one(
             {"_id": ObjectId(question_id)},

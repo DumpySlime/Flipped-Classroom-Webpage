@@ -4,6 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
+from utils.token_usage import token_tracker, get_token_usage
 
 import ast
 
@@ -24,20 +25,22 @@ llm_bp = Blueprint('llm', __name__)
 # DeepSeek AI Configuration (loaded from Flask app config)
 DEEPSEEK_API_KEY = None
 DEEPSEEK_BASE_URL = None
-
+DEEPSEEK_MODEL = None
 
 @llm_bp.record_once
 def on_load(state):
     """Loads configuration variables from Flask app config."""
-    global DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL
+    global DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL
     app = state.app
 
     # DeepSeek Configuration
     DEEPSEEK_API_KEY = app.config.get("DEEPSEEK_API_KEY")
     DEEPSEEK_BASE_URL = app.config.get("DEEPSEEK_BASE_URL")
+    DEEPSEEK_MODEL = app.config.get("DEEPSEEK_MODEL")
 
     print(f"DeepSeek API Key loaded: {'YES' if DEEPSEEK_API_KEY else 'NO'}")
     print(f"DeepSeek Base URL: {DEEPSEEK_BASE_URL}")
+    print(f"DeepSeek Model: {DEEPSEEK_MODEL}")
 
 
 # --- Utility Functions ---
@@ -146,7 +149,7 @@ Generate teaching slides in the following JSON format:
         }
 
         payload = {
-            "model": "deepseek-chat",
+            "model": DEEPSEEK_MODEL,
             "messages": [
                 {
                     "role": "system",
@@ -158,7 +161,7 @@ Generate teaching slides in the following JSON format:
                 }
             ],
             "temperature": 0.7,
-            "max_tokens": 2000,
+            "max_tokens": 4000,
             "response_format": {"type": "json_object"}
         }
 
@@ -173,6 +176,14 @@ Generate teaching slides in the following JSON format:
 
         result = response.json()
         
+        # Track token usage for slide generation
+        try:
+            _, token_usage = get_token_usage(result)
+            token_tracker.add_usage(token_usage, "Slide Generation", endpoint="/material/create")
+            print(f"[TOKEN_TRACKER] Token usage for material creation: {token_usage}")
+        except Exception as track_err:
+            print(f"[TOKEN_TRACKER] Warning: Could not track usage: {track_err}")
+
         # Extract the JSON content from DeepSeek response
         content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
         
@@ -245,6 +256,14 @@ def material_create():
     Returns a JSON 'slides' object.
     """
     try:
+        # Initialize token tracking for this material generation session
+        try:
+            token_tracker.start_session()
+        except Exception as e:
+            print(f"[TOKEN_TRACKER] Warning: {e}")
+            import traceback
+            traceback.print_exc()
+
         current_user_id = get_jwt_identity()
         print(f"Material create request from user: {current_user_id}")
 
@@ -318,11 +337,6 @@ def material_create():
         except Exception as e:
             print(f"DeepSeek API failed, using fallback: {e}")
             material_json = build_material_slides_fallback(subject, topic, instruction)
-
-        """
-        For now we do synchronous generation - directly update the material record
-        since the user is waiting for the response.
-        """
 
         # Update the material in the database with the generated content
         # Make the PUT request through /db/material-update

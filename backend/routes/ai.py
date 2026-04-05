@@ -6,6 +6,8 @@ from urllib3.util import Retry
 import re
 import json
 
+from utils.token_usage import token_tracker, get_token_usage
+
 ai_bp = Blueprint('ai', __name__)
 
 DEEPSEEK_API_KEY = None
@@ -97,7 +99,7 @@ def ai_chat():
             }
 
             payload = {
-                "model": "deepseek-chat",
+                "model": "deepseek-reasoner",
                 "messages": [system_msg, *messages], 
                 "temperature": 0.5,
                 "stream": True
@@ -136,10 +138,18 @@ def ai_chat():
 @ai_bp.route('/generate-question', methods=['POST'])
 @jwt_required()
 def generate_question():
-
     if not DEEPSEEK_API_KEY:
         return jsonify({'error': 'DEEPSEEK_API_KEY missing in .env'}), 400
 
+    # Initialize token tracking with detailed error logging
+    try:
+        token_tracker.start_session_tracking()
+        print("[TOKEN_TRACKER] Session tracking continued for question generation")
+    except Exception as te:
+        print(f"[TOKEN_TRACKER] ERROR in start_session_tracking: {str(te)}")
+        import traceback
+        traceback.print_exc()    
+    
     topic = request.form.get('topic')
     material_id = request.form.get('material_id')
     subject = request.form.get('subject', '')
@@ -253,6 +263,15 @@ def generate_question():
         ) as resp:
             resp.raise_for_status()
             response = resp.json()
+
+            # Track token usage for question generation
+            try:
+                _, token_usage = get_token_usage(response)
+                token_tracker.add_usage(token_usage, "Question Generation", endpoint="/generate-question")
+                print(f"[TOKEN_TRACKER] Token usage parsed: {token_usage}")
+            except Exception as get_err:
+                print(f"[TOKEN_TRACKER] ERROR in get_token_usage: {str(get_err)}")
+
             content = response['choices'][0]['message']['content']
             print(f"Questions generated successfully: {content}")
             # Parse content as JSON
