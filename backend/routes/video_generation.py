@@ -160,27 +160,37 @@ def generate_video():
             slide_text = f"Topic: {topic}\n\n{subtitle}\n{content_text}"
 
             # Generate Manim code
-            result = generate_animation(subtitle, slide_text, language)
-            if not result:
+            # Call the function exactly ONCE to save time and tokens
+            animation_output = generate_animation(subtitle, slide_text, language)
+            
+            if not animation_output:
                 continue # Or handle as error
-            result, token_usage, time = generate_animation(slide_title, slide_text, language)
+            
+            # Safely unpack assuming the new return format is (manim_code, token_usage, time)
+            if isinstance(animation_output, tuple) and len(animation_output) >= 3:
+                manim_code_raw, token_usage, _ = animation_output
+            elif isinstance(animation_output, tuple):
+                manim_code_raw = animation_output[0]
+                token_usage = animation_output[1] if len(animation_output) > 1 else 0
+            else:
+                manim_code_raw = animation_output
+                token_usage = 0
             
             # Track token usage for this slide
             try:
-                token_tracker.add_usage(token_usage, f"Slide {slide_number} Video Generation", endpoint="/api/generate-video/generate")
-                print(f"[TOKEN_TRACKER] Token usage for slide {slide_number}: {token_usage}")
+                if token_usage:
+                    token_tracker.add_usage(token_usage, f"Slide {slide_number} Video Generation", endpoint="/api/generate-video/generate")
+                    print(f"[TOKEN_TRACKER] Token usage for slide {slide_number}: {token_usage}")
             except Exception as track_err:
                 print(f"[TOKEN_TRACKER] Warning: Could not track usage: {track_err}")
             
-            if result is None or len(result) < 1:
+            if not manim_code_raw:
                 return jsonify({
                     "error": f"Failed to generate animation code for slide {slide_number}"
                 }), 500
             
-            manim_code = result[0] if isinstance(result, tuple) else result
-            
             # Sanitize and format code
-            safe_code = manim_code.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+            safe_code = manim_code_raw.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
             safe_code = "\n".join(line.rstrip() for line in safe_code.splitlines()).lstrip()
             safe_code = safe_code.replace("MathTex(", "Text(").replace("Tex(", "Text(")
 
@@ -218,6 +228,12 @@ def generate_video():
                         "slide": slide_number,
                         "videoUrl": video_url,
                     })
+                else:
+                    print(f"VIDEOGEN: Render failed or empty for slide {slide_number}. Setting videoUrl to None.")
+                    videos.append({
+                        "slide": slide_number,
+                        "videoUrl": None,
+                    })
             finally:
                 if script_path and os.path.exists(script_path): os.unlink(script_path)
                 if out_dir and os.path.isdir(out_dir): shutil.rmtree(out_dir, ignore_errors=True)
@@ -225,27 +241,49 @@ def generate_video():
         # 4. Update Database
         if isinstance(raw_data, dict) and "slides" in raw_data:
             slides_doc = raw_data.get("slides") or []
+            
+            # Map video results to the slides
             for part in videos:
                 idx = part["slide"] - 1
                 if 0 <= idx < len(slides_doc):
-                    slides_doc[idx]["video_url"] = part["videoUrl"]
-            
-            db.materials.update_one(
-                {"_id": material_obj_id},
-                {"$set": {"slides.slides": slides_doc, "videoParts": videos, "videoGeneratedAt": datetime.utcnow()}}
-            )
-        else:
-            slides_list = raw_data if isinstance(raw_data, list) else []
-            for part in videos:
-                idx = part["slide"] - 1
-                if 0 <= idx < len(slides_list):
-                    slides_list[idx]["video_url"] = part["videoUrl"]
+                    if part.get("videoUrl"):
+                        slides_doc[idx]["video_url"] = part["videoUrl"]
+                    else:
+                        # Remove key so frontend doesn't show "Content Unavailable"
+                        slides_doc[idx].pop("video_url", None)
 
             db.materials.update_one(
                 {"_id": material_obj_id},
-                {"$set": {"slides": slides_list, "videoParts": videos, "videoGeneratedAt": datetime.utcnow()}}
+                {
+                    "$set": {
+                        "slides.slides": slides_doc, 
+                        "videoParts": videos, 
+                        "videoGeneratedAt": datetime.utcnow()
+                    }
+                }
             )
-        
+        else:
+            slides_list = raw_data if isinstance(raw_data, list) else []
+            
+            for part in videos:
+                idx = part["slide"] - 1
+                if 0 <= idx < len(slides_list):
+                    if part.get("videoUrl"):
+                        slides_list[idx]["video_url"] = part["videoUrl"]
+                    else:
+                        # Remove key so frontend doesn't show "Content Unavailable"
+                        slides_list[idx].pop("video_url", None)
+
+            db.materials.update_one(
+                {"_id": material_obj_id},
+                {
+                    "$set": {
+                        "slides": slides_list, 
+                        "videoParts": videos, 
+                        "videoGeneratedAt": datetime.utcnow()
+                    }
+                }
+            )
         # End tracking after all videos are generated
         try:
             token_tracker.end_tracking()
