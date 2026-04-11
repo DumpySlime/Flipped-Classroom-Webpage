@@ -231,6 +231,17 @@ function EditMaterial({ material, onClose }) {
                 slides: slides
             });
 
+            // Update local slides state with the response data immediately
+            const updatedSlides = materialResponse.data?.material?.slides || materialResponse.data?.slides || slides;
+            if (Array.isArray(updatedSlides)) {
+                const normalizedSlides = updatedSlides.map(slide => ({
+                    ...slide,
+                    slidetype: slide.slideType || slide.slidetype,
+                    content: Array.isArray(slide.content) ? slide.content : (slide.content ? [slide.content] : [])
+                }));
+                setSlides(normalizedSlides);
+            }
+
             for (const q of questions) {
                 const qId = q.id || (q._id && (q._id.$oid || q._id));
                 if (qId) {
@@ -241,8 +252,17 @@ function EditMaterial({ material, onClose }) {
             }
 
             console.log('Material and questions updated successfully');
-            alert(t('updatedSuccessfully'));
-            onClose();
+            
+            // Pass updated data back to parent component
+            const updatedMaterial = {
+                ...material,
+                slides: slides
+            };
+            
+            setTimeout(() => {
+                alert(t('updatedSuccessfully'));
+                onClose(updatedMaterial);
+            }, 100);
         } catch (error) {
             console.error('Error updating material:', error);
             setErr(t('failedToUpdate'));
