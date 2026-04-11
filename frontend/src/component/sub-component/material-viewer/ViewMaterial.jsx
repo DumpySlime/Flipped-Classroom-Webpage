@@ -49,6 +49,51 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
         setShowEdit(true);
     } 
 
+    const loadMaterial = () => {
+        if (!materialData?.sid) return;
+        
+        console.log('Reloading material data...');
+        axios.get(`/db/material/${materialData.sid}`)
+            .then((res) => {
+                const freshMaterial = res.data?.material || res.data;
+                if (!freshMaterial) return;
+
+                const slidesData = Array.isArray(freshMaterial?.slides?.slides || freshMaterial?.slides)
+                    ? (freshMaterial?.slides?.slides || freshMaterial?.slides)
+                    : [];
+
+                const normalizedSlides = slidesData.map(slide => ({
+                    ...slide,
+                    slidetype: slide.slideType || slide.slidetype,
+                }));
+
+                setSlides(normalizedSlides);
+                console.log('Material reloaded successfully:', normalizedSlides);
+            })
+            .catch((err) => {
+                console.warn("Could not re-fetch material:", err);
+            });
+    };
+
+    const handleEditClose = (updatedMaterial) => {
+        setShowEdit(false);
+        setSelectedMaterial(null);
+        
+        // If updated material data is provided, update the local state immediately
+        if (updatedMaterial && updatedMaterial.slides) {
+            const slidesData = updatedMaterial.slides;
+            const slidesArray = Array.isArray(slidesData) ? slidesData : slidesData?.slides || [];
+            const normalizedSlides = slidesArray.map(slide => ({
+                ...slide,
+                slideType: slide.slideType || slide.slidetype,
+            }));
+            setSlides(normalizedSlides);
+            console.log('ViewMaterial state updated with edited slides:', normalizedSlides);
+        } else {
+            loadMaterial();
+        }
+    } 
+
 	// load saved submission (single submission expected)
 	const loadStudentSubmission = async (studentId, materialIdParam, questionsList) => {
 		console.log(`[LOAD SUBMISSION] Loading submission for studentId=${studentId}, materialId=${materialIdParam}`);
@@ -283,10 +328,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
         return (
             <EditMaterial 
                 material={selectedMaterial} 
-                onClose={() => {
-					setShowEdit(false);
-					setSelectedMaterial(null);
-				}}
+                onClose={handleEditClose}
             />
         );
     }   
@@ -717,7 +759,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 							fontSize: '13px',
 							lineHeight: '1.4'
 						}}>
-							<strong>🤖 {t('aiFeedback')}:</strong> {gradedAnswers[questionKey].feedback.length > 150 ? gradedAnswers[questionKey].feedback.substring(0, 150) + '...' : gradedAnswers[questionKey].feedback}
+							<strong>🤖 {t('aiFeedback')}:</strong> {gradedAnswers[questionKey].feedback}
 						</div>
 						)}
 
