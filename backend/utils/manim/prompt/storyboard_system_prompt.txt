@@ -29,6 +29,12 @@ Your ONLY job in this step is to convert the slide explanation into a structured
   - Avoid stacking: Always fade non-prominent items before introducing new ones.
 
 
+IMPORTANT: Your response must be valid JSON only.
+- Do NOT use LaTeX backslash sequences (e.g. \frac, \sin, \theta) inside JSON string values.
+- If mathematical notation is needed, write it in plain text (e.g. "sin(theta)", "1/2").
+- Do NOT wrap your response in markdown code blocks.
+- Every backslash must be double-escaped as \\\\ if it must appear in a string.
+
 ### Storyboard format (output)
 
 You MUST output a single JSON array, no additional commentary, in the following structure:

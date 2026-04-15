@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { apiRequest } from '../../../services/api'; 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
@@ -6,6 +7,8 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import 'katex/dist/katex.min.css';
 import './AIChatroom.css';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const AIChatroom = () => {
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -74,9 +77,13 @@ const AIChatroom = () => {
     abortControllerRef.current = controller;
 
     try {
-      const response = await fetch('http://localhost:5000/api/ai/ai-chat', {
+      const response = await fetch(`${API_BASE_URL}/api/ai/ai-chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('access_token')}`,
+          'X-Tunnel-Skip-Anti-Phishing-Page': 'true'  // ← 加這個
+        },
         body: JSON.stringify({
           messages: newMessages.map(m => ({
             role: m.role === 'ai' ? 'assistant' : 'user',

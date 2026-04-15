@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import '../../../styles.css';
 import '../../../dashboard.css';
-import axios from 'axios'
+import { apiRequest, studentAnswerAPI } from '../../../services/api'; 
 
 function ViewQuestion ({ materialId }) {
     const [error, setError] = useState(null);
@@ -10,12 +10,19 @@ function ViewQuestion ({ materialId }) {
     const [answers, setAnswers] = useState({});
 
     useEffect(() => {
-        axios.get(`/db/question?material_id=${materialId}`)
-        .then(response => {
-            console.log("Questions fetched:", response.data);
-            const fetchedQuestions = response.data.questions;
-            setQuestions(fetchedQuestions.question_content.questions);
-            setTopic(fetchedQuestions.topic);
+        apiRequest(`/db/question?material_id=${materialId}`)
+        .then(data => {
+            if (!data.questions || data.questions.length === 0) {
+                setError("No questions found for this material.");
+                return;
+            }
+
+            const fetchedQuestion = data.questions[0];
+
+            const parsed = JSON.parse(fetchedQuestion.question_content);
+
+            setQuestions(parsed.questions || []);
+            setTopic(parsed.topic || "");
         })
         .catch(e => {
             console.log("Error fetching questions:", e);
@@ -31,10 +38,28 @@ function ViewQuestion ({ materialId }) {
     };
 
     // Submission logic
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        console.log("Submitted answers:", answers);
-    };
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  const studentId = sessionStorage.getItem('user_id');
+  
+  const formattedAnswers = Object.entries(answers).map(([index, value]) => ({
+    question_id: `${materialId}-q-${index}`,
+    user_answer: value,
+  }));
+
+  try {
+    await studentAnswerAPI.submit({
+      student_id: studentId,
+      material_id: materialId,
+      answers: formattedAnswers,
+      status: 'submitted'
+    });
+    alert('Answers submitted successfully!');
+  } catch (err) {
+    setError('Failed to submit answers: ' + err.message);
+  }
+};
 
     return (
         <div className="question-viewer">

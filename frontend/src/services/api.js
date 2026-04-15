@@ -5,7 +5,7 @@ const getAuthToken = () => {
   return sessionStorage.getItem('access_token');
 };
 
-const apiRequest = async (endpoint, options = {}) => {
+export const apiRequest = async (endpoint, options = {}) => {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
@@ -172,5 +172,21 @@ export const topicAPI = {
   getBySubject: async (subjectId) => {
     const data = await apiRequest(`/db/topic?subject_id=${subjectId}`);
     return data.topics || [];
+  }
+};
+
+// 登入不需要帶 token
+export const authAPI = {
+  login: async (credentials) => {
+    const response = await fetch(`${API_BASE_URL}/auth/api/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Tunnel-Skip-Anti-Phishing-Page': 'true'
+        // ⚠️ 不要帶 Authorization header
+      },
+      body: JSON.stringify(credentials)
+    });
+    return await response.json();
   }
 };

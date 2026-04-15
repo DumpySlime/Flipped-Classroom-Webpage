@@ -278,9 +278,9 @@ def get_users():
             filt["role"] = role
         if username:
             filt["username"] = username
-        if username:
+        if firstName:
             filt["firstName"] = firstName
-        if username:
+        if lastName:
             filt["lastName"] = lastName
         docs = list(db.users.find(filt, {}))
         results = []
@@ -635,7 +635,7 @@ def update_question():
         if not question_content:
             return jsonify({"error": "question_content is required"}), 400
 
-        print(f"Updating question {question_id} with content: {question_content[:100]}...")
+        print(f"Updating question {question_id} with content: {str(question_content)[:100]}...")
 
         db.questions.update_one(
             {"_id": ObjectId(question_id)},
@@ -692,7 +692,7 @@ def get_question():
                 "updated_at": u.get("updated_at")
             })
         
-        print(f"Question search results: Found {len(results)} items with {len(results[0]['question_content'])} questions")
+        print(f"Question search results: Found {len(results)} items")
         print(f"Questions: {results}")
         return jsonify({"questions": results}), 200
         
@@ -764,7 +764,14 @@ def submit_student_answers():
         return jsonify({
             "_id": str(res.inserted_id),
             "message": "Student answers submitted successfully",
-            "submission": submission
+            "submission": {
+                "student_id": str(student_id_value),
+                "material_id": str(material_id_value),
+                "answers": answers,
+                "total_score": total_score,
+                "submission_time": submission_time,
+                "status": "submitted"
+            }
         }), 201
 
     except Exception as e:

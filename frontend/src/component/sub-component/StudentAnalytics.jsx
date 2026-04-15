@@ -2,17 +2,25 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const fetchDataWithRetry = async (url, options = {}, retries = 3) => {
   for (let i = 0; i < retries; i++) {
     try {
-      const response = await axios(url, options);
-      return response;
+      const { data, method = 'GET', headers = {}, withCredentials, ...rest } = options;
+      const response = await fetch(url, {
+        method,
+        headers,
+        credentials: withCredentials ? 'include' : 'same-origin',
+        body: data ? JSON.stringify(data) : undefined,
+        ...rest
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const json = await response.json();
+      return { data: json };  // 保持跟 axios 一樣的 response.data 格式
     } catch (error) {
       if (i < retries - 1) {
-        const delay = Math.pow(2, i) * 1000;
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
       } else {
         throw error;
       }
@@ -103,7 +111,8 @@ const StudentAnalytics = (props) => {
   const [generateAllResult, setGenerateAllResult] = useState(null);
 
   const authHeaders = {
-    'Authorization': `Bearer ${sessionStorage.getItem('access_token')}`
+    'Authorization': `Bearer ${sessionStorage.getItem('access_token')}`,
+      'X-Tunnel-Skip-Anti-Phishing-Page': 'true'
   };
 
   const fetchStudents = async () => {

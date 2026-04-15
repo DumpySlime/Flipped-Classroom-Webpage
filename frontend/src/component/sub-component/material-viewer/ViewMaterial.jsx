@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import '../../../styles.css';
 import '../../../dashboard.css';
-import axios from 'axios';
+import { apiRequest } from '../../../services/api';
 import SlideExplanation from './slide-template/SlideExplanation';
 import SlideExample from './slide-template/SlideExample';
 import EditMaterial from './EditMaterial';
@@ -53,9 +53,9 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
         if (!materialData?.sid) return;
         
         console.log('Reloading material data...');
-        axios.get(`/db/material/${materialData.sid}`)
-            .then((res) => {
-                const freshMaterial = res.data?.material || res.data;
+			apiRequest(`/db/material?material_id=${materialData.sid}`)
+			.then((data) => {
+				const freshMaterial = data?.materials?.[0] || data;
                 if (!freshMaterial) return;
 
                 const slidesData = Array.isArray(freshMaterial?.slides?.slides || freshMaterial?.slides)
@@ -85,7 +85,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
             const slidesArray = Array.isArray(slidesData) ? slidesData : slidesData?.slides || [];
             const normalizedSlides = slidesArray.map(slide => ({
                 ...slide,
-                slideType: slide.slideType || slide.slidetype,
+                slidetype: slide.slideType || slide.slidetype,
             }));
             setSlides(normalizedSlides);
             console.log('ViewMaterial state updated with edited slides:', normalizedSlides);
@@ -100,8 +100,8 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 		if (!studentId || !materialIdParam || !questionsList || questionsList.length === 0) return;
 
 		try {
-		const resp = await axios.get(`/db/student-answers?student_id=${studentId}&material_id=${materialIdParam}`);
-		const submissions = resp.data?.submissions || [];
+		const resp = await apiRequest(`/db/student-answers?student_id=${studentId}&material_id=${materialIdParam}`);
+		const submissions = resp?.submissions || [];
 		console.log(`[LOAD SUBMISSION] Found ${submissions.length} submissions`);
 		if (!submissions.length) return;
 
@@ -120,7 +120,10 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 		// Build a map of questionKey -> question object for type info
 		const questionMap = {};
 		questionsList.forEach((qObj, idx) => {
-			const questionContent = qObj.question_content?.questions || [];
+			const parsedContent = typeof qObj.question_content === 'string'
+				? JSON.parse(qObj.question_content)
+				: qObj.question_content;
+			const questionContent = parsedContent?.questions || [];
 			questionContent.forEach((question, qIndex) => {
 			const key = `${idx}-${qIndex}`; // same key used in UI
 			questionMap[key] = question;
@@ -203,8 +206,16 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 
 		if (materialData) {
 		console.log('Using AI-generated material data:', materialData);
-		const slidesData = Array.isArray(materialData?.slides?.slides || materialData.slides) ? (materialData.slides.slides || materialData.slides) : [];
-		const normalizedSlides = slidesData.map(slide => ({
+		let slidesData = materialData?.slides?.slides || materialData.slides;
+		if (typeof slidesData === 'string') {
+			try {
+				slidesData = JSON.parse(slidesData);
+			} catch (e) {
+				slidesData = [];
+			}
+		}
+		const slidesArray = Array.isArray(slidesData) ? slidesData : [];
+		const normalizedSlides = slidesArray.map(slide => ({
 			...slide,
 			slidetype: slide.slideType || slide.slidetype,
 		}));
@@ -217,13 +228,11 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 
 		if (materialIdLocal) {
 			setLoadingQuestions(true);
-			axios.get(`/db/question?material_id=${materialIdLocal}`, {
-			signal: ac.signal
-			})
-			.then(response => {
+			apiRequest(`/db/question?material_id=${materialIdLocal}`)
+			.then(data => {
+				const questionsList = data?.questions || [];
 				if (!active) return;
-				console.log('Questions response:', response.data);
-				const questionsList = response.data?.questions || [];
+				console.log('Questions response:', data);
 				setQuestions(questionsList);
 				setLoadingQuestions(false);
 			})
@@ -246,7 +255,14 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 			// Show material
 			console.log('Fetching material:', material);
 			setMaterialId(material.id);
-			const slidesData = material?.slides;
+			let slidesData = material?.slides;
+			if (typeof slidesData === 'string') {
+				try {
+					slidesData = JSON.parse(slidesData);
+				} catch (e) {
+					slidesData = [];
+				}
+			}
 			const slidesArray = Array.isArray(slidesData) ? slidesData : slidesData?.slides || [];
 			const normalizedSlides = slidesArray.map(slide => ({
 					...slide,
@@ -261,12 +277,10 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 
 			// show questions
 			setLoadingQuestions(true);
-			axios.get(`/db/question?material_id=${material.id}`, {
-				signal: ac.signal
-			})
-				.then(response => {
+			apiRequest(`/db/question?material_id=${material.id}`)
+			.then(data => {
+    			const questionsList = data?.questions || [];
 				if (!active) return;
-				const questionsList = response.data?.questions || [];
 				setQuestions(questionsList);
 				setLoadingQuestions(false);
 				})
@@ -297,14 +311,12 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 			setSubmitted(true);
 		}
 	}, [loadingQuestions, questions, materialId, userInfo?.id, userRole]);
-	
-	// Re-fetch material from DB to get video_url fields populated by backend
 	useEffect(() => {
 		if (!materialData?.sid) return;
 
-		axios.get(`/db/material/${materialData.sid}`)
-			.then((res) => {
-				const freshMaterial = res.data?.material || res.data;
+		apiRequest(`/db/material?material_id=${materialData.sid}`)
+			.then((data) => {
+				const freshMaterial = data?.materials?.[0];
 				if (!freshMaterial) return;
 
 				const slidesData = Array.isArray(freshMaterial?.slides?.slides || freshMaterial?.slides)
@@ -383,7 +395,7 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 						style={{ borderRadius: '8px', border: '1px solid #ddd' }}
 					>
 						<source
-							src={`http://localhost:5000/${currentSlide.video_url}`}
+							src={`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/${currentSlide.video_url}`}
 							type="video/mp4"
 						/>
 					</video>
@@ -609,10 +621,18 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 				color: '#4CAF50',
 				fontSize: '16px'
 				}}>
-				✓ {t('questionsAvailable', { count: questions?.[0]?.question_content?.questions?.length ?? 0 })}
+				✓ {t('questionsAvailable', { count: (() => {
+					const pc = typeof questions?.[0]?.question_content === 'string'
+						? JSON.parse(questions[0].question_content)
+						: questions?.[0]?.question_content;
+					return pc?.questions?.length ?? 0;
+				})() })}
 				</p>
 
 				{questions.map((q, index) => {
+				const parsedContent = typeof q.question_content === 'string'
+					? JSON.parse(q.question_content)
+					: q.question_content;
 				const questionContent = q.question_content?.questions || [];
 				return questionContent.map((question, qIndex) => {
 					const questionKey = `${index}-${qIndex}`;
@@ -822,6 +842,9 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 						const newGradedAnswers = {};
 
 						for (const [index, q] of questions.entries()) {
+							const parsedContent = typeof q.question_content === 'string'
+								? JSON.parse(q.question_content)
+								: q.question_content;
 							const questionContent = q.question_content?.questions || [];
 							for (const [qIndex, question] of questionContent.entries()) {
 								const questionKey = `${index}-${qIndex}`;
@@ -835,13 +858,13 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 										isCorrect = false;
 									} else {
 										try {
-											const response = await axios.post('/api/ai/grade-short-answer', {
-												user_answer: userAnswer,
-												correct_answer: question.correctAnswer,
-												question_text: question.questionText
+											const response = await apiRequest('/api/ai/grade-short-answer', {
+												method: 'POST',
+												headers: { 'Content-Type': 'application/json' },
+												body: JSON.stringify({ user_answer: userAnswer, correct_answer: question.correctAnswer, question_text: question.questionText })
 											});
-											isCorrect = response.data.is_correct;
-											newGradedAnswers[questionKey] = { is_correct: isCorrect, feedback: response.data.feedback };
+											isCorrect = response.is_correct;
+											newGradedAnswers[questionKey] = { is_correct: isCorrect, feedback: response.feedback };
 											console.log(`AI Grading - Q${questionKey}: is_correct=${isCorrect}, user_answer="${userAnswer}", correct_answer="${question.correctAnswer}"`);
 										} catch (error) {
 											console.error(`AI Grading Error - Q${questionKey}:`, error);
@@ -879,19 +902,15 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
 						setSubmitted(true);
 
 						const currentStudentId = userInfo?.id || sessionStorage.getItem('user_id');
-						const response = await axios.post('/db/student-answers-submit', {
-							student_id: currentStudentId,
-							material_id: materialId,
-							answers: answers,
-							total_score: finalScore,
-							submission_time: new Date().toISOString(),
-							status: "submitted"
+						const response = await apiRequest('/db/student-answers-submit', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({ student_id: currentStudentId, material_id: materialId, answers, total_score: finalScore, submission_time: new Date().toISOString(), status: "submitted" })
 						});
+						const saved = response?.submission;
 
-						console.log('Student answers submitted successfully:', response.data);
-						console.log('Backend returned total_score:', response.data?.submission?.total_score);
-
-						const saved = response.data?.submission;
+						console.log('Student answers submitted successfully:', response);
+						console.log('Backend returned total_score:', response?.submission?.total_score);
 						if (saved) {
 							setSavedSubmissionTime(saved.submission_time ?? new Date().toISOString());
 							const backendScore = saved.total_score ?? finalScore;

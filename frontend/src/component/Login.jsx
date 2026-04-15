@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { authAPI } from '../services/api'; 
 import "../styles.css";
 
 function Login({ onLogin }) {
@@ -18,13 +19,13 @@ function Login({ onLogin }) {
     
     try {
       // Send login request to backend API
-      const response = await axios.post('auth/api/login', {
+      const data = await authAPI.login({
         username: state.username,
         password: state.password
       });
 
       // Extract tokens and user info from response
-      const { access_token, user } = response.data;
+      const { access_token, user } = data;
       
       // Store authentication data in sessionStorage
       sessionStorage.setItem('access_token', access_token);

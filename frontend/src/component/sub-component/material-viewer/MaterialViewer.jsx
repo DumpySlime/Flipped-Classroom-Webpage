@@ -45,12 +45,11 @@ function MaterialViewer(props) {
         }
     };
 
-    // Get user info from localStorage if not in props
     const userInfo = props.userInfo || {
-        id: localStorage.getItem('user_id'),
-        username: localStorage.getItem('user_username'),
-        firstname: localStorage.getItem('user_firstname'),
-        lastname: localStorage.getItem('user_lastname')
+        id: sessionStorage.getItem('user_id'),
+        username: sessionStorage.getItem('user_username'),
+        firstname: sessionStorage.getItem('user_firstname'),
+        lastname: sessionStorage.getItem('user_lastname')
     };
 
     return (

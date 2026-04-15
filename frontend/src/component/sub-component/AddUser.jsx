@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiRequest } from '../../services/api';
 import axios from 'axios';
 import '../../styles.css';
 import '../../dashboard.css';
@@ -19,62 +20,33 @@ function AddUser(props) {
     setValues({ ...values, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    
-    console.log('Form submitted with values:', values);
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError('');
+  setSuccess('');
 
-    // Validate role is selected
-    if (!values.role) {
-      setError('Please select a role');
-      return;
+  if (!values.role) {
+    setError('Please select a role');
+    return;
+  }
+
+  try {
+    await apiRequest('/db/user-add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(values)
+    });
+
+    setSuccess(`User "${values.username}" added successfully as ${values.role}!`);
+    setValues({ username: '', password: '', firstName: '', lastName: '', role: '' });
+
+    if (props.setActiveSection && typeof props.setActiveSection === 'function') {
+      setTimeout(() => props.setActiveSection('overview'), 1500);
     }
-
-    // Get JWT token from localStorage
-    const token = localStorage.getItem('access_token');
-
-    // Send as JSON (matching backend expectation)
-    axios.post('http://localhost:5000/db/user-add', {
-      username: values.username,
-      password: values.password,
-      firstName: values.firstName,
-      lastName: values.lastName,
-      role: values.role
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    })
-      .then(function (response) {
-        console.log('User added successfully:', response.data);
-        setSuccess(`User "${values.username}" added successfully as ${values.role}!`);
-        
-        // Reset form
-        setValues({
-          username: '',
-          password: '',
-          firstName: '',
-          lastName: '',
-          role: ''
-        });
-        
-        // Only call setActiveSection if it exists
-        if (props.setActiveSection && typeof props.setActiveSection === 'function') {
-          setTimeout(() => {
-            props.setActiveSection('overview');
-          }, 1500);
-        }
-      })
-      .catch(function (error) {
-        console.error('Error adding user:', error);
-        const errorMsg = error.response?.data?.error || 'Failed to add user';
-        setError(errorMsg);
-      });
-  };
-
+  } catch (error) {
+    setError(error.message || 'Failed to add user');
+  }
+};
   return (
     <div className="content-section">
       <h2>Add New User</h2>

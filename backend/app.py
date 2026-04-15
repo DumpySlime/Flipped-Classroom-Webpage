@@ -19,7 +19,7 @@ except Exception as e:
     print("Database connection error:", e)
 
 CORS(app,
-     origins=["http://localhost:3000", "http://localhost:3005", "https://flippedclassroom.ngrok-free.app", "https://gxptd94b-3005.asse.devtunnels.ms"],
+     origins=["http://localhost:3000", "http://localhost:3005", "https://flippedclassroom.ngrok-free.app", "https://gxptd94b-3005.asse.devtunnels.ms", "https://gxptd94b-5000.asse.devtunnels.ms"],
      supports_credentials=True,
      allow_headers=["Content-Type", "Authorization", "x-tunnel-skip-anti-phishing-page"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],

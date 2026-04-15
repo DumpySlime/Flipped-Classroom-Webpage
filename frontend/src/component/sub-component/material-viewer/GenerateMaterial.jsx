@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import '../../../styles.css';
 import '../../../dashboard.css';
-import axios from 'axios';
+import { apiRequest } from '../../../services/api';
 import ViewMaterial from './ViewMaterial';
 import ViewQuestion from './ViewQuestion';
 import { useTranslation } from 'react-i18next';
 import { getLangText } from '../../../utils/langText';
-
-const API_BASE_URL = "http://localhost:5000";
 
 function GenerateMaterial({subject, onClose, userInfo, userRole}) {
     const { t, i18n } = useTranslation();
@@ -87,11 +85,9 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
             setTopicsError(null);
 
             try {
-                const res = await axios.get('/db/topic', {
-                    params: { subject_id: subjectId, form: values.form },
-                });
+                const res = await apiRequest(`/db/topic?subject_id=${subjectId}&form=${values.form}`);
 
-                const fetched = Array.isArray(res.data?.topics) ? res.data.topics : [];
+                const fetched = Array.isArray(res?.topics) ? res.topics : [];
                 if (!cancelled) {
                     setTopics(fetched);
                     setValues(prev => {
@@ -130,7 +126,7 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
         setValues({ ...values, [e.target.name]: e.target.value });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!values.form)     { setError(getText('selectFormWarning'));     return; }
         if (!values.topic)    { setError(getText('selectTopicWarning'));    return; }
@@ -147,48 +143,63 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
         formData.append('language',    submittedValues.language);
         formData.append('description', submittedValues.description);
 
-        axios.post('/api/llm/material/create', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        })
-        .then(function (response) {
-            const data = response.data?.data || {};
-            console.log("Generated material data:", data);
+        try {
+            const response = await apiRequest('/api/llm/material/create', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = response || {};
+            console.log('[DEBUG] Full LLM response:', JSON.stringify(data));
+            console.log('[DEBUG] LLM create response keys:', Object.keys(data));
+            console.log('[DEBUG] data.sid:', data.sid);
+            console.log('[DEBUG] data.material_id:', data.material_id);
+            console.log('[DEBUG] data._id:', data._id);
             setError(null);
             setGeneratedMaterial(data);
-            generateQuestions(data.sid, submittedValues);
-        })
-        .catch(function (error) {
+            const materialSid = data.sid || data.material_id || data._id;
+            console.log('[DEBUG] materialSid resolved to:', materialSid);
+            generateQuestions(materialSid, submittedValues);
+        } catch (error) {
             console.log(`Error sending material generation parameters: ${error}`);
             setError(getText('matGenerateFailed'));
             setIsGenerating(false);
-        });
+        }
     };
 
-    const generateVideo = (materialId) => {
+    const generateVideo = async (materialId) => {
+        console.log('[DEBUG] generateVideo called with materialId:', materialId);
+        console.log('[DEBUG] generatedMaterial:', generatedMaterial);
+        if (!materialId) {
+            console.error('[ERROR] materialId is undefined, skipping video generation');
+            setShowView(true);  // 跳過 video，直接顯示 material
+            return;
+        }
         setIsGeneratingVideo(true);
         console.log(`Generating videos for material: ${materialId}`);
 
-        axios.post(
-            `${API_BASE_URL}/api/generate-video/generate`,
-            { material_id: materialId, quality: "medium" },
-            { timeout: 10 * 60 * 1000 }
-        )
-        .then((response) => {
-            const videos = response.data?.videos || [];
+        try {
+            const response = await apiRequest('/api/generate-video/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ material_id: materialId, quality: "medium" })
+            });
+
+            const videos = response?.videos || [];
             console.log("Videos generated:", videos);
             setGeneratedVideos(videos);
-        })
-        .catch((error) => {
+        } catch (error) {
             console.error("Video generation failed:", error);
             console.warn("Video generation failed but material and questions are ready.");
-        })
-        .finally(() => {
+        } finally {
             setIsGeneratingVideo(false);
-			setShowView(true);
-        });
+            setShowView(true);
+        }
     };
 
-    const generateQuestions = (materialSid, submittedValues) => {
+    const generateQuestions = async (materialSid, submittedValues) => {
         const formData = new FormData();
         formData.append('subject',     submittedValues.subject);
         formData.append('subject_id',  submittedValues.subject_id);
@@ -198,15 +209,16 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
         formData.append('material_id', materialSid);
         formData.append('language',    submittedValues.language);
 
-        axios.post('/api/ai/generate-question', formData)
-        .then((response) => {
-            const data = response.data;
+        try {
+            const response = await apiRequest('/api/ai/generate-question', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = response;
             console.log(`Question generation successful:`, data);
             setGeneratedQuestionId(data._id);
             setHasCreatedQuestions(true);
-
-            generateVideo(materialSid);
-
             setValues({
                 form: '',
                 topic: '',
@@ -216,13 +228,20 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
                 subject: subject?.subject || '',
                 subject_id: subject?.id || '',
             });
-        })
-        .catch((error) => {
+
+            setIsGenerating(false);  // 先停 question loading
+
+            // 然後立刻開始 video（isGeneratingVideo 會在 generateVideo 裡 setIsGeneratingVideo(true)）
+            await generateVideo(materialSid);
+
+        } catch (error) {
             console.log(`Error sending question generation request: ${error}`);
-            console.log('Error details:', error.response?.data);
+            console.log('Error details:', error);
             setError(getText('questionGenerateFailed'));
-        })
-        .finally(() => setIsGenerating(false));
+            setGeneratedMaterial(null);
+            setIsGenerating(false);  // catch 裡也要停
+        }
+        // 沒有 finally，手動在 try/catch 各自處理
     };
 
     if (!subject) {
@@ -378,6 +397,10 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
                 <div className="loading-container">
                     {isGenerating && <p>{getText('generateLoadingMessage')}</p>}
                     {isGeneratingVideo && <p>🎬 {getText('generating')}</p>}
+                </div>
+            ) : !showView ? (
+                <div className="loading-container">
+                    <p>⏳ Preparing...</p>
                 </div>
             ) : (
                 <div className="result-container">

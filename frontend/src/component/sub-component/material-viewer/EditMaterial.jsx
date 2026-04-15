@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
+import { apiRequest } from '../../../services/api';
 import '../../../styles.css';
 import '../../../dashboard.css';
-import axios from 'axios';
 import SlideExplanation from './slide-template/SlideExplanation';
 import SlideExample from './slide-template/SlideExample';
 import { useTranslation } from 'react-i18next';
@@ -28,9 +28,21 @@ function EditMaterial({ material, onClose }) {
             setLoading(true);
             setErr(null);
 
-            const response = await axios.get(`/db/material?material_id=${material?.id}`);
-            const slidesData = response.data.materials[0]?.slides || [];
-            const slidesArray = Array.isArray(slidesData) ? slidesData : slidesData?.slides || [];
+            const [materialResponse, questionsResponse] = await Promise.all([
+                apiRequest(`/db/material?material_id=${material?.id}`),
+                apiRequest(`/db/question?material_id=${material.id}`)
+            ]);
+
+            const slidesData = materialResponse.materials[0]?.slides || [];
+            let parsedSlidesData = slidesData;
+            if (typeof slidesData === 'string') {
+                try {
+                    parsedSlidesData = JSON.parse(slidesData);
+                } catch (e) {
+                    parsedSlidesData = [];
+                }
+            }
+            const slidesArray = Array.isArray(parsedSlidesData) ? parsedSlidesData : parsedSlidesData?.slides || [];
             const normalizedSlides = slidesArray.map(slide => ({
                 ...slide,
                 slidetype: slide.slideType || slide.slidetype,
@@ -40,9 +52,14 @@ function EditMaterial({ material, onClose }) {
             setCurrentSlideIndex(0);
             setMaterialId(material.id);
 
-            const questionsResponse = await axios.get(`/db/question?material_id=${material.id}`);
-            const questionsList = questionsResponse.data?.questions || [];
-            setQuestions(questionsList);
+            const questionsList = questionsResponse.questions || [];
+            const normalizedQuestions = questionsList.map(q => ({
+                ...q,
+                question_content: typeof q.question_content === 'string'
+                    ? JSON.parse(q.question_content)
+                    : q.question_content
+            }));
+            setQuestions(normalizedQuestions);
         } catch (error) {
             console.error('Error loading material:', error);
             setErr(t('failedToLoad'));
@@ -227,12 +244,21 @@ function EditMaterial({ material, onClose }) {
             setSaving(true);
             setErr(null);
 
-            const materialResponse = await axios.put(`/db/material-update?material_id=${material.id}`, {
-                slides: slides
+            console.log('Saving material with slides:', slides);
+            console.log('Material ID:', material.id);
+
+            const materialResponse = await apiRequest(`/db/material-update?material_id=${material.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ slides: slides })
             });
 
+            console.log('Material update response:', materialResponse);
+
             // Update local slides state with the response data immediately
-            const updatedSlides = materialResponse.data?.material?.slides || materialResponse.data?.slides || slides;
+            const updatedSlides = materialResponse.material?.slides || materialResponse.slides || slides;
             if (Array.isArray(updatedSlides)) {
                 const normalizedSlides = updatedSlides.map(slide => ({
                     ...slide,
@@ -245,9 +271,19 @@ function EditMaterial({ material, onClose }) {
             for (const q of questions) {
                 const qId = q.id || (q._id && (q._id.$oid || q._id));
                 if (qId) {
-                    await axios.put(`/db/question-update?question_id=${qId}`, {
-                        question_content: q.question_content
-                    });
+                    try {
+                        console.log('Updating question:', qId, q.question_content);
+                        await apiRequest(`/db/question-update?question_id=${qId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ question_content: q.question_content })
+                        });
+                    } catch (questionError) {
+                        console.error('Error updating question:', qId, questionError);
+                        // Continue with other questions
+                    }
                 }
             }
 
@@ -259,10 +295,8 @@ function EditMaterial({ material, onClose }) {
                 slides: slides
             };
             
-            setTimeout(() => {
-                alert(t('updatedSuccessfully'));
-                onClose(updatedMaterial);
-            }, 100);
+            onClose(updatedMaterial);
+            alert(t('updatedSuccessfully'));
         } catch (error) {
             console.error('Error updating material:', error);
             setErr(t('failedToUpdate'));
