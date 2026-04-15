@@ -11,11 +11,15 @@ const apiRequest = async (endpoint, options = {}) => {
       ...options,
       headers: {
         'Authorization': `Bearer ${getAuthToken()}`,
+        'X-Tunnel-Skip-Anti-Phishing-Page': 'true',
         ...options.headers,
       }
     });
 
     if (!response.ok) {
+      if (response.status === 502) {
+        throw new Error('Backend server error or not responding (502 Bad Gateway)');
+      }
       const error = await response.json();
       throw new Error(error.error || 'API request failed');
     }
