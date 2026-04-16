@@ -127,6 +127,8 @@ def call_storyboard(title: str, slide_text: str, language: str):
         result = call_deepseek(storyboard_system_prompt, storyboard_user_prompt, 0.7, 2500)
         content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
         token_usage, total_tokens = get_token_usage(result)
+        content = fix_json_escapes(content)
+        content = extract_json_from_content(content)  
         storyboard = json.loads(content)
 
         logger.info("Storyboard generated successfully")
@@ -318,6 +320,24 @@ def generate_animation(title: str, slide_text: str, language: str):
     logger.info(f"Animation generated — total tokens: {total_tokens}, time: {end_time - start_time:.2f}s")
     return (final_code, total_tokens, end_time - start_time)
 
+def fix_json_escapes(content: str) -> str:
+    """Fix invalid escape sequences in LLM-generated JSON."""
+    def replace_invalid_escape(match):
+        char = match.group(1)
+        if char in '"\\\/nrtbf':
+            return match.group(0)
+        if char == 'u':
+            return match.group(0)
+        return '\\\\' + char
+
+    return re.sub(r'\\([^"\\\/nrtbfu]|u(?![0-9a-fA-F]{4}))', replace_invalid_escape, content)
+
+def extract_json_from_content(content: str) -> str:
+    """Extract JSON from markdown code blocks if present."""
+    match = re.search(r'```(?:json)?\s*([\s\S]*?)```', content)
+    if match:
+        return match.group(1).strip()
+    return content.strip()
 
 if __name__ == "__main__":
     test_title = "利用直角三角形推導三角比"

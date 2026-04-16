@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import '../styles.css';
 import '../dashboard.css';
 import Overview from './sub-component/Overview';
@@ -21,7 +21,7 @@ import {
 
 function Dashboard(props) {
   const [activeSection, setActiveSection] = useState('overview');
-  const [roleSections, setRoleSections] = useState({});
+  const [roleSections, setRoleSections] = useState([]);
   const [currentUserInfo, setCurrentUserInfo] = useState({});
   
   const [materials, setMaterials] = useState([]);
@@ -33,52 +33,45 @@ function Dashboard(props) {
   const [error, setError] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState(null);
   const { t, i18n } = useTranslation();
-  const [currentLang, setCurrentLang] = useState(i18n.language);
+  const [currentLang, setCurrentLang] = useState(
+    localStorage.getItem('lang') || i18n.language
+  );
+  const isMountedRef = useRef(true);
 
-  useEffect(() => {
-    loadDashboardData();
-  }, [props.userId, props.userRole]);
+  const loadDashboardData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-  useEffect(() => {
-    const sections = {
-      teacher: ['overview', 'materials', 'analytics'],
-      student: ['overview', 'materials', 'chatroom'],
-      admin: ['overview', 'materials', 'analytics', 'subjects', 'users', 'chatroom', 'subject-members']
-    };
-    setRoleSections(sections[currentUserInfo.role] || sections.student);
-  }, [currentUserInfo.role]);
-
-  const loadDashboardData = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      
       const userId = props.userId || sessionStorage.getItem('user_id');
       const userRole = props.userRole || sessionStorage.getItem('user_role');
-      
+
       if (!userId || !userRole) {
         throw new Error('User information not available');
       }
-      
+
+      if (!isMountedRef.current) return;
       setCurrentUserInfo({ id: userId, role: userRole });
-      
-      // Fetch subjects
+
       const subjectsData = await subjectAPI.getAll(userId, userRole);
+      if (!isMountedRef.current) return;
       setSubjects(subjectsData);
-      
-      // Set first subject as selected and fetch its materials
+
       if (subjectsData.length > 0) {
         setSelectedSubject(subjectsData[0].id);
         const materialsData = await materialAPI.getAll(subjectsData[0].id);
+        if (!isMountedRef.current) return;
         setMaterials(materialsData);
+      } else {
+        setSelectedSubject(null);
+        setMaterials([]);
       }
-      
-      // Teacher&Admin-specific data
+
       if (userRole === 'teacher' || userRole === 'admin') {
         const studentsData = await userAPI.getAll('student');
+        if (!isMountedRef.current) return;
         setStudents(studentsData);
-        
-        // Calculate student progress
+
         const progressData = await Promise.all(
           studentsData.map(async (student) => {
             const answers = await studentAnswerAPI.getAll(student.id);
@@ -90,26 +83,52 @@ function Dashboard(props) {
             };
           })
         );
+        if (!isMountedRef.current) return;
         setStudentProgress(progressData);
+      } else {
+        setStudents([]);
+        setStudentProgress([]);
       }
-      
-      // Student-specific data
+
       if (userRole === 'student') {
         const assignmentsData = [];
         for (const subject of subjectsData) {
           const subjectMaterials = await materialAPI.getAll(subject.id);
           assignmentsData.push(...subjectMaterials);
         }
+        if (!isMountedRef.current) return;
         setAssignments(assignmentsData);
+      } else {
+        setAssignments([]);
       }
-      
-      setLoading(false);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
+      if (!isMountedRef.current) return;
       setError(error.message);
-      setLoading(false);
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  };
+  }, [props.userId, props.userRole]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    loadDashboardData();
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [loadDashboardData]);
+
+  useEffect(() => {
+    if (!currentUserInfo.role) return;
+    const sections = {
+      teacher: ['overview', 'materials', 'analytics'],
+      student: ['overview', 'materials', 'chatroom'],
+      admin: ['overview', 'materials', 'analytics', 'subjects', 'users', 'chatroom', 'subject-members']
+    };
+    setRoleSections(sections[currentUserInfo.role] || sections.student);
+  }, [currentUserInfo.role]);
 
   const calculateProgress = (answers) => {
     if (!answers || answers.length === 0) return 0;
@@ -120,11 +139,11 @@ function Dashboard(props) {
 
   const getLastActivity = (answers) => {
     if (!answers || answers.length === 0) return 'No activity';
-    const latest = answers.reduce((latest, submission) => {
-      const submissionDate = new Date(submission.submission_time);
-      return submissionDate > new Date(latest) ? submission.submission_time : latest;
-    }, answers[0].submission_time);
-    return new Date(latest).toLocaleString();
+    const latestTime = answers.reduce((latestTimestamp, submission) => {
+      const t = new Date(submission.submission_time).getTime();
+      return t > latestTimestamp ? t : latestTimestamp;
+    }, 0);
+    return latestTime ? new Date(latestTime).toLocaleString() : 'No activity';
   };
 
   const handleSubjectChange = async (subjectId) => {
@@ -135,8 +154,9 @@ function Dashboard(props) {
       setMaterials(materialsData);
     } catch (error) {
       console.error('Error fetching materials:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleAddMaterial = async (materialData) => {
@@ -216,7 +236,7 @@ function Dashboard(props) {
         <div className="dashboard-error">
           <h2>{t('errorLoadingDashboard')}</h2>
           <p>{error}</p>
-          <button onClick={() => loadDashboardData()}>{t('retry')}</button>
+          <button onClick={loadDashboardData}>{t('retry')}</button>
         </div>
       </div>
     );
@@ -235,26 +255,31 @@ function Dashboard(props) {
             studentProgress={studentProgress}
             totalStudents={totalStudents}
             userRole={currentUserInfo.role}
+            userInfo={{
+              id: currentUserInfo.id,
+              username: sessionStorage.getItem('user_username'),
+              firstname: sessionStorage.getItem('user_firstname'),
+              lastname: sessionStorage.getItem('user_lastname')
+            }}
           />
         );
-  // Load initial dashboard data
-		case 'materials':
-		return (
-			<MaterialViewer
-        subjects={subjects}
-        materials={materials}
-        selectedSubject={selectedSubject}
-        onSubjectChange={handleSubjectChange}
-        userRole={currentUserInfo.role}
-        userInfo={{
-          id: currentUserInfo.id,
-          username: sessionStorage.getItem('user_username'),
-          firstname: sessionStorage.getItem('user_firstname'),
-          lastname: sessionStorage.getItem('user_lastname')
-        }}
-        activeSection={activeSection}
-			/>
-		);
+      case 'materials':
+        return (
+          <MaterialViewer
+            subjects={subjects}
+            materials={materials}
+            selectedSubject={selectedSubject}
+            onSubjectChange={handleSubjectChange}
+            userRole={currentUserInfo.role}
+            userInfo={{
+              id: currentUserInfo.id,
+              username: sessionStorage.getItem('user_username'),
+              firstname: sessionStorage.getItem('user_firstname'),
+              lastname: sessionStorage.getItem('user_lastname')
+            }}
+            activeSection={activeSection}
+          />
+        );
 
       case 'assignments':
         return (
@@ -326,6 +351,12 @@ function Dashboard(props) {
             studentProgress={studentProgress}
             totalStudents={totalStudents}
             userRole={currentUserInfo.role}
+            userInfo={{
+              id: currentUserInfo.id,
+              username: sessionStorage.getItem('user_username'),
+              firstname: sessionStorage.getItem('user_firstname'),
+              lastname: sessionStorage.getItem('user_lastname')
+            }}
           />
         );
     }
@@ -354,7 +385,7 @@ function Dashboard(props) {
           </div>
         </div>
         <nav className="sidebar-nav">
-          {roleSections.includes && roleSections.includes('overview') && (
+          {roleSections.includes('overview') && (
             <button
               className={activeSection === 'overview' ? 'active' : ''}
               onClick={() => {setActiveSection('overview'); 
@@ -363,7 +394,7 @@ function Dashboard(props) {
               {t('navOverview')}
             </button>
           )}
-          {roleSections.includes && roleSections.includes('subject-members') && (
+          {roleSections.includes('subject-members') && (
             <button
               className={activeSection === 'subject-members' ? 'active' : ''}
               onClick={() => setActiveSection('subject-members')}
@@ -371,7 +402,7 @@ function Dashboard(props) {
               {t('navSubjectMembers')}
             </button>
           )}
-          {roleSections.includes && roleSections.includes('materials') && (
+          {roleSections.includes('materials') && (
             <button
               className={activeSection === 'materials' ? 'active' : ''}
               onClick={() => setActiveSection('materials')}
@@ -379,7 +410,7 @@ function Dashboard(props) {
               {t('navMaterials')}
             </button>
           )}
-          {roleSections.includes && roleSections.includes('assignments') && (
+          {roleSections.includes('assignments') && (
             <button
               className={activeSection === 'assignments' ? 'active' : ''}
               onClick={() => setActiveSection('assignments')}
@@ -387,7 +418,7 @@ function Dashboard(props) {
               {t('navAssignments')}
             </button>
           )}
-          {roleSections.includes && roleSections.includes('analytics') && (
+          {roleSections.includes('analytics') && (
             <button
               className={activeSection === 'analytics' ? 'active' : ''}
               onClick={() => setActiveSection('analytics')}
@@ -395,7 +426,7 @@ function Dashboard(props) {
               {t('navAnalytics')}
             </button>
           )}
-          {roleSections.includes && roleSections.includes('subjects') && (
+          {roleSections.includes('subjects') && (
             <button
               className={activeSection === 'subjects' ? 'active' : ''}
               onClick={() => setActiveSection('subjects')}
@@ -403,7 +434,7 @@ function Dashboard(props) {
               {t('navSubjects')}
             </button>
           )}
-          {roleSections.includes && roleSections.includes('users') && (
+          {roleSections.includes('users') && (
             <button
               className={activeSection === 'users' ? 'active' : ''}
               onClick={() => setActiveSection('users')}
@@ -411,7 +442,7 @@ function Dashboard(props) {
               {t('navUsers')}
             </button>
           )}
-          {roleSections.includes && roleSections.includes('chatroom') && (
+          {roleSections.includes('chatroom') && (
             <button
               className={activeSection === 'chatroom' ? 'active' : ''}
               onClick={() => setActiveSection('chatroom')}
@@ -425,6 +456,7 @@ function Dashboard(props) {
             onClick={() => {
               i18n.changeLanguage('en');
               setCurrentLang('en');
+              localStorage.setItem('lang', 'en');
             }} 
             className={`lang-btn ${currentLang === 'en' ? 'lang-active' : ''}`}
           >
@@ -434,6 +466,7 @@ function Dashboard(props) {
             onClick={() => {
               i18n.changeLanguage('zh-HK');
               setCurrentLang('zh-HK');
+              localStorage.setItem('lang', 'zh-HK');
             }} 
             className={`lang-btn ${currentLang === 'zh-HK' ? 'lang-active' : ''}`}
           >

@@ -26,6 +26,12 @@ def init_db(db_instance):
     global db
     db = db_instance
 
+# Helper to normalize datetime values for JSON output
+def serialize_datetime(value):
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return value
+
 def getUserById(user_id):
     try:
         uploader_id = ObjectId(user_id)
@@ -60,17 +66,20 @@ def add_material():
             user_id = ObjectId(request.form.get('user_id'))
         except Exception as e:
             print("No user_id in form, getting from token")
-            user_id = getUserById(get_jwt_identity())['_id']  
+            result = getUserById(get_jwt_identity())
+            if isinstance(result, tuple):
+                return jsonify(result[0]), result[1]
+            user_id = result['_id']  
         if not subject_id:
-            return {"error": "subject_id is required"}, 400
+            return jsonify({"error": "subject_id is required"}), 400
         if not topic:
-            return {"error": "topic is required"}, 400
+            return jsonify({"error": "topic is required"}), 400
         if not subtopic:
-            return {"error": "subtopic is required"}, 400
+            return jsonify({"error": "subtopic is required"}), 400
         if not language:
-            return {"error": "language is required"}, 400
+            return jsonify({"error": "language is required"}), 400
         if not form:
-            return {"error": "form is required"}, 400
+            return jsonify({"error": "form is required"}), 400
 
         subtopic_list = ast.literal_eval(subtopic) if isinstance(subtopic, str) else subtopic
 
@@ -89,22 +98,21 @@ def add_material():
             'created_at': datetime.now().isoformat(),
         }
         mat_id = db.materials.insert_one(mat).inserted_id
-        if mat_id:
-            return jsonify({
-                'result': 'Material uploaded successfully',
-                'material_id': str(mat_id),
-                "subject_id": subject_id,
-                'attribute': {
-                    'topic': topic,
-                    "subtopic": subtopic,
-                    "form": form,
-                    'language': language
-                },
-                'slides': slides,
-                "uploaded_by": str(user_id),
-                'status': status,
-                "upload_date": datetime.now().isoformat(),
-            }),201
+        return jsonify({
+            'result': 'Material uploaded successfully',
+            'material_id': str(mat_id),
+            "subject_id": subject_id,
+            'attribute': {
+                'topic': topic,
+                "subtopic": subtopic,
+                "form": form,
+                'language': language
+            },
+            'slides': slides,
+            "uploaded_by": str(user_id),
+            'status': status,
+            "upload_date": datetime.now().isoformat(),
+        }), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -185,29 +193,41 @@ def get_material():
             return jsonify({"message": "No materials found"}), 404
         return jsonify({"materials": materials}), 200
     except Exception as e:
-        return {"error": str(e)}, 500
+        return jsonify({"error": str(e)}), 500
 
 # Delete Material + Question
 @db_bp.route('/material-delete', methods=['DELETE'])
 @jwt_required()
 def delete_material():
     print("Received request to delete material")
+    # S3: Check ownership or admin role
+    current_user_id = get_jwt_identity()
+    claims = get_jwt()
+    user_role = claims.get("role")
+    
     try:
         material_id = request.args.get('material_id')
         print(f"Received request to delete material with id: {material_id}")
         if not material_id:
             print("material_id is missing in request")
-            return {"error": "material_id is required"}, 400
+            return jsonify({"error": "material_id is required"}), 400
         mat = db.materials.find_one({'_id': ObjectId(material_id)})
         if not mat:
             print(f"Material with id {material_id} not found")
-            return {"error": "Material not found"}, 404
+            return jsonify({"error": "Material not found"}), 404
+        
+        # S3: Only owner or admin can delete
+        uploaded_by_str = str(mat.get("uploaded_by"))
+        if uploaded_by_str != current_user_id and user_role != "admin":
+            print(f"User {current_user_id} forbidden to delete material {material_id}")
+            return jsonify({"error": "Forbidden: You can only delete your own materials"}), 403
+        
         db.materials.delete_one({'_id': ObjectId(material_id)})
         db.questions.delete_many({'material_id': ObjectId(material_id)})
         print(f"Material with id {material_id} and associated questions deleted successfully")
         return jsonify({"message": "Material deleted successfully"}), 200
     except Exception as e:
-        return {"error": str(e)}, 500
+        return jsonify({"error": str(e)}), 500
     
 @db_bp.route('/material-update', methods=['PUT'])
 @jwt_required()
@@ -215,9 +235,9 @@ def update_material():
     try:
         material_id = request.args.get('material_id')
         if not material_id:
-            return {"error": "material_id is required"}, 400
+            return jsonify({"error": "material_id is required"}), 400
 
-        data = request.form.to_dict() or request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or request.form.to_dict() or {}
         status = data.get("status", "generating")
         slides = data.get("slides", "")
 
@@ -235,18 +255,29 @@ def update_material():
 
         return jsonify({"message": "Material updated successfully"}), 200
     except Exception as e:
-        return {"error": str(e)}, 500
+        return jsonify({"error": str(e)}), 500
 
 # User CRUD operations
 # Add User
 @db_bp.route('/user-add', methods=['POST'])
 @jwt_required()
 def add_user():
+    # S2: Only admin can create users
+    claims = get_jwt()
+    if claims.get("role") != "admin":
+        return jsonify({"error": "Unauthorized: Only admin can add users"}), 403
+    
     data = request.json
     required_fields = ["username", "password", "firstName", "lastName", "role"]
     for field in required_fields:
         if field not in data:
             return jsonify({"error": f"{field} is required"}), 400
+    
+    # S2: Validate role is in allowed list
+    ALLOWED_ROLES = {"admin", "teacher", "student"}
+    if data["role"] not in ALLOWED_ROLES:
+        return jsonify({"error": "Invalid role. Allowed: admin, teacher, student"}), 400
+    
     existing = db.users.find_one({"username": data["username"]})
     if existing:
         return jsonify({"error": "username already exists"}), 409
@@ -286,7 +317,7 @@ def get_users():
         results = []
         for u in docs:
             results.append({
-                "id": u["_id"],
+                "id": str(u["_id"]),
                 "username": u.get("username")
             })
         print("User search results:", results)
@@ -361,7 +392,13 @@ def add_subject():
         }
         res = db.subjects.insert_one(doc)
         doc["_id"] = res.inserted_id
-        doc_serializable = {**doc, "_id": str(res.inserted_id)}
+        doc_serializable = {
+            **doc,
+            "_id": str(res.inserted_id),
+            "created_by": str(doc["created_by"]),
+            "teacher_ids": [str(t) for t in doc.get("teacher_ids", [])],
+            "student_ids": [str(s) for s in doc.get("student_ids", [])],
+        }
         return jsonify({"subjects": [doc_serializable]}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -373,6 +410,7 @@ def get_subject():
     try:
         id = request.args.get('id')
         subject = request.args.get('subject')
+        teacher_id = request.args.get('teacher_id')
         
         # Base filter for subjects collection
         subj_filt = {}
@@ -380,6 +418,11 @@ def get_subject():
             subj_filt['_id'] = ObjectId(id)
         if (subject):
             subj_filt['subject'] = subject
+        if (teacher_id):
+            try:
+                subj_filt['teacher_ids'] = ObjectId(teacher_id)
+            except Exception:
+                return jsonify({"error": "Invalid teacher_id"}), 400
             
         # Get current user from JWT 
         current_user_id = get_jwt_identity()
@@ -390,7 +433,15 @@ def get_subject():
         
         # If teacher/student has assigned subjects, restrict filter 
         if subject_ids: 
-            subj_filt['_id'] = {"$in": subject_ids}
+            existing_id_filter = subj_filt.pop('_id', None)
+            if existing_id_filter:
+                # 同時滿足：指定 id 且在 subject_ids 內
+                subj_filt['$and'] = [
+                    {'_id': existing_id_filter},
+                    {'_id': {"$in": subject_ids}}
+                ]
+            else:
+                subj_filt['_id'] = {"$in": subject_ids}
 
         subjects = list(db.subjects.find(subj_filt))
         results = []
@@ -400,7 +451,7 @@ def get_subject():
             
             # Fetch topics linked to this subject 
             topics_cursor = db.topics.find({"subject_id": sid}) 
-            topics = [t.get("topic") for t in topics_cursor] 
+            topics_list = [t.get("topic") for t in topics_cursor] 
             
             # Fetch all subject_members that include this subject id 
             members_cursor = db.subject_members.find({"subject_ids": sid}) 
@@ -421,12 +472,12 @@ def get_subject():
             results.append({
                 "id": str(s["_id"]),
                 "subject": s.get("subject"),
-                "topics": s.get("topics"),
+                "topics": topics_list,
                 "teacher_ids": [str(tid) for tid in s.get("teacher_ids", [])],
                 "student_ids": [str(tid) for tid in s.get("student_ids", [])],
                 "created_by": str(s["created_by"]),
-                "created_at": s.get("created_at").isoformat(),
-                "updated_at": s.get("updated_at").isoformat()
+                "created_at": serialize_datetime(s.get("created_at")),
+                "updated_at": serialize_datetime(s.get("updated_at"))
             })
         print("Subject search results:", results[:5])
         return jsonify({"subjects": results}), 200
@@ -470,7 +521,7 @@ def get_topic():
             "topics": topics
         }), 200
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return jsonify({"error": str(e)}), 500
         
 # Get subject members
 @db_bp.route("/subjectmembers", methods=["GET"])
@@ -686,7 +737,7 @@ def get_question():
                 "material_id": str(u.get("material_id")),
                 "topic": u.get("topic"),
                 "question_content": u.get("question_content"),
-                "created_by": str(u["created_by"]),
+                "created_by": str(u["created_by"]) if u.get("created_by") else None,
                 "create_type": u.get("create_type"),
                 "created_at": u.get("created_at"),
                 "updated_at": u.get("updated_at")
@@ -785,17 +836,23 @@ def submit_student_answers():
 @jwt_required()
 def get_student_answers():
     try:
+        # S1: Check authorization
+        current_user_id = get_jwt_identity()
+        claims = get_jwt()
+        user_role = claims.get("role")
+        
         student_id = request.args.get('student_id')
         material_id = request.args.get('material_id')
         filt = {}
         
-        # If student_id not provided, use JWT identity (useful for frontend) 
-        if not student_id: 
-            try: 
-                student_id = get_jwt_identity() 
-                print("get_student_answers: using JWT identity as student_id:", student_id) 
-            except Exception: 
-                student_id = None
+        # S1: Non-admin/teacher can only view their own answers
+        if user_role not in ("admin", "teacher"):
+            # Student can only fetch their own answers
+            student_id = current_user_id
+        elif not student_id:
+            # If teacher/admin doesn't specify student_id, use JWT identity as fallback
+            student_id = current_user_id
+        
         if student_id:
             try:
                 if len(student_id) == 24 and all(c in '0123456789abcdefABCDEF' for c in student_id):

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import '../../styles.css';
 import '../../dashboard.css';
 import MaterialList from './material-viewer/MaterialList';
@@ -15,6 +15,7 @@ function Overview(props) {
     studentProgress = [],
     totalStudents = 0,
     userRole = 'student',
+    userInfo = null,
   } = props;
 
   // Safe arrays in case props are undefined
@@ -24,22 +25,25 @@ function Overview(props) {
   const safeProgress = Array.isArray(studentProgress) ? studentProgress : [];
 
   // Sort materials by created_at in descending order (newest first)
-  const sortedMaterials = [...safeMaterials].sort((a, b) => {
-    const dateA = new Date(a.created_at || 0);
-    const dateB = new Date(b.created_at || 0);
-    return dateB - dateA; // Descending order (newest first)
-  });
+  const sortedMaterials = useMemo(() => {
+    return [...safeMaterials].sort((a, b) => {
+      const dateA = new Date(a.created_at || 0);
+      const dateB = new Date(b.created_at || 0);
+      return dateB - dateA; // Descending order (newest first)
+    });
+  }, [safeMaterials]);
 
   const [selectedSubject, setSelectedSubject] = useState(null);
-  const userInfo = props.userInfo;
 
   // Direct user to selected subject Material List on click
-  function handleViewMaterialList(subject) {
+  const handleViewMaterialList = useCallback((subject) => {
     setSelectedSubject(subject);
-  }
+  }, []);
 
   if (selectedSubject) {
-    const subjectMaterials = safeMaterials.filter(m => m.subject_id === selectedSubject.id) || [];
+    const subjectMaterials = safeMaterials.filter(
+      m => String(m.subject_id) === String(selectedSubject.id)
+    );
     return (
       <MaterialList
         subject={selectedSubject}
@@ -89,7 +93,7 @@ function Overview(props) {
             {sortedMaterials.slice(0, 5).map((material) => (
               <div key={material.id} className="activity-item">
                 <span>
-                  <strong>{material.attribute.topic}</strong>
+                  <strong>{material.attribute?.topic || 'Untitled'}</strong>
                   {material.subject && (
                     <span style={{ 
                       marginLeft: '8px', 

@@ -8,8 +8,22 @@ Each lesson can subclass this and override the `construct` method to create the 
 
 '''
 from manim import *
+from manim.utils.tex_file_writing import TexTemplate
 import numpy as np
 import re
+
+cjk_template = TexTemplate(
+    tex_compiler="xelatex",
+    output_format=".xdv",
+    preamble=r"""
+\usepackage[fontset=none]{ctex}
+\setCJKmainfont[BoldFont=Microsoft JhengHei, ItalicFont=DFKai-SB]{Microsoft JhengHei}
+\setCJKsansfont{Microsoft JhengHei}
+\setCJKmonofont{Microsoft JhengHei}
+\usepackage{amsmath}
+\usepackage{amssymb}
+"""
+)
 
 
 # ========= Base Scene for HKDSE Geometry =========
