@@ -152,12 +152,12 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
             const data = response || {};
             console.log('[DEBUG] Full LLM response:', JSON.stringify(data));
             console.log('[DEBUG] LLM create response keys:', Object.keys(data));
-            console.log('[DEBUG] data.sid:', data.sid);
-            console.log('[DEBUG] data.material_id:', data.material_id);
-            console.log('[DEBUG] data._id:', data._id);
+            console.log('[DEBUG] data.sid:', data.data.sid);
+            console.log('[DEBUG] data.material_id:', data.data.material_id);
+            console.log('[DEBUG] data._id:', data.data._id);
             setError(null);
             setGeneratedMaterial(data);
-            const materialSid = data.sid || data.material_id || data._id;
+            const materialSid = data.data.sid || data.data.material_id || data.data._id;
             console.log('[DEBUG] materialSid resolved to:', materialSid);
             generateQuestions(materialSid, submittedValues);
         } catch (error) {
