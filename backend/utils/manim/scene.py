@@ -230,7 +230,7 @@ class CScene(Scene):
         )
         if show_numbers:
             plane.add_coordinates()
-        plane.to_edge(DOWN, buff=0.4)
+        #plane.to_edge(DOWN, buff=0.4)
         self.play(Create(plane))
         return plane
 
