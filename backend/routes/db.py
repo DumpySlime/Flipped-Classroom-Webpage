@@ -61,15 +61,8 @@ def add_material():
         subtopic = request.form.get('subtopic', [])
         form = request.form.get('form', '')
         
+        user_id = ObjectId(request.form.get('user_id'))
 
-        try:
-            user_id = ObjectId(request.form.get('user_id'))
-        except Exception as e:
-            print("No user_id in form, getting from token")
-            result = getUserById(get_jwt_identity())
-            if isinstance(result, tuple):
-                return jsonify(result[0]), result[1]
-            user_id = result['_id']  
         if not subject_id:
             return jsonify({"error": "subject_id is required"}), 400
         if not topic:

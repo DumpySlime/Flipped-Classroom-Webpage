@@ -34,7 +34,7 @@ function MaterialList(props) {
             alert('Material deleted successfully');
         } catch (error) {
             console.error('Error deleting material:', error);
-            alert('Failed to delete material');
+            alert('Failed to delete material, you are not the owner of this material or there is a server error');
         }
     }
 
