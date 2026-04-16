@@ -264,9 +264,6 @@ def material_create():
             import traceback
             traceback.print_exc()
 
-        current_user_id = get_jwt_identity()
-        print(f"Material create request from user: {current_user_id}")
-
         data = request.form
 
         subject = (data.get("subject") or "").strip()
@@ -277,6 +274,9 @@ def material_create():
         language = (data.get("language") or "").strip()
         raw_subtopic = (data.get("sub_topics") or "")
         form = (data.get("form") or "").strip()
+        current_user_id = (data.get("user_id") or "").strip()
+
+        print(f"Material create request from user: {current_user_id}")
 
         # update raw_subtopic from string to array
         subtopic = ast.literal_eval(raw_subtopic) if isinstance(raw_subtopic, str) else raw_subtopic
@@ -313,6 +313,7 @@ def material_create():
                 "language": language,
                 "subtopic": raw_subtopic,
                 "form": form,
+                "user_id": current_user_id
             }
             print(f"Posting initial material record with data: {data}")
             resp = session.post(

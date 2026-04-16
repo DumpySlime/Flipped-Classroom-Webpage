@@ -48,8 +48,8 @@ function MaterialList(props) {
                 props.onMaterialDeleted(matId);
             }
         } catch (error) {
-            console.error('Error deleting material:', error?.response?.data || error);
-            alert(t('deleteError') || 'Failed to delete material');
+            console.error('Error deleting material:', error);
+            alert('Failed to delete material, you are not the owner of this material or there is a server error');
         }
     }, [props.onMaterialDeleted, t]);
 

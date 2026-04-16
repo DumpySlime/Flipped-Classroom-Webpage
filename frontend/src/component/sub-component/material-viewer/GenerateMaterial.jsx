@@ -30,7 +30,8 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
         description: '',
         subject: subject?.subject || '',
         subject_id: subject?.id || '',
-        language: ''
+        language: '',
+        user_id: userInfo?.id || '',
     });
 
     const [error, setError] = useState(null);
@@ -54,6 +55,7 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
             description: '',
             subject: subject?.subject || '',
             subject_id: subject?.id || '',
+            user_id: userInfo?.id || '',
         });
         setIsGenerating(false);
         setHasCreatedQuestions(false);
@@ -142,6 +144,7 @@ function GenerateMaterial({subject, onClose, userInfo, userRole}) {
         formData.append('sub_topics',  JSON.stringify(submittedValues.sub_topics));
         formData.append('language',    submittedValues.language);
         formData.append('description', submittedValues.description);
+        formData.append('user_id',     submittedValues.user_id);
 
         try {
             const response = await apiRequest('/api/llm/material/create', {
