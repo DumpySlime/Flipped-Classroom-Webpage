@@ -53,6 +53,23 @@ def get_student_analytics():
                 }
             },
             {"$unwind": {"path": "$user_info", "preserveNullAndEmptyArrays": True}},
+            # ✅ 加入 lookup materials 過濾已刪除
+            {
+                "$lookup": {
+                    "from": "materials",
+                    "let": {"attempted": "$materials_attempted"},
+                    "pipeline": [
+                        {
+                            "$match": {
+                                "$expr": {"$in": ["$_id", "$$attempted"]},
+                                "is_deleted": {"$ne": True}   # ← 只計未刪除
+                            }
+                        },
+                        {"$project": {"_id": 1}}
+                    ],
+                    "as": "valid_materials_attempted"
+                }
+            },
             {
                 "$project": {
                     "id": {"$toString": "$_id"},
@@ -62,18 +79,24 @@ def get_student_analytics():
                             {"$ifNull": ["$user_info.username", "Unknown Student"]}
                         ]
                     },
+                    # ✅ 用 valid_materials_attempted（已過濾刪除）計 progress
                     "progress": {
-                        "$round": [
+                        "$min": [   # ← cap 至 100%
+                            100,
                             {
-                                "$multiply": [
-                                    {"$divide": [
-                                        {"$size": "$materials_attempted"},
-                                        total_materials_count
-                                    ]},
-                                    100
+                                "$round": [
+                                    {
+                                        "$multiply": [
+                                            {"$divide": [
+                                                {"$size": "$valid_materials_attempted"},
+                                                total_materials_count
+                                            ]},
+                                            100
+                                        ]
+                                    },
+                                    0
                                 ]
-                            },
-                            0
+                            }
                         ]
                     },
                     "avgQuizScore": {"$round": ["$avg_score", 0]},
@@ -247,8 +270,20 @@ def calculate_student_statistics_with_questions(submissions, student_name):
     min_score = min(scores) if scores else 0
 
     materials_attempted = set(str(s.get('material_id')) for s in submissions)
+
     total_materials = db.materials.count_documents({"is_deleted": {"$ne": True}})
-    progress_percentage = (len(materials_attempted) / total_materials * 100) if total_materials > 0 else 0
+
+    # ✅ 只計 materials_attempted 入面未被刪除的
+    valid_attempted_ids = [ObjectId(mid) for mid in materials_attempted if mid]
+    valid_attempted_count = db.materials.count_documents({
+        "_id": {"$in": valid_attempted_ids},
+        "is_deleted": {"$ne": True}
+    })
+
+    progress_percentage = min(
+        100,  # ← cap 至 100%
+        (valid_attempted_count / total_materials * 100) if total_materials > 0 else 0
+    )
 
     incorrect_questions = []
     correct_count = 0
@@ -317,8 +352,8 @@ def calculate_student_statistics_with_questions(submissions, student_name):
         "avg_score": avg_score,
         "max_score": max_score,
         "min_score": min_score,
-        "progress_percentage": progress_percentage,
-        "materials_completed": len(materials_attempted),
+        "progress_percentage": progress_percentage,          # ← 已修正
+        "materials_completed": valid_attempted_count,        # ← 用 valid count
         "total_materials": total_materials,
         "trend": trend,
         "recent_performance": recent_performance,
