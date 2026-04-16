@@ -295,8 +295,8 @@ function EditMaterial({ material, onClose }) {
                 slides: slides
             };
             
-            onClose(updatedMaterial);
             alert(t('updatedSuccessfully'));
+            onClose(updatedMaterial);
         } catch (error) {
             console.error('Error updating material:', error);
             setErr(t('failedToUpdate'));

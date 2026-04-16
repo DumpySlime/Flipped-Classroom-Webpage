@@ -75,6 +75,22 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
             });
     };
 
+    const refreshQuestions = async () => {
+        if (!materialId) return;
+        try {
+            setLoadingQuestions(true);
+            const data = await apiRequest(`/db/question?material_id=${materialId}`);
+            const questionsList = data?.questions || [];
+            setQuestions(questionsList);
+            setLoadingQuestions(false);
+            console.log('Questions refreshed successfully');
+        } catch (e) {
+            console.log('Error refreshing questions:', e);
+            setQuestions([]);
+            setLoadingQuestions(false);
+        }
+    };
+
     const handleEditClose = (updatedMaterial) => {
         setShowEdit(false);
         setSelectedMaterial(null);
@@ -92,6 +108,9 @@ function ViewMaterial({ material, materialData, userInfo, userRole, onClose}) {
         } else {
             loadMaterial();
         }
+
+        // Always refresh questions after editing, as questions may have been updated
+        refreshQuestions();
     } 
 
 	// load saved submission (single submission expected)
