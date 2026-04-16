@@ -26,11 +26,22 @@ def init_db(db_instance):
     global db
     db = db_instance
 
+# Helper to serialize datetime objects for JSON output
+def serialize_datetime(dt):
+    """Convert datetime object to ISO format string, or return as-is if not datetime."""
+    if isinstance(dt, datetime):
+        return dt.isoformat()
+    return dt
+
 # Helper to normalize datetime values for JSON output
-def serialize_datetime(value):
-    if isinstance(value, datetime):
-        return value.isoformat()
-    return value
+def to_object_id(value):
+    """Convert string to ObjectId if valid, otherwise return as string."""
+    if not value:
+        return None
+    try:
+        return ObjectId(value)  # bson 自己有 validation
+    except Exception:
+        return value  # 保留原始 string（例如 AI-generated IDs）
 
 def getUserById(user_id):
     try:
@@ -93,6 +104,7 @@ def add_material():
             },
             'slides': slides,
             'uploaded_by': user_id,
+            'created_by': user_id,  # ✅ 加 created_by，與 analytics 一致
             'status': status,
             'create_type': create_type,
             'created_at': datetime.now().isoformat(),
@@ -156,6 +168,7 @@ def get_material():
 
         print(f'MongoDB filter: {filt}')
 
+        filt["is_deleted"] = {"$ne": True}
         mats = list(db.materials.find(filt, {}))
 
         print(f'Found {len(mats)} materials')
@@ -184,10 +197,8 @@ def get_material():
                 "video_generated_at": m.get("video_generated_at")
             })
             
-            material_json = json.dumps(materials[-1], indent=2, default=str)
-            if len(material_json) > 200:
-                material_json = material_json[:200] + "..."
-            print(f'Material found: {material_json}')  # Print each material as it's processed
+            # ✅ 只 log metadata，唔 log slides 內容
+            print(f'Material found: id={materials[-1]["id"]}, topic={materials[-1]["attribute"].get("topic")}, subject_id={materials[-1]["subject_id"]}')
             
         if not materials:
             return jsonify({"message": "No materials found"}), 404
@@ -195,12 +206,10 @@ def get_material():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# Delete Material + Question
 @db_bp.route('/material-delete', methods=['DELETE'])
 @jwt_required()
 def delete_material():
     print("Received request to delete material")
-    # S3: Check ownership or admin role
     current_user_id = get_jwt_identity()
     claims = get_jwt()
     user_role = claims.get("role")
@@ -216,14 +225,23 @@ def delete_material():
             print(f"Material with id {material_id} not found")
             return jsonify({"error": "Material not found"}), 404
         
-        # S3: Only owner or admin can delete
         uploaded_by_str = str(mat.get("uploaded_by"))
-        if uploaded_by_str != current_user_id and user_role != "admin":
-            print(f"User {current_user_id} forbidden to delete material {material_id}")
+        is_owner = uploaded_by_str == current_user_id
+        is_privileged = user_role in ("admin", "teacher")
+        
+        if not is_owner and not is_privileged:
+            print(f"User {current_user_id} (role={user_role}) forbidden to delete material {material_id}")
             return jsonify({"error": "Forbidden: You can only delete your own materials"}), 403
         
-        db.materials.delete_one({'_id': ObjectId(material_id)})
-        db.questions.delete_many({'material_id': ObjectId(material_id)})
+        db.materials.update_one(
+            {'_id': ObjectId(material_id)},
+            {"$set": {"is_deleted": True, "deleted_at": datetime.now().isoformat()}}
+        )
+        # questions 都軟刪除，保持一致
+        db.questions.update_many(
+            {'material_id': ObjectId(material_id)},
+            {"$set": {"is_deleted": True}}
+        )
         print(f"Material with id {material_id} and associated questions deleted successfully")
         return jsonify({"message": "Material deleted successfully"}), 200
     except Exception as e:
@@ -233,9 +251,23 @@ def delete_material():
 @jwt_required()
 def update_material():
     try:
+        current_user_id = get_jwt_identity()
+        claims = get_jwt()
+        user_role = claims.get("role")
+
         material_id = request.args.get('material_id')
         if not material_id:
             return jsonify({"error": "material_id is required"}), 400
+
+        mat = db.materials.find_one({"_id": ObjectId(material_id)})
+        if not mat:
+            return jsonify({"error": "Material not found"}), 404
+
+        # ✅ 加 ownership/role check
+        is_owner = str(mat.get("uploaded_by")) == current_user_id
+        is_privileged = user_role in ("admin", "teacher")
+        if not is_owner and not is_privileged:
+            return jsonify({"error": "Forbidden"}), 403
 
         data = request.get_json(silent=True) or request.form.to_dict() or {}
         status = data.get("status", "generating")
@@ -430,6 +462,11 @@ def get_subject():
         # Find subject_ids assigned to this user 
         member_doc = db.subject_members.find_one({"user_id": ObjectId(current_user_id)}) 
         subject_ids = member_doc.get("subject_ids", []) if member_doc else [] 
+        user_role = member_doc.get("role") if member_doc else None
+        
+        # If user is admin, bypass subject_ids restriction
+        if user_role == "admin":
+            subject_ids = []
         
         # If teacher/student has assigned subjects, restrict filter 
         if subject_ids: 
@@ -627,7 +664,7 @@ def get_subject_members():
 def add_question():
     try:
         data = request.get_json()
-        created_by = data.get("user_id")
+        created_by = data.get("user_id") or get_jwt_identity()
         question_content = data.get("question_content") or None
         create_type = data.get("create_type", "undefined")
         material_id = data.get("material_id")
@@ -636,22 +673,12 @@ def add_question():
             return jsonify({"error": "question_content is required"}), 400
 
         # Handle material_id - can be ObjectId or string
-        material_id_value = None
-        if material_id:
-            try:
-                # Check if it's a valid ObjectId format
-                if len(material_id) == 24 and all(c in '0123456789abcdefABCDEF' for c in material_id):
-                    material_id_value = ObjectId(material_id)
-                else:
-                    # For AI-generated materials with string IDs
-                    material_id_value = material_id
-            except:
-                material_id_value = material_id
+        material_id_value = to_object_id(material_id)
 
         doc = {
             "material_id": material_id_value,
             "question_content": question_content,
-            "created_by": ObjectId(created_by),
+            "created_by": to_object_id(created_by),
             "create_type": create_type,
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
@@ -727,6 +754,8 @@ def get_question():
                 filt['material_id'] = material_id
         
         print(f"Querying questions with filter: {filt}")
+        # ✅ 加過濾已刪除 questions
+        filt["is_deleted"] = {"$ne": True}
         questions = list(db.questions.find(filt))
         
         results = []

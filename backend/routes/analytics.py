@@ -337,7 +337,7 @@ def calculate_student_statistics_with_questions(submissions, student_name):
                 correct_count += 1
             else:
                 question_id = answer.get('question_id', '')
-                question_doc = db.questions.find_one({"material_id": material_id})
+                question_doc = db.questions.find_one({"material_id": material_id, "is_deleted": {"$ne": True}})
 
                 if question_doc:
                     question_content = question_doc.get('question_content', {})

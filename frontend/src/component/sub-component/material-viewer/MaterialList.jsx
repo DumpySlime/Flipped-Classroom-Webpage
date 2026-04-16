@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import React from 'react';
 import '../../../styles.css';
 import '../../../dashboard.css';
@@ -11,76 +11,83 @@ import { materialAPI } from '../../../services/api';
 import { useTranslation } from 'react-i18next';
 
 function MaterialList(props) {
-    const { t, i18n } = useTranslation(); 
+    const { t, i18n } = useTranslation();
 
     const getText = (value) => {
         if (!value && value !== 0) return '';
-        if (typeof value === 'object') {
-            return value[i18n.language] ?? value.en ?? value.zh ?? '';
+        if (typeof value === 'object' && !Array.isArray(value)) {
+            const lang = i18n.language?.startsWith('zh') ? 'zh' : 'en';
+            return value[lang] ?? value.en ?? value.zh ?? '';
         }
         return String(value);
     };
-    const [materials, setMaterials] = useState([]);    
+
+    const [materials, setMaterials] = useState(
+        Array.isArray(props.materials) ? props.materials : []
+    );
     const [showUpload, setShowUpload] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
     const [showView, setShowView] = useState(false);
     const [showGenerate, setShowGenerate] = useState(false);
     const [selectedMaterial, setSelectedMaterial] = useState(null);
 
-    async function deleteMaterial(matId) {
+    // ✅ 只在 subject 改變時 reset（唔覆蓋本地刪除操作）
+    useEffect(() => {
+        const safeMaterials = Array.isArray(props.materials) ? props.materials : [];
+        setMaterials(safeMaterials);
+    }, [props.subject]);
+
+    // ✅ 刪除：本地 filter + 通知 parent（如果有 callback）
+    const deleteMaterial = useCallback(async (matId) => {
+        if (!window.confirm(t('confirmDelete') || 'Delete this material?')) return;
         try {
             await materialAPI.delete(matId);
-            setMaterials(prevMaterials => prevMaterials.filter(material => material.id !== matId));
-            alert('Material deleted successfully');
+            setMaterials(prev => prev.filter(m => m.id !== matId));
+            // ✅ 通知 parent 更新（如果有傳 callback）
+            if (typeof props.onMaterialDeleted === 'function') {
+                props.onMaterialDeleted(matId);
+            }
         } catch (error) {
-            console.error('Error deleting material:', error);
-            alert('Failed to delete material');
+            console.error('Error deleting material:', error?.response?.data || error);
+            alert(t('deleteError') || 'Failed to delete material');
         }
-    }
+    }, [props.onMaterialDeleted, t]);
 
-    function handleViewMaterial(material) {
+    const handleViewMaterial = useCallback((material) => {
         setSelectedMaterial(material);
         setShowView(true);
-    }
+    }, []);
 
-    function handleEditMaterial(material) {
+    const handleEditMaterial = useCallback((material) => {
         setSelectedMaterial(material);
         setShowEdit(true);
-    }
+    }, []);
 
-    // back navigation
-    function handleBackToSubjects() {
+    // ✅ 安全呼叫 onBackToSubjectList
+    const handleBackToSubjects = useCallback(() => {
         setMaterials([]);
         setSelectedMaterial(null);
         setShowUpload(false);
         setShowEdit(false);
         setShowView(false);
         setShowGenerate(false);
-        
-        props.onBackToSubjectList();
-    }
+        if (typeof props.onBackToSubjectList === 'function') {
+            props.onBackToSubjectList();
+        }
+    }, [props.onBackToSubjectList]);
 
-    useEffect(() => {
-        // Safety check for materials prop
-        const safeMaterials = Array.isArray(props.materials) ? props.materials : [];
-        console.log('MaterialList received materials:', safeMaterials);
-        setMaterials(safeMaterials);
-    }, [props.materials, props.subject]);
-
-    // If showing upload
     if (showUpload) {
         return (
-            <UploadMaterial 
+            <UploadMaterial
                 subject={props.subject}
                 onClose={() => setShowUpload(false)}
             />
         );
     }
 
-    // If showing generate
     if (showGenerate) {
         return (
-            <GenerateMaterial            
+            <GenerateMaterial
                 subject={props.subject}
                 userInfo={props.userInfo}
                 userRole={props.userRole}
@@ -89,11 +96,10 @@ function MaterialList(props) {
         );
     }
 
-    // If showing view
     if (showView && selectedMaterial) {
         return (
-            <ViewMaterial 
-                material={selectedMaterial} 
+            <ViewMaterial
+                material={selectedMaterial}
                 userInfo={props.userInfo}
                 userRole={props.userRole}
                 onClose={() => setShowView(false)}
@@ -101,29 +107,29 @@ function MaterialList(props) {
         );
     }
 
-    // If showing edit
     if (showEdit && selectedMaterial) {
         return (
-            <EditMaterial 
-                material={selectedMaterial} 
+            <EditMaterial
+                material={selectedMaterial}
                 onClose={() => setShowEdit(false)}
             />
         );
-    }    
+    }
 
     return (
         <div className="materials-section">
             {props.subjectLength > 1 && (
-            <div className="back-navigation">
-                <button 
-                onClick={handleBackToSubjects}
-                className="back-button"
-                aria-label="Back to subjects list"
-                >
-                ← {t('backToSubjects')}
-                </button>
-            </div>
+                <div className="back-navigation">
+                    <button
+                        onClick={handleBackToSubjects}
+                        className="back-button"
+                        aria-label="Back to subjects list"
+                    >
+                        ← {t('backToSubjects')}
+                    </button>
+                </div>
             )}
+
             <div className="section-header">
                 <h3>{getText(props.subject?.subject) || 'Materials'}</h3>
                 {props.userRole !== 'student' && (
@@ -136,27 +142,25 @@ function MaterialList(props) {
             <div className="materials-list">
                 {materials.length > 0 ? (
                     materials.map((m) => (
-                        <div 
-                            key={m.id} 
-                            className="material-row" 
+                        <div
+                            key={m.id}
+                            className="material-row"
                             onClick={() => handleViewMaterial(m)}
                         >
                             <div className="material-main">
-                                {/* ✅ getText 保護 */}
                                 <div className="material-topic">{getText(m.attribute?.topic)}</div>
                                 <div className="material-meta">
-                                    {m.attribute?.subtopic?.length > 0 ? (  
+                                    {m.attribute?.subtopic?.length > 0 ? (
                                         m.attribute.subtopic.map((sub, idx) => (
                                             <React.Fragment key={idx}>
-                                                {/* ✅ getText 保護 */}
                                                 <span className="material-date">{getText(sub)}</span>
                                                 <div></div>
                                             </React.Fragment>
                                         ))
                                     ) : <></>}
-                                    <br/>
-                                    <span className="material-date">                                        
-                                    {m.created_at ? new Date(m.created_at).toLocaleDateString() : 'N/A'}
+                                    <br />
+                                    <span className="material-date">
+                                        {m.created_at ? new Date(m.created_at).toLocaleDateString() : 'N/A'}
                                     </span>
                                 </div>
                             </div>
@@ -167,7 +171,6 @@ function MaterialList(props) {
                                         className="button subtle"
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            console.log('Editing material id:', m.id);
                                             handleEditMaterial(m);
                                         }}
                                     >
@@ -177,7 +180,6 @@ function MaterialList(props) {
                                         className="button danger subtle"
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            console.log('Deleting material id:', m.id);
                                             deleteMaterial(m.id);
                                         }}
                                     >
