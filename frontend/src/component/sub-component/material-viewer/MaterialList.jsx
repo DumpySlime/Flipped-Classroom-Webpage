@@ -11,7 +11,15 @@ import { materialAPI } from '../../../services/api';
 import { useTranslation } from 'react-i18next';
 
 function MaterialList(props) {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation(); 
+
+    const getText = (value) => {
+        if (!value && value !== 0) return '';
+        if (typeof value === 'object') {
+            return value[i18n.language] ?? value.en ?? value.zh ?? '';
+        }
+        return String(value);
+    };
     const [materials, setMaterials] = useState([]);    
     const [showUpload, setShowUpload] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
@@ -117,7 +125,7 @@ function MaterialList(props) {
             </div>
             )}
             <div className="section-header">
-                <h3>{props.subject?.subject || 'Materials'}</h3>
+                <h3>{getText(props.subject?.subject) || 'Materials'}</h3>
                 {props.userRole !== 'student' && (
                     <button className="button primary" onClick={() => setShowGenerate(true)}>
                         {t('generateMaterial')}
@@ -134,12 +142,14 @@ function MaterialList(props) {
                             onClick={() => handleViewMaterial(m)}
                         >
                             <div className="material-main">
-                                <div className="material-topic">{m.attribute?.topic}</div>
+                                {/* ✅ getText 保護 */}
+                                <div className="material-topic">{getText(m.attribute?.topic)}</div>
                                 <div className="material-meta">
                                     {m.attribute?.subtopic?.length > 0 ? (  
                                         m.attribute.subtopic.map((sub, idx) => (
                                             <React.Fragment key={idx}>
-                                                <span className="material-date">{sub}</span>
+                                                {/* ✅ getText 保護 */}
+                                                <span className="material-date">{getText(sub)}</span>
                                                 <div></div>
                                             </React.Fragment>
                                         ))

@@ -77,14 +77,23 @@ function SubjectList({ subjects, materials, userRole, userInfo, activeSection, .
 }
 
 function SubjectCard({ subject, onClick, materialsCount }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const getText = (value) => {
+    if (!value && value !== 0) return '';
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      const lang = i18n.language?.startsWith('zh') ? 'zh' : 'en';
+      return value[lang] ?? value.en ?? value.zh ?? '';
+    }
+    return String(value);
+  };
+
   return (
     <div 
       className="subject-card"
       onClick={onClick}
       role="button"
       tabIndex={0}
-      aria-label={`View ${subject.subject} materials`}
+      aria-label={`View ${getText(subject.subject)} materials`}
     >
       <div className="card-gradient">
         <div className="card-header">
@@ -94,10 +103,10 @@ function SubjectCard({ subject, onClick, materialsCount }) {
           </div>
         </div>
         <div className="card-content">
-          <h4 className="subject-title">{subject.subject}</h4>
+          <h4 className="subject-title">{getText(subject.subject)}</h4>
           {subject.topics?.length > 0 && (
             <div className="topics-preview">
-              <span className="topic-tag">{subject.topics[0]}</span>
+              <span className="topic-tag">{getText(subject.topics[0])}</span>
               {subject.topics.length > 1 && (
                 <span className="more-topics">+{subject.topics.length - 1}</span>
               )}

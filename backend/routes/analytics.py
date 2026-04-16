@@ -26,11 +26,29 @@ def get_student_analytics():
 
         pipeline = [
             {"$match": {"status": "submitted"}},
+
+            # ✅ 加 lookup 排除已刪除 material 的 submission
+            {
+                "$lookup": {
+                    "from": "materials",
+                    "localField": "material_id",
+                    "foreignField": "_id",
+                    "as": "material_info"
+                }
+            },
+            # ✅ 過濾：只保留 material 未刪除的 submissions
+            {
+                "$match": {
+                    "material_info": {"$ne": []},                    # material 存在
+                    "material_info.0.is_deleted": {"$ne": True}      # 且未刪除
+                }
+            },
+
             {
                 "$group": {
                     "_id": "$student_id",
                     "total_submissions": {"$sum": 1},
-                    "avg_score": {"$avg": "$total_score"},
+                    "avg_score": {"$avg": "$total_score"},           # ← 現在只計未刪除 material
                     "last_activity": {"$max": "$submission_time"},
                     "materials_attempted": {"$addToSet": "$material_id"}
                 }
@@ -263,13 +281,30 @@ def get_stored_report(student_id):
 
 
 def calculate_student_statistics_with_questions(submissions, student_name):
-    total_submissions = len(submissions)
-    scores = [s.get('total_score', 0) for s in submissions]
+    
+    # ✅ 先取得所有未刪除 material 的 ID set
+    valid_material_ids = set(
+        str(m["_id"]) for m in db.materials.find(
+            {"is_deleted": {"$ne": True}},
+            {"_id": 1}
+        )
+    )
+
+    # ✅ 只保留 submission 屬於未刪除 material 的
+    valid_submissions = [
+        s for s in submissions
+        if str(s.get('material_id')) in valid_material_ids
+    ]
+
+    total_submissions = len(valid_submissions)
+
+    # ✅ scores 只計 valid submissions
+    scores = [s.get('total_score', 0) for s in valid_submissions]
     avg_score = sum(scores) / len(scores) if scores else 0
     max_score = max(scores) if scores else 0
     min_score = min(scores) if scores else 0
 
-    materials_attempted = set(str(s.get('material_id')) for s in submissions)
+    materials_attempted = set(str(s.get('material_id')) for s in valid_submissions)
 
     total_materials = db.materials.count_documents({"is_deleted": {"$ne": True}})
 
@@ -285,11 +320,12 @@ def calculate_student_statistics_with_questions(submissions, student_name):
         (valid_attempted_count / total_materials * 100) if total_materials > 0 else 0
     )
 
+    # ✅ incorrect questions 也只從 valid submissions 計
     incorrect_questions = []
     correct_count = 0
     total_questions = 0
 
-    for submission in submissions:
+    for submission in valid_submissions:   # ← 改用 valid_submissions
         answers = submission.get('answers', [])
         material_id = submission.get('material_id')
 
@@ -322,7 +358,7 @@ def calculate_student_statistics_with_questions(submissions, student_name):
                         except (ValueError, IndexError):
                             pass
 
-    recent_submissions = submissions[:5]
+    recent_submissions = valid_submissions[:5]   # ← 改用 valid_submissions
     recent_performance = [
         {
             "score": s.get('total_score', 0),

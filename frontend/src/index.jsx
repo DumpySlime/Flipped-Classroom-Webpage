@@ -4,7 +4,12 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
-
+const OriginalError = window.onerror;
+window.addEventListener('error', (e) => {
+    if (e.message?.includes('Objects are not valid')) {
+        console.trace('🔴 OBJECT RENDER TRACE');
+    }
+});
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

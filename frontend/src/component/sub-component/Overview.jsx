@@ -5,9 +5,8 @@ import MaterialList from './material-viewer/MaterialList';
 import { useTranslation } from 'react-i18next';
 
 function Overview(props) {
-  const { t } = useTranslation();
-  
-  // Destructure props with default values
+  const { t, i18n } = useTranslation();  // ← 加 i18n
+
   const {
     materials = [],
     subjects = [],
@@ -18,24 +17,29 @@ function Overview(props) {
     userInfo = null,
   } = props;
 
-  // Safe arrays in case props are undefined
-  const safeMaterials = Array.isArray(materials) ? materials : [];
-  const safeSubjects = Array.isArray(subjects) ? subjects : [];
-  const safeStudents = Array.isArray(students) ? students : [];
-  const safeProgress = Array.isArray(studentProgress) ? studentProgress : [];
+  const getText = (value) => {
+    if (!value && value !== 0) return '';
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      const lang = i18n.language?.startsWith('zh') ? 'zh' : 'en';
+      return value[lang] ?? value.en ?? value.zh ?? '';
+    }
+    return String(value);
+  };
 
-  // Sort materials by created_at in descending order (newest first)
+  const safeMaterials = Array.isArray(materials) ? materials : [];
+  const safeSubjects  = Array.isArray(subjects) ? subjects : [];
+  const safeStudents  = Array.isArray(students) ? students : [];
+
   const sortedMaterials = useMemo(() => {
     return [...safeMaterials].sort((a, b) => {
       const dateA = new Date(a.created_at || 0);
       const dateB = new Date(b.created_at || 0);
-      return dateB - dateA; // Descending order (newest first)
+      return dateB - dateA;
     });
   }, [safeMaterials]);
 
   const [selectedSubject, setSelectedSubject] = useState(null);
 
-  // Direct user to selected subject Material List on click
   const handleViewMaterialList = useCallback((subject) => {
     setSelectedSubject(subject);
   }, []);
@@ -58,7 +62,7 @@ function Overview(props) {
   return (
     <div className="dashboard-main">
       <h2>{t('dashboardOverview')}</h2>
-      
+
       {/* Stats Cards */}
       <div className="stats-grid">
         {userRole !== 'student' && (
@@ -69,14 +73,12 @@ function Overview(props) {
             </p>
           </div>
         )}
-
         <div className="stat-card">
           <h3>{t('totalMaterials')}</h3>
           <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '10px 0' }}>
             {safeMaterials.length}
           </p>
         </div>
-
         <div className="stat-card">
           <h3>{t('totalSubjects')}</h3>
           <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '10px 0' }}>
@@ -85,7 +87,7 @@ function Overview(props) {
         </div>
       </div>
 
-      {/* Recent Materials - Using sorted materials */}
+      {/* Recent Materials */}
       {sortedMaterials.length > 0 && (
         <div className="recent-activity">
           <h4>{t('recentMaterials')}</h4>
@@ -93,23 +95,23 @@ function Overview(props) {
             {sortedMaterials.slice(0, 5).map((material) => (
               <div key={material.id} className="activity-item">
                 <span>
-                  <strong>{material.attribute?.topic || 'Untitled'}</strong>
+                  <strong>{getText(material.attribute?.topic) || 'Untitled'}</strong>
                   {material.subject && (
-                    <span style={{ 
-                      marginLeft: '8px', 
-                      fontSize: '12px', 
+                    <span style={{
+                      marginLeft: '8px',
+                      fontSize: '12px',
                       color: '#666',
                       background: '#e0e0e0',
                       padding: '2px 8px',
                       borderRadius: '4px'
                     }}>
-                      {material.subject}
+                      {getText(material.subject)}
                     </span>
                   )}
                 </span>
                 <span className="activity-time">
-                  {material.created_at 
-                    ? new Date(material.created_at).toLocaleString() 
+                  {material.created_at
+                    ? new Date(material.created_at).toLocaleString()
                     : 'N/A'}
                 </span>
               </div>
@@ -125,7 +127,7 @@ function Overview(props) {
           <div className="courses-list">
             {safeSubjects.map((subject) => (
               <div key={subject.id} className="course-card" onClick={() => handleViewMaterialList(subject)}>
-                <h3>{subject.subject}</h3>
+                <h3>{getText(subject.subject)}</h3>
                 <p>{t('topicCount', { count: subject.topics?.length || 0 })}</p>
               </div>
             ))}

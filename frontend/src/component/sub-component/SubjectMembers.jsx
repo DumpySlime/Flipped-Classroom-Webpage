@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import '../../styles.css';
 import '../../dashboard.css';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 
 function AvatarInitials({ firstName, lastName }) {
   const initials = `${(firstName || '').charAt(0)}${(lastName || '').charAt(0)}`.toUpperCase();
@@ -14,6 +15,17 @@ function RoleBadge({ role }) {
 
 function SubjectMembers(props) {
   const { userInfo, userRole } = props;
+  const { t, i18n } = useTranslation();
+
+  // ✅ 加 getText helper
+  const getText = (value) => {
+    if (!value && value !== 0) return '';
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      const lang = i18n.language?.startsWith('zh') ? 'zh' : 'en';
+      return value[lang] ?? value.en ?? value.zh ?? '';
+    }
+    return String(value);
+  };
 
   const [subjects, setSubjects] = useState([]); // array of subject objects (id, subject)
   const [membersBySubject, setMembersBySubject] = useState({}); // { subjectId: [members] }
@@ -149,7 +161,7 @@ function SubjectMembers(props) {
       {subjects.length === 1 ? (
         <div className="sm-single">
           <div className="sm-subject-header">
-            <h3 className="sm-subject-title">{subjects[0].subject || subjects[0].name}</h3>
+            <h3 className="sm-subject-title">{getText(subjects[0].subject) || getText(subjects[0].name)}</h3>
             <div className="sm-subject-count">{(membersBySubject[subjects[0].id || subjects[0]._id] || []).length} members</div>
           </div>
           <div className="sm-list">
@@ -164,7 +176,7 @@ function SubjectMembers(props) {
             return (
               <div key={sid} className="sm-subject-card">
                 <div className="sm-subject-card-header">
-                  <div className="sm-subject-title-small">{s.subject || s.name}</div>
+                  <div className="sm-subject-title-small">{getText(s.subject) || getText(s.name)}</div>
                   <div className="sm-subject-count-small">{members.length} members</div>
                 </div>
                 <div className="sm-list">
