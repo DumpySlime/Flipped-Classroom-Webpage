@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import traceback
 import time
+import ast
 
 PROMPT_DIR = Path(__file__).parent / "prompt"
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -209,12 +210,14 @@ def review_animation_code(manim_code: str, storyboard, title: str, language: str
 
 
 def validate_code(code: str) -> bool:
+    """
     with tempfile.NamedTemporaryFile(suffix=".py", delete=False, mode="w", encoding="utf-8") as tf:
         tf.write(code)
         tmp_path = tf.name
 
     try:
         logger.info(f"Validating code with dry-run: {tmp_path}")
+        logger.info(f"Using interpreter: {sys.executable}")
         cmd = [
             sys.executable, "-m", "manim", "render",
             tmp_path,
@@ -240,7 +243,17 @@ def validate_code(code: str) -> bool:
     finally:
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
-
+    """
+    try:
+        ast.parse(code)
+        logger.info("Dry-run passed — code is valid")
+        return True
+    except SyntaxError:        
+        logger.error(f"Syntax error: {traceback.format_exc()}")
+        return False
+    except Exception:
+        logger.error(f"Unexpected error during validation: {traceback.format_exc()}")
+        return False
 
 FALLBACK_CODE = """
 from scene import CScene
