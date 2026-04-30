@@ -1,74 +1,132 @@
-# Getting Started with Create React App
+# Flipped-Classroom-Webpage
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Quick start (frontend)
+1. cd frontend
+2. npm install
+3. npm start
+4. Backend must be running at API_BASE_URL for full functionality.
 
-## Available Scripts
+## Demo credentials
+- Teacher: username = `teacher`, password = `teacher`  
+- Student: username = `student`, password = `student`  
+- Admin: username = `aa`, password = `aa`
 
-In the project directory, you can run:
+---
 
-### `npm start`
+## File → Purpose / Functions (component map)
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- frontend/src/index.jsx  
+  - App bootstrap and React StrictMode; includes i18n and reportWebVitals.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- frontend/src/reportWebVitals.jsx  
+  - Performance helper to report web vitals (web-vitals import wrapper).
 
-### `npm test`
+- frontend/src/i18n.js  
+  - Internationalization setup (i18next) and translation resources for en / zh-HK.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- frontend/src/utils/langText.js  
+  - getLangText(val, lang) — helper to extract localized text from objects.
 
-### `npm run build`
+- frontend/src/setupTests.jsx  
+  - Jest DOM setup for tests.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- frontend/src/styles.css  
+  - Global styles and form / login / slide templates used across components.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- frontend/src/dashboard.css  
+  - Dashboard-specific styling (sidebar, cards, materials, viewer, etc).
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- frontend/src/services/api.js  
+  - API layer:
+    - apiRequest(endpoint, options) — fetch wrapper with Authorization header using sessionStorage token.
+    - materialAPI: getAll, add, delete, update
+    - subjectAPI: getAll, add, getById
+    - questionAPI: getByMaterial, add
+    - studentAnswerAPI: getAll, submit
+    - userAPI: getAll, add
+    - topicAPI: getBySubject
+    - authAPI.login(credentials) — login endpoint (no Authorization header)
 
-### `npm run eject`
+- frontend/src/App.jsx  
+  - Root app component: manages login state and toggles between Login and Dashboard.
+  - handleLogin(role, user), handleLogout()
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- frontend/src/component/Login.jsx  
+  - Login form component handling authentication via authAPI.login and storing session data; calls onLogin callback.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+- frontend/src/component/Dashboard.jsx  
+  - Main dashboard container: loads subjects/materials/students/assignments and renders sections.
+  - loadDashboardData(), calculateProgress(), getLastActivity(), handleSubjectChange(), handlers for add/delete material, submit answers, add question, logout.
+  - Manages role-specific nav and language switch.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+- frontend/src/component/sub-component/Overview.jsx  
+  - Dashboard overview: stats cards, recent materials, subject cards, entry to MaterialList.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+- frontend/src/component/sub-component/AddUser.jsx  
+  - AddUser form to create users (calls apiRequest to /db/user-add).
 
-## Learn More
+- frontend/src/component/sub-component/AddSubject.jsx  
+  - UI to create a new subject, manage topics and assign teachers (uses axios to /db/subject-add).
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- frontend/src/component/sub-component/Assignment.jsx  
+  - Assignment management UI (create assignments and view current assignments). Local/mock logic for selection.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+- frontend/src/component/sub-component/StudentAnalytics.jsx  
+  - Student analytics UI: fetches student data, generate / view AI reports, generate-all functionality and report caching.
+  - Helper: renderMarkdown(), formatLastActivity().
 
-### Code Splitting
+- frontend/src/component/sub-component/SubjectMembers.jsx  
+  - SubjectMembers: show members grouped by subject for admin/teacher views (fetches /db/subjectmembers and /db/subject).
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+- frontend/src/component/sub-component/chatroom/AIChatroom.jsx  
+  - AI chatroom UI with streaming SSE-like consumption, message list, dark mode, reader mode, abort/stop streaming.
+  - Uses apiRequest for some endpoints and direct fetch for streaming chat.
 
-### Analyzing the Bundle Size
+- frontend/src/component/sub-component/chatroom/AIChatroom.css  
+  - Styles for AIChatroom (dark/light theme, streaming bubble, reader overlay).
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+- frontend/src/component/sub-component/material-viewer/MaterialViewer.jsx  
+  - High-level material viewer that chooses between single MaterialList or SubjectList based on subjects count.
 
-### Making a Progressive Web App
+- frontend/src/component/sub-component/material-viewer/SubjectList.jsx  
+  - Shows subject grid and opens MaterialList when a subject is selected.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+- frontend/src/component/sub-component/material-viewer/MaterialList.jsx  
+  - Lists materials for a subject; supports view / edit / delete / generate / upload flows.
+  - deleteMaterial(matId), handleViewMaterial(), handleEditMaterial(), handleBackToSubjects().
 
-### Advanced Configuration
+- frontend/src/component/sub-component/material-viewer/ViewMaterial.jsx  
+  - ViewMaterial: renders slides and questions for a material (slide navigation, thumbnails, progress, quiz submission).
+  - loadMaterial(), refreshQuestions(), loadStudentSubmission(), handleEditMaterial(), handleBackToMaterials(), slide navigation and submission handling.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+- frontend/src/component/sub-component/material-viewer/EditMaterial.jsx  
+  - EditMaterial: edit slides and questions (editable slide content, add/remove points/questions/options, save handler).
 
-### Deployment
+- frontend/src/component/sub-component/material-viewer/GenerateMaterial.jsx  
+  - GenerateMaterial: form to call LLM material generation endpoints and subsequent question/video generation.
+  - handleSubmit(), generateQuestions(), generateVideo(), handleBackToMaterials().
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+- frontend/src/component/sub-component/material-viewer/SlideExplanation.jsx  
+  - Slide template: renders explanation-type slide with subtitle, bullet points and optional video.
 
-### `npm run build` fails to minify
+- frontend/src/component/sub-component/material-viewer/SlideExample.jsx  
+  - Slide template: renders example-type slide with question and solution steps.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- frontend/src/component/sub-component/material-viewer/ViewQuestion.jsx  
+  - ViewQuestion: standalone question viewer/submitter for a material (fetches /db/question, formats answers, posts via studentAnswerAPI.submit).
 
+- frontend/src/component/sub-component/material-viewer/EditMaterial.jsx (already above)  
+  - (Listed again to note preview & save functions.)
+
+---
+
+## Notes & known assumptions
+- API base URL default is http://localhost:5000 — change services/api.js or set REACT_APP_API_URL for alternate host.
+- authAPI.login returns a JSON object with access_token and user. Login component expects user fields: id/_id, role, firstName, lastName, username.
+- Some components use direct axios calls to legacy endpoints; consider consolidating through services/api.js for consistency.
+- This README documents the frontend files currently present under frontend/src. Backend implementations and DB contract are out of scope here.
+
+---
 
 ## JSX Props Documentation
 

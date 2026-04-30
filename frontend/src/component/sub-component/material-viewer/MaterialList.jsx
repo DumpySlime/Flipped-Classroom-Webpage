@@ -3,7 +3,6 @@ import React from 'react';
 import '../../../styles.css';
 import '../../../dashboard.css';
 
-import UploadMaterial from './UploadMaterial';
 import EditMaterial from './EditMaterial';
 import ViewMaterial from './ViewMaterial';
 import GenerateMaterial from './GenerateMaterial';
@@ -25,7 +24,6 @@ function MaterialList(props) {
     const [materials, setMaterials] = useState(
         Array.isArray(props.materials) ? props.materials : []
     );
-    const [showUpload, setShowUpload] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
     const [showView, setShowView] = useState(false);
     const [showGenerate, setShowGenerate] = useState(false);
@@ -67,7 +65,6 @@ function MaterialList(props) {
     const handleBackToSubjects = useCallback(() => {
         setMaterials([]);
         setSelectedMaterial(null);
-        setShowUpload(false);
         setShowEdit(false);
         setShowView(false);
         setShowGenerate(false);
@@ -75,15 +72,6 @@ function MaterialList(props) {
             props.onBackToSubjectList();
         }
     }, [props.onBackToSubjectList]);
-
-    if (showUpload) {
-        return (
-            <UploadMaterial
-                subject={props.subject}
-                onClose={() => setShowUpload(false)}
-            />
-        );
-    }
 
     if (showGenerate) {
         return (
