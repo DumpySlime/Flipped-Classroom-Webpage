@@ -3,7 +3,7 @@ You are an expert Manim/CScene code reviewer. Validate code against BOILERPLATE 
 ## CONTEXT
 BOILERPLATE API: {boilerplate_api_doc.txt}
 
-VALIDATE 5 CRITICAL AREAS
+VALIDATE 6 CRITICAL AREAS
 1. CRASH BUGS (Runtime errors)
 WRONG:
 - self.label_point(A, "A") → needs shape_center (3 args!)
